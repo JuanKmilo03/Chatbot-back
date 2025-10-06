@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id            Int      @id @default(autoincrement())
+  nombre        String
+  email         String   @unique
+  password      String
+  rol           Rol
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  director   Director?
+  estudiante Estudiante?
+  empresa    Empresa?
+}
+
+enum Rol {
+  DIRECTOR
+  ESTUDIANTE
+  EMPRESA
+}
+
+model Director {
+  id                Int        @id @default(autoincrement())
+  usuarioId         Int        @unique
+  usuario           Usuario    @relation(fields: [usuarioId], references: [id])
+  convenios         Convenio[]
+  reportes          Reporte[]
+  vacantesValidadas Vacante[]
+}
+
+model Estudiante {
+  id          Int        @id @default(autoincrement())
+  usuarioId   Int        @unique
+  usuario     Usuario    @relation(fields: [usuarioId], references: [id])
+  habilidades String?
+  perfil      String?
+  practicas   Practica[]
+}
+
+model Empresa {
+  id           Int          @id @default(autoincrement())
+  usuarioId    Int          @unique
+  usuario      Usuario      @relation(fields: [usuarioId], references: [id])
+  nombre       String
+  nit          String
+  vacantes     Vacante[]
+  convenios    Convenio[]
+  evaluaciones Evaluacion[]
+}
+
+model Convenio {
+  id          Int            @id @default(autoincrement())
+  empresaId   Int
+  directorId  Int
+  nombre      String
+  fechaInicio DateTime
+  fechaFin    DateTime
+  estado      EstadoConvenio
+
+  empresa  Empresa  @relation(fields: [empresaId], references: [id])
+  director Director @relation(fields: [directorId], references: [id])
+}
+
+enum EstadoConvenio {
+  ACTIVO
+  VENCIDO
+}
+
+model Vacante {
+  id               Int      @id @default(autoincrement())
+  empresaId        Int
+  directorValidaId Int?
+  titulo           String
+  descripcion      String
+  area             String
+  requisitos       String?
+  validada         Boolean  @default(false)
+  creadaEn         DateTime @default(now())
+
+  empresa        Empresa    @relation(fields: [empresaId], references: [id])
+  directorValida Director?  @relation(fields: [directorValidaId], references: [id])
+  practicas      Practica[] // ← relación inversa corregida
+}
+
+model Practica {
+  id           Int            @id @default(autoincrement())
+  estudianteId Int
+  vacanteId    Int
+  estado       EstadoPractica @default(EN_PROCESO)
+  inicio       DateTime?
+  fin          DateTime?
+
+  estudiante Estudiante  @relation(fields: [estudianteId], references: [id])
+  vacante    Vacante     @relation(fields: [vacanteId], references: [id])
+  evaluacion Evaluacion?
+}
+
+enum EstadoPractica {
+  EN_PROCESO
+  FINALIZADA
+  CANCELADA
+}
+
+model Evaluacion {
+  id           Int      @id @default(autoincrement())
+  practicaId   Int      @unique // ← marcado como único
+  empresaId    Int
+  calificacion Int
+  observacion  String?
+  fecha        DateTime @default(now())
+
+  practica Practica @relation(fields: [practicaId], references: [id])
+  empresa  Empresa  @relation(fields: [empresaId], references: [id])
+}
+
+model Reporte {
+  id          Int      @id @default(autoincrement())
+  directorId  Int
+  titulo      String
+  descripcion String?
+  fecha       DateTime @default(now())
+
+  director Director @relation(fields: [directorId], references: [id])
+}

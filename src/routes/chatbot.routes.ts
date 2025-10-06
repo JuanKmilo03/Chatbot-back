@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { handleChatRequest } from "../controllers/chatbot.controller";
+import { handleChatRequest } from "../controllers/chatbot.controller.js";
 
 const router = Router();
 
