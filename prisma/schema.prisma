@@ -8,30 +8,23 @@ datasource db {
 }
 
 model Usuario {
-  id            Int      @id @default(autoincrement())
+  id            Int         @id @default(autoincrement())
   nombre        String
-  email         String   @unique
+  email         String      @unique
   password      String
   rol           Rol
-  creadoEn      DateTime @default(now())
-  actualizadoEn DateTime @updatedAt
-
-  director   Director?
-  estudiante Estudiante?
-  empresa    Empresa?
-}
-
-enum Rol {
-  DIRECTOR
-  ESTUDIANTE
-  EMPRESA
+  creadoEn      DateTime    @default(now())
+  actualizadoEn DateTime    @updatedAt
+  director      Director?
+  empresa       Empresa?
+  estudiante    Estudiante?
 }
 
 model Director {
   id                Int        @id @default(autoincrement())
   usuarioId         Int        @unique
-  usuario           Usuario    @relation(fields: [usuarioId], references: [id])
   convenios         Convenio[]
+  usuario           Usuario    @relation(fields: [usuarioId], references: [id])
   reportes          Reporte[]
   vacantesValidadas Vacante[]
 }
@@ -39,55 +32,49 @@ model Director {
 model Estudiante {
   id          Int        @id @default(autoincrement())
   usuarioId   Int        @unique
-  usuario     Usuario    @relation(fields: [usuarioId], references: [id])
   habilidades String?
   perfil      String?
+  usuario     Usuario    @relation(fields: [usuarioId], references: [id])
   practicas   Practica[]
 }
 
 model Empresa {
   id           Int          @id @default(autoincrement())
   usuarioId    Int          @unique
-  usuario      Usuario      @relation(fields: [usuarioId], references: [id])
   nombre       String
   nit          String
-  vacantes     Vacante[]
   convenios    Convenio[]
+  usuario      Usuario      @relation(fields: [usuarioId], references: [id])
   evaluaciones Evaluacion[]
+  vacantes     Vacante[]
 }
 
 model Convenio {
-  id          Int            @id @default(autoincrement())
-  empresaId   Int
-  directorId  Int
-  nombre      String
-  fechaInicio DateTime
-  fechaFin    DateTime
-  estado      EstadoConvenio
+  id             Int       @id @default(autoincrement())
+  nombre         String
+  empresaId      Int
+  directorId     Int
+  estado         EstadoConvenio
+  archivoUrl     String?   
+  actualizadoEn  DateTime  @updatedAt
 
-  empresa  Empresa  @relation(fields: [empresaId], references: [id])
-  director Director @relation(fields: [directorId], references: [id])
-}
-
-enum EstadoConvenio {
-  ACTIVO
-  VENCIDO
+  empresa        Empresa   @relation(fields: [empresaId], references: [id])
+  director       Director  @relation(fields: [directorId], references: [id])
 }
 
 model Vacante {
-  id               Int      @id @default(autoincrement())
+  id               Int        @id @default(autoincrement())
   empresaId        Int
   directorValidaId Int?
   titulo           String
   descripcion      String
   area             String
   requisitos       String?
-  validada         Boolean  @default(false)
-  creadaEn         DateTime @default(now())
-
-  empresa        Empresa    @relation(fields: [empresaId], references: [id])
-  directorValida Director?  @relation(fields: [directorValidaId], references: [id])
-  practicas      Practica[] // ← relación inversa corregida
+  validada         Boolean    @default(false)
+  creadaEn         DateTime   @default(now())
+  practicas        Practica[]
+  directorValida   Director?  @relation(fields: [directorValidaId], references: [id])
+  empresa          Empresa    @relation(fields: [empresaId], references: [id])
 }
 
 model Practica {
@@ -97,28 +84,20 @@ model Practica {
   estado       EstadoPractica @default(EN_PROCESO)
   inicio       DateTime?
   fin          DateTime?
-
-  estudiante Estudiante  @relation(fields: [estudianteId], references: [id])
-  vacante    Vacante     @relation(fields: [vacanteId], references: [id])
-  evaluacion Evaluacion?
-}
-
-enum EstadoPractica {
-  EN_PROCESO
-  FINALIZADA
-  CANCELADA
+  evaluacion   Evaluacion?
+  estudiante   Estudiante     @relation(fields: [estudianteId], references: [id])
+  vacante      Vacante        @relation(fields: [vacanteId], references: [id])
 }
 
 model Evaluacion {
   id           Int      @id @default(autoincrement())
-  practicaId   Int      @unique // ← marcado como único
+  practicaId   Int      @unique
   empresaId    Int
   calificacion Int
   observacion  String?
   fecha        DateTime @default(now())
-
-  practica Practica @relation(fields: [practicaId], references: [id])
-  empresa  Empresa  @relation(fields: [empresaId], references: [id])
+  empresa      Empresa  @relation(fields: [empresaId], references: [id])
+  practica     Practica @relation(fields: [practicaId], references: [id])
 }
 
 model Reporte {
@@ -127,6 +106,23 @@ model Reporte {
   titulo      String
   descripcion String?
   fecha       DateTime @default(now())
+  director    Director @relation(fields: [directorId], references: [id])
+}
 
-  director Director @relation(fields: [directorId], references: [id])
+enum Rol {
+  DIRECTOR
+  ESTUDIANTE
+  EMPRESA
+}
+
+enum EstadoPractica {
+  EN_PROCESO
+  FINALIZADA
+  CANCELADA
+}
+
+enum EstadoConvenio {
+  ACTIVO     
+  VENCIDO 
+  CANCELADO
 }
