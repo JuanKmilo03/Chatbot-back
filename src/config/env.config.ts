@@ -1,6 +1,5 @@
 import dotenv from "dotenv";
 
-
 dotenv.config();
 
 export const env = {
@@ -9,4 +8,5 @@ export const env = {
   FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:3000",
   N8N_API_URL: process.env.N8N_API_URL || "",
   N8N_API_KEY: process.env.N8N_API_KEY || "",
+  JWT_SECRET: process.env.JWT_SECRET || "supersecretkey",
 };
