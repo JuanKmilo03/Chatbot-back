@@ -3,6 +3,7 @@ import cors from "cors";
 import { env } from "./config/env.config.js";
 import chatbotRoutes from "./routes/chatbot.routes.js";
 import { connectDB } from "./config/db.js";
+import authRoutes from "./routes/auth.routes.js";
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 
 // Rutas
 app.use("/api/chatbot", chatbotRoutes);
+app.use("/api/auth", authRoutes);
 
 // Endpoint raíz
 app.get("/", (req, res) => {
