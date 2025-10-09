@@ -106,7 +106,6 @@ model Reporte {
   titulo      String
   descripcion String?
   fecha       DateTime @default(now())
-<<<<<<< HEAD
   director    Director @relation(fields: [directorId], references: [id])
 }
 
@@ -127,8 +126,3 @@ enum EstadoConvenio {
   VENCIDO 
   CANCELADO
 }
-=======
-
-  director Director @relation(fields: [directorId], references: [id])
-}
->>>>>>> a2b9e0d11e71378d63b21f4d62a0095ae0ace870

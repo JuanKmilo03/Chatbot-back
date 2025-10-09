@@ -20,21 +20,15 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
-<<<<<<< HEAD
     "multer": "^1.4.5-lts.1",
-=======
->>>>>>> a2b9e0d11e71378d63b21f4d62a0095ae0ace870
     "prisma": "^6.16.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
-<<<<<<< HEAD
-    "@types/multer": "^1.4.7",
-=======
     "@types/jsonwebtoken": "^9.0.10",
->>>>>>> a2b9e0d11e71378d63b21f4d62a0095ae0ace870
+    "@types/multer": "^1.4.7",
     "@types/node": "^24.6.2",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
