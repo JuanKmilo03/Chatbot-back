@@ -1,37 +1,37 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import { Rol } from '@prisma/client';
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import { env } from "../config/env.config.js";
 
-//  para incluir user
 export interface AuthRequest extends Request {
   user?: {
     id: number;
-    rol: Rol;
+    email: string;
+    rol: string;
   };
 }
 
-export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({ message: "Token no proporcionado" });
+  }
+
   try {
-    // Obtener token del header
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Token no proporcionado' });
-    }
-
-    const token = authHeader.substring(7); // Remover 'Bearer '
-
-    // Verificar token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'tu_secreto_aqui') as {
-      id: number;
-      rol: Rol;
-    };
-
-    // Agregar usuario al request
+    const decoded = jwt.verify(token, env.JWT_SECRET) as AuthRequest["user"];
     req.user = decoded;
     next();
-
   } catch (error) {
-    return res.status(401).json({ error: 'Token inválido o expirado' });
+    return res.status(403).json({ message: "Token inválido o expirado" });
   }
+};
+
+export const authorizeRoles = (...roles: string[]) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!roles.includes(req.user?.rol || "")) {
+      return res.status(403).json({ message: "Acceso denegado" });
+    }
+    next();
+  };
 };

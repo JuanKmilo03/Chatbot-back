@@ -5,13 +5,17 @@ import { PrismaClient, EstadoConvenio } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export const crearConvenio = async (req: Request, res: Response): Promise<void> => {
+export const crearConvenio = async (req: AuthRequest, res: Response) => {
   try {
     const { nombre, empresaId, directorId, estado, archivoUrl } = req.body;
 
     if (!nombre || !empresaId || !directorId) {
-      res.status(400).json({ error: 'Los campos nombre, empresaId y directorId son obligatorios' });
-      return;
+      return res.status(400).json({ error: "Los campos nombre, empresaId y directorId son obligatorios" });
+    }
+
+    // solo el director o un admin(pendiente si va a existir un admi) pueden crear convenios
+    if (req.user?.rol === "DIRECTOR" && req.user.id !== Number(directorId)) {
+      return res.status(403).json({ error: "No puedes crear convenios para otro director" });
     }
 
     const nuevoConvenio = await prisma.convenio.create({
@@ -30,69 +34,88 @@ export const crearConvenio = async (req: Request, res: Response): Promise<void> 
 
     res.status(201).json(nuevoConvenio);
   } catch (error) {
-    console.error('Error al crear convenio:', error);
-    res.status(500).json({ error: 'Error al crear el convenio' });
+    console.error("Error al crear convenio:", error);
+    res.status(500).json({ error: "Error al crear el convenio" });
   }
 };
 
-export const listarConvenios = async (req: Request, res: Response): Promise<void> => {
+export const listarConvenios = async (req: AuthRequest, res: Response) => {
   try {
-    const convenios = await prisma.convenio.findMany({
-      include: {
-        empresa: true,
-        director: true,
-      },
-      orderBy: {
-        id: 'desc',
-      },
-    });
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: "Usuario no autenticado" });
+
+    let convenios;
+
+    if (user.rol === "ADMIN") {
+      convenios = await prisma.convenio.findMany({
+        include: { empresa: true, director: true },
+        orderBy: { id: "desc" },
+      });
+    } else if (user.rol === "DIRECTOR") {
+      const director = await prisma.director.findUnique({
+        where: { usuarioId: user.id },
+      });
+      if (!director) return res.status(403).json({ error: "No tiene perfil de director" });
+
+      convenios = await prisma.convenio.findMany({
+        where: { directorId: director.id },
+        include: { empresa: true },
+        orderBy: { id: "desc" },
+      });
+    } else if (user.rol === "EMPRESA") {
+      const empresa = await prisma.empresa.findUnique({
+        where: { usuarioId: user.id },
+      });
+      if (!empresa) return res.status(403).json({ error: "No tiene perfil de empresa" });
+
+      convenios = await prisma.convenio.findMany({
+        where: { empresaId: empresa.id },
+        include: { director: true },
+        orderBy: { id: "desc" },
+      });
+    } else {
+      return res.status(403).json({ error: "Rol no autorizado para esta accion." });
+    }
 
     res.json(convenios);
   } catch (error) {
-    console.error('Error al listar convenios:', error);
-    res.status(500).json({ error: 'Error al listar convenios' });
+    console.error("Error al listar convenios:", error);
+    res.status(500).json({ error: "Error al listar convenios" });
   }
 };
 
-export const obtenerConvenioPorId = async (req: Request, res: Response): Promise<void> => {
+export const obtenerConvenioPorId = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-
     const convenio = await prisma.convenio.findUnique({
       where: { id: Number(id) },
-      include: {
-        empresa: true,
-        director: true,
-      },
+      include: { empresa: true, director: true },
     });
 
-    if (!convenio) {
-      res.status(404).json({ error: 'Convenio no encontrado' });
-      return;
+    if (!convenio) return res.status(404).json({ error: "Convenio no encontrado" });
+
+    // un director solo podrá ver sus propios convenios
+    if (req.user?.rol === "DIRECTOR" && convenio.directorId !== req.user.id) {
+      return res.status(403).json({ error: "No tienes permiso para ver este convenio" });
     }
 
     res.json(convenio);
   } catch (error) {
-    console.error('Error al obtener convenio:', error);
-    res.status(500).json({ error: 'Error al obtener convenio' });
+    console.error("Error al obtener convenio:", error);
+    res.status(500).json({ error: "Error al obtener convenio" });
   }
 };
 
-export const actualizarConvenio = async (req: Request, res: Response) => {
+export const actualizarConvenio = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { nombre, estado, archivoUrl } = req.body;
 
-    if (!id) {
-      return res.status(400).json({ error: "El ID del convenio es obligatorio" });
-    }
+    const convenioExistente = await prisma.convenio.findUnique({ where: { id: Number(id) } });
+    if (!convenioExistente) return res.status(404).json({ error: "Convenio no encontrado" });
 
-    const convenioExistente = await prisma.convenio.findUnique({
-      where: { id: Number(id) },
-    });
-
-    if (!convenioExistente) {
-      return res.status(404).json({ error: "Convenio no encontrado" });
+    if (req.user?.rol === "DIRECTOR" && convenioExistente.directorId !== req.user.id) {
+      return res.status(403).json({ error: "No puedes modificar convenios de otro director" });
     }
 
     const convenioActualizado = await prisma.convenio.update({
@@ -104,28 +127,25 @@ export const actualizarConvenio = async (req: Request, res: Response) => {
       },
     });
 
-    res.status(200).json({
-      mensaje: "Convenio actualizado correctamente",
-      convenio: convenioActualizado,
-    });
+    res.status(200).json({ mensaje: "Convenio actualizado correctamente", convenio: convenioActualizado });
   } catch (error) {
     console.error("Error al actualizar convenio:", error);
     res.status(500).json({ error: "Error al actualizar convenio" });
   }
 };
 
-export const eliminarConvenio = async (req: Request, res: Response): Promise<void> => {
+export const eliminarConvenio = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
 
-    await prisma.convenio.delete({
-      where: { id: Number(id) },
-    });
+    const convenio = await prisma.convenio.findUnique({ where: { id: Number(id) } });
+    if (!convenio) return res.status(404).json({ error: "Convenio no encontrado" });
 
-    res.json({ mensaje: 'Convenio eliminado correctamente' });
+    await prisma.convenio.delete({ where: { id: Number(id) } });
+    res.json({ mensaje: "Convenio eliminado correctamente" });
   } catch (error) {
-    console.error('Error al eliminar convenio:', error);
-    res.status(500).json({ error: 'Error al eliminar convenio' });
+    console.error("Error al eliminar convenio:", error);
+    res.status(500).json({ error: "Error al eliminar convenio" });
   }
 };
 
@@ -170,39 +190,23 @@ export const listarConveniosVigentes = async (req: AuthRequest, res: Response) =
   try {
     const usuarioId = req.user?.id;
 
-    if (!usuarioId) {
-      return res.status(401).json({ error: 'Usuario no autenticado' });
-    }
-
-    const director = await prisma.director.findUnique({
-      where: { usuarioId },
-    });
-
-    if (!director) {
-      return res.status(403).json({ error: 'El usuario no tiene rol DIRECTOR' });
-    }
+    const director = await prisma.director.findUnique({ where: { usuarioId } });
+    if (!director) return res.status(403).json({ error: "El usuario no tiene rol DIRECTOR" });
 
     const convenios = await prisma.convenio.findMany({
-      where: {
-        directorId: director.id,
-        estado: 'ACTIVO', 
-      },
-      include: {
-        empresa: { select: { id: true, nombre: true, nit: true } },
-      },
-      orderBy: { actualizadoEn: 'desc' },
+      where: { directorId: director.id, estado: "ACTIVO" },
+      include: { empresa: { select: { id: true, nombre: true, nit: true } } },
+      orderBy: { actualizadoEn: "desc" },
     });
 
     res.status(200).json({ total: convenios.length, convenios });
-
   } catch (error) {
-    console.error('Error al listar convenios vigentes:', error);
-    res.status(500).json({ error: 'Error al obtener convenios vigentes' });
+    console.error("Error al listar convenios vigentes:", error);
+    res.status(500).json({ error: "Error al obtener convenios vigentes" });
   }
 };
 
-
-// sin auth pa probar
+/*sin auth pa probar
 
 
 export const listarConveniosVigentes2 = async (req: Request, res: Response) => {
@@ -230,4 +234,4 @@ export const listarConveniosVigentes2 = async (req: Request, res: Response) => {
     console.error('Error al listar convenios vigentes:', error);
     res.status(500).json({ error: 'Error al obtener convenios vigentes' });
   }
-};
+};*/
