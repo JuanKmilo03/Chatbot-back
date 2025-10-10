@@ -12,6 +12,7 @@ import convenioRoutes from "./routes/convenio.routes.js";
 import usuarioRoutes from "./routes/usuario.routes.js";
 import directorRoutes from "./routes/director.routes.js";
 import empresaRoutes from "./routes/empresa.routes.js";
+import vacanteRoutes from "./routes/vacante.routes.js";
 
 import { verifyToken, authorizeRoles } from "./middlewares/auth.middleware.js";
 
@@ -29,6 +30,8 @@ app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 app.use("/api/auth", authRoutes);
 app.use("/api/auth", authGoogleRoutes);
 
+
+app.use("/api/vacantes", vacanteRoutes);
 // ruta spor roles
 app.use("/api/convenios", verifyToken, convenioRoutes);
 app.use("/api/usuarios", verifyToken, authorizeRoles("ADMIN"), usuarioRoutes);
