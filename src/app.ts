@@ -6,6 +6,11 @@ import { env } from "./config/env.config.js";
 import { connectDB } from "./config/db.js";
 import { fileURLToPath } from "url";
 
+// Swagger
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./config/swagger.js";
+
+// Rutas
 import authRoutes from "./routes/auth.routes.js";
 import authGoogleRoutes from "./routes/authGoogle.routes.js";
 import convenioRoutes from "./routes/convenio.routes.js";
@@ -14,6 +19,7 @@ import directorRoutes from "./routes/director.routes.js";
 import empresaRoutes from "./routes/empresa.routes.js";
 import vacanteRoutes from "./routes/vacante.routes.js";
 
+// Middlewares
 import { verifyToken, authorizeRoles } from "./middlewares/auth.middleware.js";
 
 dotenv.config();
@@ -22,22 +28,27 @@ const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Middlewares base
 app.use(cors({ origin: env.FRONTEND_URL }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 
+// Swagger UI
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// Rutas públicas
 app.use("/api/auth", authRoutes);
 app.use("/api/auth", authGoogleRoutes);
-
-
 app.use("/api/vacantes", vacanteRoutes);
-// ruta spor roles
+
+// Rutas por roles
 app.use("/api/convenios", verifyToken, convenioRoutes);
 app.use("/api/usuarios", verifyToken, authorizeRoles("ADMIN"), usuarioRoutes);
 app.use("/api/directores", verifyToken, authorizeRoles("ADMIN"), directorRoutes);
 app.use("/api/empresas", verifyToken, authorizeRoles("EMPRESA"), empresaRoutes);
 
+// Ruta base
 app.get("/", (_req, res) => res.send("🚀 Servidor del Chatbot funcionando correctamente"));
 
 // Servidor
