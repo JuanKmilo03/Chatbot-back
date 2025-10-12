@@ -1,9 +1,14 @@
-import { Router } from 'express';
-import { DirectorController } from '../controllers/director.controller.js';
+import { Router } from "express";
+import {
+
+  crearDirector,
+  listarDirectores,
+} from "../controllers/director.controller.js";
 
 const router = Router();
 
-router.post('/', DirectorController.crear);
-router.get('/', DirectorController.listar);
+router.post("/", crearDirector);
+router.get("/", listarDirectores);
+
 
 export default router;

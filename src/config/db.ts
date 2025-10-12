@@ -7,11 +7,10 @@ export const prisma = new PrismaClient({
 export async function connectDB() {
   try {
     await prisma.$connect();
-    console.log("✅ Conexión exitosa a PostgreSQL con Prisma");
+    console.log("Conexión exitosa a PostgreSQL con Prisma");
   } catch (error: any) {
-    console.error("❌ Error al conectar con la base de datos:");
+    console.error("Error al conectar con la base de datos:");
 
-    // Mostrar todos los detalles posibles del error
     console.error("Mensaje:", error.message);
     console.error("Nombre:", error.name);
     console.error("Código Prisma:", error.code);

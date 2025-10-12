@@ -94,7 +94,6 @@ export const obtenerConvenioPorId = async (req: AuthRequest, res: Response) => {
 
     if (!convenio) return res.status(404).json({ error: "Convenio no encontrado" });
 
-    // un director solo podrá ver sus propios convenios
     if (req.user?.rol === "DIRECTOR" && convenio.directorId !== req.user.id) {
       return res.status(403).json({ error: "No tienes permiso para ver este convenio" });
     }
@@ -203,6 +202,124 @@ export const listarConveniosVigentes = async (req: AuthRequest, res: Response) =
   } catch (error) {
     console.error("Error al listar convenios vigentes:", error);
     res.status(500).json({ error: "Error al obtener convenios vigentes" });
+  }
+};
+
+export const listarConveniosPendientes = async (req: Request, res: Response) => {
+  try {
+    const { directorId } = req.params;
+
+    const convenios = await prisma.convenio.findMany({
+      where: {
+        directorId: Number(directorId),
+        estado: EstadoConvenio.PENDIENTE,
+      },
+      include: {
+        empresa: true,
+      },
+    });
+
+    res.json(convenios);
+  } catch (error) {
+    console.error("Error al listar convenios pendientes:", error);
+    res.status(500).json({ error: "Error al obtener convenios pendientes" });
+  }
+};
+
+
+export const aceptarConvenio = async (req: Request, res: Response) => {
+  try {
+    const { convenioId } = req.params;
+
+    const convenio = await prisma.convenio.findUnique({
+      where: { id: Number(convenioId) },
+    });
+
+    if (!convenio) {
+      return res.status(404).json({ error: "Convenio no encontrado" });
+    }
+
+    const convenioActualizado = await prisma.convenio.update({
+      where: { id: Number(convenioId) },
+      data: {
+        estado: EstadoConvenio.ACTIVO,
+      },
+      include: {
+        empresa: true,
+      },
+    });
+
+    res.json({
+      message: "Convenio aceptado exitosamente",
+      data: convenioActualizado,
+    });
+  } catch (error) {
+    console.error("Error al aceptar convenio:", error);
+    res.status(500).json({ error: "Error al aceptar el convenio" });
+  }
+};
+
+export const rechazarConvenio = async (req: Request, res: Response) => {
+  try {
+    const { convenioId } = req.params;
+
+    const convenio = await prisma.convenio.findUnique({
+      where: { id: Number(convenioId) },
+    });
+
+    if (!convenio) {
+      return res.status(404).json({ error: "Convenio no encontrado" });
+    }
+
+    const convenioActualizado = await prisma.convenio.update({
+      where: { id: Number(convenioId) },
+      data: {
+        estado: EstadoConvenio.RECHAZADO,
+      },
+      include: {
+        empresa: true,
+      },
+    });
+
+    res.json({
+      message: "Convenio rechazado exitosamente",
+      data: convenioActualizado,
+    });
+  } catch (error) {
+    console.error("Error al rechazar convenio:", error);
+    res.status(500).json({ error: "Error al rechazar el convenio" });
+  }
+};
+
+export const marcarConvenioCancelado = async (req: Request, res: Response) => {
+  try {
+    const { convenioId } = req.params;
+
+    const convenio = await prisma.convenio.findUnique({
+      where: { id: Number(convenioId) },
+    });
+
+    if (!convenio) {
+      return res.status(404).json({ error: "Convenio no encontrado" });
+    }
+
+    const convenioActualizado = await prisma.convenio.update({
+      where: { id: Number(convenioId) },
+      data: {
+        estado: EstadoConvenio.CANCELADO,
+      },
+      include: {
+        empresa: true,
+      },
+    });
+
+    res.json({
+      message: "Convenio marcado como vencido",
+      data: convenioActualizado,
+    });
+  } catch (error) {
+    console.error("Error al marcar convenio como vencido:", error);
+    res.status(500).json({ error: "Error al actualizar el convenio" });
   }
 };
 
