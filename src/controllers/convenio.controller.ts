@@ -1,354 +1,228 @@
-import { Request, Response } from 'express';
-import { AuthRequest } from '../middlewares/auth.middleware.js';
-import { PrismaClient, EstadoConvenio } from '@prisma/client';
-
+import { Request, Response } from "express";
+import { PrismaClient, EstadoConvenio } from "@prisma/client";
+import { AuthenticatedRequest } from "../middlewares/authFirebase.js";
+import cloudinary from "../config/cloudinary.config.js";
+import fs from "fs";
 
 const prisma = new PrismaClient();
 
-export const crearConvenio = async (req: AuthRequest, res: Response) => {
+export const solicitarConvenio = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { nombre, empresaId, directorId, estado, archivoUrl } = req.body;
-
-    if (!nombre || !empresaId || !directorId) {
-      return res.status(400).json({ error: "Los campos nombre, empresaId y directorId son obligatorios" });
+    const usuario = req.user;
+    if (!usuario || usuario.rol !== "ESTUDIANTE") {
+      return res.status(403).json({ message: "Solo estudiantes pueden solicitar convenios" });
     }
 
-    // solo el director o un admin(pendiente si va a existir un admi) pueden crear convenios
-    if (req.user?.rol === "DIRECTOR" && req.user.id !== Number(directorId)) {
-      return res.status(403).json({ error: "No puedes crear convenios para otro director" });
+    const { nombre, empresaId, directorId } = req.body;
+    const archivo = req.file;
+
+    if (!archivo) {
+      return res.status(400).json({ message: "Se debe subir un archivo para el convenio" });
     }
 
-    const nuevoConvenio = await prisma.convenio.create({
+    const result = await cloudinary.uploader.upload(archivo.path, {
+      folder: "ConveniosPracticas",
+      resource_type: "auto"
+    });
+    const convenio = await prisma.convenio.create({
       data: {
         nombre,
         empresaId: Number(empresaId),
         directorId: Number(directorId),
-        estado: estado && estado in EstadoConvenio ? estado : EstadoConvenio.ACTIVO,
-        archivoUrl: archivoUrl || null,
-      },
-      include: {
-        empresa: true,
-        director: true,
+        estado: EstadoConvenio.PENDIENTE,
+        archivoUrl: result.secure_url,
       },
     });
 
-    res.status(201).json(nuevoConvenio);
+    fs.unlinkSync(archivo.path);
+
+    res.status(201).json({ message: "Convenio solicitado", convenio });
   } catch (error) {
-    console.error("Error al crear convenio:", error);
-    res.status(500).json({ error: "Error al crear el convenio" });
+    console.error(error);
+    res.status(500).json({ message: "Error al solicitar convenio" });
   }
 };
 
-export const listarConvenios = async (req: AuthRequest, res: Response) => {
+
+export const listarConvenios = async (_req: Request, res: Response) => {
   try {
-    const user = req.user;
-    if (!user) return res.status(401).json({ error: "Usuario no autenticado" });
-
-    let convenios;
-
-    if (user.rol === "ADMIN") {
-      convenios = await prisma.convenio.findMany({
-        include: { empresa: true, director: true },
-        orderBy: { id: "desc" },
-      });
-    } else if (user.rol === "DIRECTOR") {
-      const director = await prisma.director.findUnique({
-        where: { usuarioId: user.id },
-      });
-      if (!director) return res.status(403).json({ error: "No tiene perfil de director" });
-
-      convenios = await prisma.convenio.findMany({
-        where: { directorId: director.id },
-        include: { empresa: true },
-        orderBy: { id: "desc" },
-      });
-    } else if (user.rol === "EMPRESA") {
-      const empresa = await prisma.empresa.findUnique({
-        where: { usuarioId: user.id },
-      });
-      if (!empresa) return res.status(403).json({ error: "No tiene perfil de empresa" });
-
-      convenios = await prisma.convenio.findMany({
-        where: { empresaId: empresa.id },
-        include: { director: true },
-        orderBy: { id: "desc" },
-      });
-    } else {
-      return res.status(403).json({ error: "Rol no autorizado para esta accion." });
-    }
-
-    res.json(convenios);
-  } catch (error) {
-    console.error("Error al listar convenios:", error);
-    res.status(500).json({ error: "Error al listar convenios" });
-  }
-};
-
-export const obtenerConvenioPorId = async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-    const convenio = await prisma.convenio.findUnique({
-      where: { id: Number(id) },
-      include: { empresa: true, director: true },
+    const convenios = await prisma.convenio.findMany({
+      include: { director: true, empresa: true },
     });
-
-    if (!convenio) return res.status(404).json({ error: "Convenio no encontrado" });
-
-    if (req.user?.rol === "DIRECTOR" && convenio.directorId !== req.user.id) {
-      return res.status(403).json({ error: "No tienes permiso para ver este convenio" });
-    }
-
-    res.json(convenio);
+    res.status(200).json(convenios);
   } catch (error) {
-    console.error("Error al obtener convenio:", error);
-    res.status(500).json({ error: "Error al obtener convenio" });
+    res.status(500).json({ message: "Error al listar convenios" });
   }
 };
 
-export const actualizarConvenio = async (req: AuthRequest, res: Response) => {
+
+export const actualizarConvenio = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { nombre, estado, archivoUrl } = req.body;
+    const { nombre, estado } = req.body;
+    const usuario = req.user;
+    const archivo = req.file;
 
-    const convenioExistente = await prisma.convenio.findUnique({ where: { id: Number(id) } });
-    if (!convenioExistente) return res.status(404).json({ error: "Convenio no encontrado" });
+    const convenio = await prisma.convenio.findUnique({ where: { id: Number(id) } });
+    if (!convenio) return res.status(404).json({ message: "Convenio no encontrado" });
 
-    if (req.user?.rol === "DIRECTOR" && convenioExistente.directorId !== req.user.id) {
-      return res.status(403).json({ error: "No puedes modificar convenios de otro director" });
+    if (usuario?.rol !== "DIRECTOR" && usuario?.rol !== "ADMIN") {
+      return res.status(403).json({ message: "No autorizado para actualizar convenios" });
+    }
+
+    let archivoUrl = convenio.archivoUrl;
+    if (archivo) {
+      const result = await cloudinary.uploader.upload(archivo.path, {
+        folder: "ConveniosPracticas",
+        resource_type: "auto"
+      });
+      archivoUrl = result.secure_url;
+      fs.unlinkSync(archivo.path);
     }
 
     const convenioActualizado = await prisma.convenio.update({
       where: { id: Number(id) },
-      data: {
-        nombre: nombre || convenioExistente.nombre,
-        estado: estado || convenioExistente.estado,
-        archivoUrl: archivoUrl || convenioExistente.archivoUrl,
-      },
+      data: { nombre, estado, archivoUrl },
     });
 
-    res.status(200).json({ mensaje: "Convenio actualizado correctamente", convenio: convenioActualizado });
+    res.status(200).json(convenioActualizado);
   } catch (error) {
-    console.error("Error al actualizar convenio:", error);
-    res.status(500).json({ error: "Error al actualizar convenio" });
+    console.error(error);
+    res.status(500).json({ message: "Error al actualizar convenio" });
   }
 };
 
-export const eliminarConvenio = async (req: AuthRequest, res: Response) => {
+export const obtenerConvenioPorId = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const convenio = await prisma.convenio.findUnique({
+      where: { id: Number(id) },
+      include: { director: true, empresa: true },
+    });
 
-    const convenio = await prisma.convenio.findUnique({ where: { id: Number(id) } });
-    if (!convenio) return res.status(404).json({ error: "Convenio no encontrado" });
+    if (!convenio) return res.status(404).json({ message: "Convenio no encontrado" });
 
-    await prisma.convenio.delete({ where: { id: Number(id) } });
-    res.json({ mensaje: "Convenio eliminado correctamente" });
+    res.status(200).json(convenio);
   } catch (error) {
-    console.error("Error al eliminar convenio:", error);
-    res.status(500).json({ error: "Error al eliminar convenio" });
+    res.status(500).json({ message: "Error al obtener convenio" });
   }
 };
+
+
+export const eliminarConvenio = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const usuario = req.user;
+
+    if (usuario?.rol !== "ADMIN") {
+      return res.status(403).json({ message: "Solo los administradores pueden eliminar convenios" });
+    }
+
+    await prisma.convenio.delete({ where: { id: Number(id) } });
+    res.status(200).json({ message: "Convenio eliminado correctamente" });
+  } catch (error) {
+    res.status(500).json({ message: "Error al eliminar convenio" });
+  }
+};
+
 
 export const listarConveniosPorDirector = async (req: Request, res: Response) => {
   try {
     const { directorId } = req.params;
-
-    if (!directorId) {
-      return res.status(400).json({ error: "El directorId es obligatorio" });
-    }
-
     const convenios = await prisma.convenio.findMany({
       where: { directorId: Number(directorId) },
-      include: {
-        empresa: {
-          select: { nombre: true, nit: true },
-        },
-      },
-      orderBy: { actualizadoEn: "desc" },
+      include: { empresa: true },
     });
 
-    if (convenios.length === 0) {
-      return res.status(404).json({ mensaje: "No hay convenios registrados para este director" });
-    }
-
-    const conveniosLocal = convenios.map(c => ({
-      ...c,
-      actualizadoEn: new Date(c.actualizadoEn).toLocaleString("es-CO", {
-        timeZone: "America/Bogota",
-      }),
-    }));
-
-    res.status(200).json(conveniosLocal);
+    if (!convenios.length) return res.status(404).json({ message: "No hay convenios para este director" });
+    res.status(200).json(convenios);
   } catch (error) {
-    console.error("Error al listar convenios:", error);
-    res.status(500).json({ error: "Error al obtener convenios" });
+    res.status(500).json({ message: "Error al listar convenios del director" });
   }
 };
 
 
-export const listarConveniosVigentes = async (req: AuthRequest, res: Response) => {
+export const listarConveniosVigentes = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const usuarioId = req.user?.id;
+    const usuario = req.user;
+    if (!usuario || usuario.rol !== "DIRECTOR") return res.status(403).json({ message: "Acceso denegado" });
 
-    const director = await prisma.director.findUnique({ where: { usuarioId } });
-    if (!director) return res.status(403).json({ error: "El usuario no tiene rol DIRECTOR" });
+    const director = await prisma.director.findFirst({ where: { usuarioId: usuario.id } });
+    if (!director) return res.status(404).json({ message: "Director no encontrado" });
 
     const convenios = await prisma.convenio.findMany({
-      where: { directorId: director.id, estado: "ACTIVO" },
-      include: { empresa: { select: { id: true, nombre: true, nit: true } } },
-      orderBy: { actualizadoEn: "desc" },
+      where: { directorId: director.id, estado: EstadoConvenio.ACTIVO },
+      include: { empresa: true },
     });
 
-    res.status(200).json({ total: convenios.length, convenios });
+    res.status(200).json(convenios);
   } catch (error) {
-    console.error("Error al listar convenios vigentes:", error);
-    res.status(500).json({ error: "Error al obtener convenios vigentes" });
+    res.status(500).json({ message: "Error al listar convenios vigentes" });
   }
 };
+
 
 export const listarConveniosPendientes = async (req: Request, res: Response) => {
   try {
     const { directorId } = req.params;
 
     const convenios = await prisma.convenio.findMany({
-      where: {
-        directorId: Number(directorId),
-        estado: EstadoConvenio.PENDIENTE,
-      },
-      include: {
-        empresa: true,
-      },
+      where: { directorId: Number(directorId), estado: EstadoConvenio.PENDIENTE },
+      include: { empresa: true },
     });
 
-    res.json(convenios);
+    res.status(200).json(convenios);
   } catch (error) {
-    console.error("Error al listar convenios pendientes:", error);
-    res.status(500).json({ error: "Error al obtener convenios pendientes" });
+    res.status(500).json({ message: "Error al listar convenios pendientes" });
   }
 };
-
 
 export const aceptarConvenio = async (req: Request, res: Response) => {
   try {
     const { convenioId } = req.params;
 
-    const convenio = await prisma.convenio.findUnique({
+    const convenio = await prisma.convenio.update({
       where: { id: Number(convenioId) },
+      data: { estado: EstadoConvenio.ACTIVO },
+      include: { director: true, empresa: true },
     });
 
-    if (!convenio) {
-      return res.status(404).json({ error: "Convenio no encontrado" });
-    }
-
-    const convenioActualizado = await prisma.convenio.update({
-      where: { id: Number(convenioId) },
-      data: {
-        estado: EstadoConvenio.ACTIVO,
-      },
-      include: {
-        empresa: true,
-      },
-    });
-
-    res.json({
-      message: "Convenio aceptado exitosamente",
-      data: convenioActualizado,
-    });
+    res.status(200).json({ message: "Convenio aceptado", convenio });
   } catch (error) {
-    console.error("Error al aceptar convenio:", error);
-    res.status(500).json({ error: "Error al aceptar el convenio" });
+    res.status(500).json({ message: "Error al aceptar convenio" });
   }
 };
+
 
 export const rechazarConvenio = async (req: Request, res: Response) => {
   try {
     const { convenioId } = req.params;
 
-    const convenio = await prisma.convenio.findUnique({
+    const convenio = await prisma.convenio.update({
       where: { id: Number(convenioId) },
+      data: { estado: EstadoConvenio.RECHAZADO },
+      include: { director: true, empresa: true },
     });
 
-    if (!convenio) {
-      return res.status(404).json({ error: "Convenio no encontrado" });
-    }
-
-    const convenioActualizado = await prisma.convenio.update({
-      where: { id: Number(convenioId) },
-      data: {
-        estado: EstadoConvenio.RECHAZADO,
-      },
-      include: {
-        empresa: true,
-      },
-    });
-
-    res.json({
-      message: "Convenio rechazado exitosamente",
-      data: convenioActualizado,
-    });
+    res.status(200).json({ message: "Convenio rechazado", convenio });
   } catch (error) {
-    console.error("Error al rechazar convenio:", error);
-    res.status(500).json({ error: "Error al rechazar el convenio" });
+    res.status(500).json({ message: "Error al rechazar convenio" });
   }
 };
+
 
 export const marcarConvenioCancelado = async (req: Request, res: Response) => {
   try {
     const { convenioId } = req.params;
 
-    const convenio = await prisma.convenio.findUnique({
+    const convenio = await prisma.convenio.update({
       where: { id: Number(convenioId) },
+      data: { estado: EstadoConvenio.CANCELADO },
+      include: { director: true, empresa: true },
     });
 
-    if (!convenio) {
-      return res.status(404).json({ error: "Convenio no encontrado" });
-    }
-
-    const convenioActualizado = await prisma.convenio.update({
-      where: { id: Number(convenioId) },
-      data: {
-        estado: EstadoConvenio.CANCELADO,
-      },
-      include: {
-        empresa: true,
-      },
-    });
-
-    res.json({
-      message: "Convenio marcado como vencido",
-      data: convenioActualizado,
-    });
+    res.status(200).json({ message: "Convenio marcado como cancelado", convenio });
   } catch (error) {
-    console.error("Error al marcar convenio como vencido:", error);
-    res.status(500).json({ error: "Error al actualizar el convenio" });
+    res.status(500).json({ message: "Error al marcar convenio como cancelado" });
   }
 };
-
-/*sin auth pa probar
-
-
-export const listarConveniosVigentes2 = async (req: Request, res: Response) => {
-  try {
-    const { directorId } = req.query;
-
-    if (!directorId) {
-      return res.status(400).json({ error: 'El directorId es obligatorio' });
-    }
-
-    const convenios = await prisma.convenio.findMany({
-      where: {
-        directorId: Number(directorId),
-        estado: 'ACTIVO',
-      },
-      include: {
-        empresa: { select: { id: true, nombre: true, nit: true } },
-      },
-      orderBy: { actualizadoEn: 'desc' },
-    });
-
-    res.status(200).json({ total: convenios.length, convenios });
-
-  } catch (error) {
-    console.error('Error al listar convenios vigentes:', error);
-    res.status(500).json({ error: 'Error al obtener convenios vigentes' });
-  }
-};*/

@@ -4,10 +4,9 @@ import { PrismaClient, Usuario, Rol } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends Request {
   user?: Usuario;
 }
-
 export const authFirebase = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
