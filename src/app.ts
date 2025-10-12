@@ -46,9 +46,9 @@ app.use("/api/empresas", empresaRoutes);
 
 // ruta spor roles
 app.use("/api/convenios", convenioRoutes);
-app.use("/api/usuarios", verifyToken, authorizeRoles("ADMIN"), usuarioRoutes);
-app.use("/api/directores", verifyToken, authorizeRoles("ADMIN"), directorRoutes);
-app.use("/api/empresas", verifyToken, authorizeRoles("EMPRESA"), empresaRoutes);
+app.use("/api/usuarios", usuarioRoutes);
+app.use("/api/directores", directorRoutes);
+app.use("/api/empresas", empresaRoutes);
 
 // Ruta base
 app.get("/", (_req, res) => res.send("🚀 Servidor del Chatbot funcionando correctamente"));
