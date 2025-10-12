@@ -4,17 +4,22 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "tsx src/app.ts",
+    "dev": "npx prisma generate && tsx watch src/app.ts",
     "build": "tsc",
-    "start": "node dist/app.js"
+    "start": "node dist/app.js",
+    "prisma:generate": "npx prisma generate"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "Backend en Node.js + Express + TypeScript para el chatbot de prácticas empresariales.",
   "dependencies": {
+<<<<<<< HEAD
     "@prisma/client": "^6.16.3",
     "@types/bcrypt": "^6.0.0",
+=======
+    "@prisma/client": "^6.17.0",
+>>>>>>> 0fb1b8243104af2178ee32264ff26cf71c7a39aa
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
@@ -25,15 +30,19 @@
     "firebase-admin": "^13.5.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
-    "prisma": "^6.16.3"
+    "prisma": "^6.16.3",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^1.4.7",
     "@types/node": "^24.6.2",
+    "@types/swagger-ui-express": "^4.1.8",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",

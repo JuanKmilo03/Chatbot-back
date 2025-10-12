@@ -1,10 +1,8 @@
 import express, { Request, Response } from "express";
 import { authFirebase } from "../middlewares/authFirebase.js";
-import { AuthService } from "../services/auth.service.js";
 import { Usuario } from "@prisma/client";
 
 const router = express.Router();
-const authService = new AuthService();
 
 interface AuthenticatedRequest extends Request {
   user?: Usuario;

@@ -72,18 +72,24 @@ model Convenio {
 }
 
 model Vacante {
-  id               Int        @id @default(autoincrement())
+  id               Int           @id @default(autoincrement())
   empresaId        Int
   directorValidaId Int?
   titulo           String
   descripcion      String
   area             String
   requisitos       String?
-  validada         Boolean    @default(false)
-  creadaEn         DateTime   @default(now())
+  estado           EstadoVacante @default(PENDIENTE)
+  creadaEn         DateTime      @default(now())
   practicas        Practica[]
-  directorValida   Director?  @relation(fields: [directorValidaId], references: [id])
-  empresa          Empresa    @relation(fields: [empresaId], references: [id])
+  directorValida   Director?     @relation(fields: [directorValidaId], references: [id])
+  empresa          Empresa       @relation(fields: [empresaId], references: [id])
+}
+
+enum EstadoVacante {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
 }
 
 model Practica {
