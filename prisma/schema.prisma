@@ -11,7 +11,7 @@ model Usuario {
   id            Int         @id @default(autoincrement())
   nombre        String
   email         String      @unique
-  password      String
+  password      String?
   rol           Rol
   creadoEn      DateTime    @default(now())
   actualizadoEn DateTime    @updatedAt
@@ -52,7 +52,7 @@ model Estudiante {
 model Empresa {
   id           Int           @id @default(autoincrement())
   usuarioId    Int           @unique
-  usuario      Usuario       @relation(fields: [id], references: [id])
+  usuario      Usuario       @relation(fields: [usuarioId], references: [id])
   nit          String        @unique
   telefono     String?
   direccion    String?

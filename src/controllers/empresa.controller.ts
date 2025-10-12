@@ -16,12 +16,11 @@ export const registrarEmpresa = async (req: Request, res: Response) => {
 
 export const loginEmpresa = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
-    const token = await empresaService.loginEmpresa(email, password);
-    res.status(200).json({ token });
+    const { nit, password } = req.body;
+    const data = await loginEmpresa(nit, password);
+    res.json(data);
   } catch (error: any) {
-    console.error("Error al iniciar sesión:", error);
-    res.status(401).json({ error: error.message });
+    res.status(400).json({ error: error.message });
   }
 };
 

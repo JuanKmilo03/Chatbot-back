@@ -145,7 +145,7 @@ router.post("/registro", registrarEmpresa);
  *           schema:
  *             type: object
  *             required:
- *               - email
+ *               - nit
  *               - password
  *             properties:
  *               email:
@@ -283,7 +283,7 @@ router.post("/login", loginEmpresa);
  *                   type: string
  *                   example: Error al listar empresas
  */
-router.get("/", verifyToken, authorizeRoles("DIRECTOR", "ADMIN"), obtenerEmpresasPendientes);
+router.get("/", obtenerEmpresasPendientes);
 
 /**
  * @swagger
@@ -414,6 +414,6 @@ router.get("/", verifyToken, authorizeRoles("DIRECTOR", "ADMIN"), obtenerEmpresa
  *       500:
  *         description: Error interno del servidor
  */
-router.patch("/:id/estado", verifyToken, authorizeRoles("DIRECTOR", "ADMIN"), actualizarEstadoEmpresa);
+router.patch("/:id/estado", actualizarEstadoEmpresa);
 
 export default router;
