@@ -23,7 +23,7 @@ export const crearVacante = async (data: {
     throw new Error('La empresa especificada no existe.');
   }
 
-  // 🧱 Crear la vacante (estado pendiente por defecto)
+  // Crear la vacante (estado pendiente por defecto)
   const nuevaVacante = await prisma.vacante.create({
     data: {
       empresaId,
@@ -55,6 +55,34 @@ export const listarVacantesPendientes = async () => {
   const vacantes = await prisma.vacante.findMany({
     where: {
       estado: EstadoGeneral.PENDIENTE,
+    },
+    include: {
+      empresa: {
+        select: {
+          id: true,
+          usuario: {
+            select: {
+              nombre: true,
+              email: true,
+            },
+          },
+          nit: true,
+        },
+      },
+    },
+    orderBy: { creadaEn: 'desc' },
+  });
+
+  return vacantes;
+};
+
+/**
+ * Lista todas las vacantes aprobadas.
+ */
+export const listarVacantesAprobadas = async () => {
+  const vacantes = await prisma.vacante.findMany({
+    where: {
+      estado: EstadoGeneral.APROBADA,
     },
     include: {
       empresa: {

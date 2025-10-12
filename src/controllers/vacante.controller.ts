@@ -66,6 +66,25 @@ export const listarVacantesPendientes = async (req: Request, res: Response) => {
   }
 };
 
+export const listarVacantesAprobadas = async (req: Request, res: Response) => {
+  try {
+    const vacantes = await vacanteService.listarVacantesAprobadas();
+
+    return res.status(200).json({
+      message: 'Vacantes aprobadas obtenidas correctamente',
+      data: vacantes,
+      total: vacantes.length
+    });
+  } catch (error: any) {
+    console.error('Error al listar vacantes aprobadas:', error);
+    
+    return res.status(500).json({
+      message: 'Error al obtener las vacantes aprobadas',
+      error: error.message
+    });
+  }
+};
+
 export const aprobarVacante = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
