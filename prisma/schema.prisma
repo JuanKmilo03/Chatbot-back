@@ -23,7 +23,8 @@ model Usuario {
 model Director {
   id                Int        @id @default(autoincrement())
   usuarioId         Int        @unique
-  convenios         Convenio[]
+  programaId        Int        @unique
+  Facultad          String?
   usuario           Usuario    @relation(fields: [usuarioId], references: [id])
   reportes          Reporte[]
   vacantesValidadas Vacante[]
@@ -110,6 +111,7 @@ model Reporte {
 }
 
 enum Rol {
+  ADMIN
   DIRECTOR
   ESTUDIANTE
   EMPRESA
