@@ -39,14 +39,19 @@ model Estudiante {
 }
 
 model Empresa {
-  id           Int          @id @default(autoincrement())
-  usuarioId    Int          @unique
-  nombre       String
-  nit          String
-  convenios    Convenio[]
-  usuario      Usuario      @relation(fields: [usuarioId], references: [id])
-  evaluaciones Evaluacion[]
-  vacantes     Vacante[]
+  id             Int       @id @default(autoincrement())
+  nombre         String
+  nit            String    @unique
+  correoContacto String
+  telefono       String
+  direccion      String
+  sector         String
+  descripcion    String
+  password       String
+  estado         EstadoGeneral    @default("PENDIENTE")
+  directorId     Int?
+  director       Director? @relation(fields: [directorId], references: [id])
+  createdAt      DateTime  @default(now())
 }
 
 model Convenio {
@@ -70,14 +75,14 @@ model Vacante {
   descripcion      String
   area             String
   requisitos       String?
-  estado           EstadoVacante @default(PENDIENTE)
+  estado           EstadoGeneral  @default(PENDIENTE)
   creadaEn         DateTime      @default(now())
   practicas        Practica[]
   directorValida   Director?     @relation(fields: [directorValidaId], references: [id])
   empresa          Empresa       @relation(fields: [empresaId], references: [id])
 }
 
-enum EstadoVacante {
+enum EstadoGeneral{
   PENDIENTE
   APROBADA
   RECHAZADA
