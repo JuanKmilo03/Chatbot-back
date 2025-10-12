@@ -1,100 +1,57 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import { authFirebase } from "../middlewares/authFirebase.js";
+import { Usuario } from "@prisma/client";
 
 const router = express.Router();
 
-/**
- * @swagger
- * /auth/google:
- *   post:
- *     summary: Inicio de sesión con Google
- *     description: |
- *       Permite a los usuarios iniciar sesión con su cuenta de Google **institucional (UFPS)**.  
- *       Verifica el `idToken` de Firebase, valida el dominio, crea el usuario si no existe,  
- *       y devuelve un token JWT para autenticación interna.
- *     tags:
- *       - Autenticación
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               idToken:
- *                 type: string
- *                 description: Token de autenticación de Google obtenido en el frontend.
- *                 example: "eyJhbGciOiJSUzI1NiIsImtpZCI6IjU..."
- *     responses:
- *       200:
- *         description: Inicio de sesión exitoso
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Inicio de sesión exitoso
- *                 usuario:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: integer
- *                       example: 1
- *                     nombre:
- *                       type: string
- *                       example: Juan Pérez
- *                     email:
- *                       type: string
- *                       example: juan.perez@ufps.edu.co
- *                     rol:
- *                       type: string
- *                       example: ESTUDIANTE
- *                 token:
- *                   type: string
- *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI..."
- *       400:
- *         description: Token de Google requerido o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Token de Google requerido
- *       403:
- *         description: Correo no pertenece al dominio UFPS
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Debe usar un correo institucional UFPS
- *       500:
- *         description: Error interno al autenticar con Google
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Error al autenticar con Google
- */
+interface AuthenticatedRequest extends Request {
+  user?: Usuario;
+}
 
-router.post("/google", authFirebase, async (req, res) => {
+router.get("/verify", authFirebase, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const usuario = (req as any).user;
+    if (!req.user) {
+      return res.status(401).json({ message: "Usuario no autenticado" });
+    }
+
     res.status(200).json({
-      message: "Inicio de sesión exitoso con Google",
-      usuario,
+      message: "Token válido",
+      usuario: req.user,
     });
   } catch (error) {
-    console.error("Error en /auth/google:", error);
+    console.error("Error en /auth/verify:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
+router.get("/admin/dashboard", authFirebase, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.rol !== "ADMIN") {
+      return res.status(403).json({ message: "Acceso denegado: solo administradores" });
+    }
+
+    res.status(200).json({
+      message: "Bienvenido al panel de administración",
+      usuario: req.user,
+    });
+  } catch (error) {
+    console.error("Error en /auth/admin/dashboard:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
+router.get("/director/dashboard", authFirebase, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.rol !== "DIRECTOR") {
+      return res.status(403).json({ message: "Acceso denegado: solo directores" });
+    }
+
+    res.status(200).json({
+      message: "Bienvenido al panel de director",
+      usuario: req.user,
+    });
+  } catch (error) {
+    console.error("Error en /auth/director/dashboard:", error);
     res.status(500).json({ message: "Error interno del servidor" });
   }
 });

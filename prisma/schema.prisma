@@ -23,10 +23,20 @@ model Usuario {
 model Director {
   id                Int        @id @default(autoincrement())
   usuarioId         Int        @unique
-  convenios         Convenio[]
+  programaId        Int        @unique
+  Facultad          String?
   usuario           Usuario    @relation(fields: [usuarioId], references: [id])
+  programa          Programa   @relation(fields: [programaId], references: [id])
+  convenios         Convenio[]
   reportes          Reporte[]
   vacantesValidadas Vacante[]
+}
+
+model Programa {
+  id         Int         @id @default(autoincrement())
+  nombre     String       @unique
+  facultad   String
+  directores Director[]
 }
 
 model Estudiante {
@@ -56,15 +66,14 @@ model Empresa {
 
 model Convenio {
   id            Int            @id @default(autoincrement())
-  nombre        String
   empresaId     Int
   directorId    Int
+  nombre        String
   estado        EstadoConvenio
-  archivoUrl    String?
   actualizadoEn DateTime       @updatedAt
-
-  empresa  Empresa  @relation(fields: [empresaId], references: [id])
-  director Director @relation(fields: [directorId], references: [id])
+  archivoUrl    String?
+  director      Director       @relation(fields: [directorId], references: [id])
+  empresa       Empresa        @relation(fields: [empresaId], references: [id])
 }
 
 model Vacante {
@@ -121,6 +130,7 @@ model Reporte {
 }
 
 enum Rol {
+  ADMIN
   DIRECTOR
   ESTUDIANTE
   EMPRESA
@@ -134,6 +144,7 @@ enum EstadoPractica {
 
 enum EstadoConvenio {
   ACTIVO
-  VENCIDO
+  PENDIENTE
   CANCELADO
+  RECHAZADO
 }

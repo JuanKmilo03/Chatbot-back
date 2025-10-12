@@ -11,7 +11,6 @@ export const EmpresaController = {
         return res.status(400).json({ error: 'usuarioId, nombre y nit son obligatorios' });
       }
 
-      // Validar que el usuario exista y tenga rol EMPRESA
       const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId } });
       if (!usuario || usuario.rol !== 'EMPRESA') {
         return res.status(400).json({ error: 'El usuario no es válido o no tiene rol EMPRESA' });

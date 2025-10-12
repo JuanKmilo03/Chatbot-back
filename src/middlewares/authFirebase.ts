@@ -1,10 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import admin from "../config/firebase.config.js";
-import { PrismaClient, Rol } from "@prisma/client";
+import { PrismaClient, Usuario, Rol } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-export const authFirebase = async (req: Request, res: Response, next: NextFunction) => {
+interface AuthenticatedRequest extends Request {
+  user?: Usuario;
+}
+
+export const authFirebase = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -19,9 +23,21 @@ export const authFirebase = async (req: Request, res: Response, next: NextFuncti
       return res.status(403).json({ message: "Acceso restringido: solo correos institucionales" });
     }
 
-    // 🔥 obtiene el nombre real de la cuenta Google
     const userRecord = await admin.auth().getUser(decodedToken.uid);
     const nombre = userRecord.displayName || "Sin nombre";
+
+    let rol: Rol = Rol.ESTUDIANTE;
+
+    if (email === "admingeneral@ufps.edu.co") {
+      rol = Rol.ADMIN;
+    } else {
+      const director = await prisma.director.findFirst({
+        where: { usuario: { email } },
+      });
+      if (director) {
+        rol = Rol.DIRECTOR;
+      }
+    }
 
     let usuario = await prisma.usuario.findUnique({ where: { email } });
 
@@ -31,16 +47,23 @@ export const authFirebase = async (req: Request, res: Response, next: NextFuncti
           nombre,
           email,
           password: "",
-          rol: "ESTUDIANTE" as Rol,
+          rol,
         },
       });
 
-      await prisma.estudiante.create({
-        data: { usuarioId: usuario.id },
+      if (rol === Rol.ESTUDIANTE) {
+        await prisma.estudiante.create({
+          data: { usuarioId: usuario.id },
+        });
+      }
+    } else if (usuario.rol !== rol) {
+      usuario = await prisma.usuario.update({
+        where: { id: usuario.id },
+        data: { rol },
       });
     }
 
-    (req as any).user = usuario;
+    req.user = usuario;
     next();
   } catch (error) {
     console.error("Error en authFirebase:", error);

@@ -14,7 +14,12 @@
   "license": "ISC",
   "description": "Backend en Node.js + Express + TypeScript para el chatbot de prácticas empresariales.",
   "dependencies": {
+<<<<<<< HEAD
+    "@prisma/client": "^6.16.3",
+    "@types/bcrypt": "^6.0.0",
+=======
     "@prisma/client": "^6.17.0",
+>>>>>>> 0fb1b8243104af2178ee32264ff26cf71c7a39aa
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",

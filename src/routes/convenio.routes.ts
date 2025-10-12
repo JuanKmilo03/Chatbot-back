@@ -7,6 +7,10 @@ import {
   eliminarConvenio,
   listarConveniosPorDirector,
   listarConveniosVigentes,
+  listarConveniosPendientes,
+  aceptarConvenio,
+  rechazarConvenio,
+  marcarConvenioCancelado
 } from "../controllers/convenio.controller.js";
 
 import { verifyToken, authorizeRoles } from "../middlewares/auth.middleware.js";
@@ -204,6 +208,10 @@ router.get("/director/:directorId", verifyToken, authorizeRoles("DIRECTOR"), lis
  *         description: El usuario no tiene rol DIRECTOR
  */
 router.get("/vigentes/mios", verifyToken, authorizeRoles("DIRECTOR"), listarConveniosVigentes);
+router.get("/:directorId/conveniospend",  verifyToken, authorizeRoles("DIRECTOR"), listarConveniosPendientes);
+router.put("/convenios/:convenioId/aceptar",  verifyToken, authorizeRoles("DIRECTOR"), aceptarConvenio);
+router.put("/convenios/:convenioId/rechazar",  verifyToken, authorizeRoles("DIRECTOR"), rechazarConvenio);
+router.put("/convenios/:convenioId/vencido",  verifyToken, authorizeRoles("DIRECTOR"), marcarConvenioCancelado);
 
 export default router;
 
