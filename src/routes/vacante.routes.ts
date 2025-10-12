@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as vacanteController from '../controllers/vacante.controller.js';
+import { authorizeRoles, verifyToken } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 /**
@@ -15,6 +16,8 @@ const router = Router();
  *   post:
  *     summary: Crea una nueva vacante (empresa)
  *     tags: [Vacantes]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -22,14 +25,10 @@ const router = Router();
  *           schema:
  *             type: object
  *             required:
- *               - empresaId
  *               - titulo
  *               - descripcion
  *               - area
  *             properties:
- *               empresaId:
- *                 type: integer
- *                 example: 3
  *               titulo:
  *                 type: string
  *                 example: Desarrollador Backend
@@ -47,12 +46,15 @@ const router = Router();
  *         description: Vacante creada correctamente
  *       400:
  *         description: Datos inválidos o incompletos
+ *       403:
+ *         description: Acceso denegado
  *       404:
  *         description: Empresa no encontrada
  *       500:
  *         description: Error interno del servidor
  */
-router.post('/crear', vacanteController.crearVacante);
+router.post('/crear', verifyToken, authorizeRoles('EMPRESA'), vacanteController.crearVacante);
+
 
 /**
  * @swagger
