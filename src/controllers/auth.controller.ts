@@ -2,68 +2,37 @@ import { Request, Response } from 'express';
 import * as authService from '../services/auth.service.js';
 import { Rol } from '@prisma/client';
 
-export const register = async (req: Request, res: Response) => {
+export const registrarUsuario = async (req: Request, res: Response) => {
   try {
-    const { nombre, email, password, rol, nit, nombreEmpresa, habilidades, perfil } = req.body;
+    const { nombre, email, password, rol, habilidades, perfil } = req.body;
 
-    // Validar campos obligatorios
+    // Validar campos básicos
     if (!nombre || !email || !password || !rol) {
-      return res.status(400).json({
-        message: 'Faltan campos obligatorios: nombre, email, password, rol'
-      });
+      return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
 
-    // Validar que el rol sea válido
-    if (!Object.values(Rol).includes(rol)) {
-      return res.status(400).json({
-        message: 'Rol inválido. Debe ser: EMPRESA, DIRECTOR o ESTUDIANTE'
-      });
+    // Verificar que el rol sea válido
+    if (![Rol.DIRECTOR, Rol.ESTUDIANTE].includes(rol)) {
+      return res.status(400).json({ error: "Rol no válido. Solo DIRECTOR o ESTUDIANTE" });
     }
 
-    // Validaciones específicas por rol
-    if (rol === Rol.EMPRESA && (!nit || !nombreEmpresa)) {
-      return res.status(400).json({
-        message: 'Para registrar una empresa, se requiere: nit y nombreEmpresa'
-      });
-    }
-
+    // Registrar usuario según su rol
     const usuario = await authService.register({
       nombre,
       email,
       password,
       rol,
-      nit,
-      nombreEmpresa,
       habilidades,
       perfil
     });
 
     return res.status(201).json({
-      message: 'Usuario registrado correctamente',
-      data: usuario
+      message: "Usuario registrado correctamente",
+      usuario
     });
   } catch (error: any) {
-    console.error('Error al registrar usuario:', error);
-
-    if (error.message === 'El email ya está registrado') {
-      return res.status(409).json({
-        message: error.message
-      });
-    }
-
-    if (
-      error.message.includes('se requiere') ||
-      error.message === 'Rol no válido'
-    ) {
-      return res.status(400).json({
-        message: error.message
-      });
-    }
-
-    return res.status(500).json({
-      message: 'Error al registrar el usuario',
-      error: error.message
-    });
+    console.error("Error al registrar usuario:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 

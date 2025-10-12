@@ -70,6 +70,20 @@ router.get('/pendientes', vacanteController.listarVacantesPendientes);
 
 /**
  * @swagger
+ * /api/vacantes/aprobadas:
+ *   get:
+ *     summary: Lista todas las vacantes aprobadas (director)
+ *     tags: [Vacantes]
+ *     responses:
+ *       200:
+ *         description: Lista de vacantes aprobadas
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get('/aprobadas', vacanteController.listarVacantesAprobadas);
+
+/**
+ * @swagger
  * /api/vacantes/{id}/aprobar:
  *   patch:
  *     summary: Aprueba una vacante pendiente (director)

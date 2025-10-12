@@ -19,6 +19,7 @@ import directorRoutes from "./routes/director.routes.js";
 import empresaRoutes from "./routes/empresa.routes.js";
 import vacanteRoutes from "./routes/vacante.routes.js";
 
+
 // Middlewares
 import { verifyToken, authorizeRoles } from "./middlewares/auth.middleware.js";
 
@@ -41,6 +42,7 @@ app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/auth", authRoutes);
 app.use("/api/auth", authGoogleRoutes);
 app.use("/api/vacantes", vacanteRoutes);
+app.use("/api/empresas", empresaRoutes);
 
 // ruta spor roles
 app.use("/api/convenios", convenioRoutes);

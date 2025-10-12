@@ -2,7 +2,6 @@
   "name": "chatbot-back",
   "version": "1.0.0",
   "main": "index.js",
-  "type": "module",
   "scripts": {
     "dev": "npx prisma generate && tsx watch src/app.ts",
     "build": "tsc",
@@ -27,6 +26,7 @@
     "firebase-admin": "^13.5.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
+    "nodemailer": "^7.0.9",
     "prisma": "^6.16.3",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
@@ -39,6 +39,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^1.4.7",
     "@types/node": "^24.6.2",
+    "@types/nodemailer": "^7.0.2",
     "@types/swagger-ui-express": "^4.1.8",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",

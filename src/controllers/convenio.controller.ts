@@ -131,7 +131,12 @@ export const listarConveniosPorDirector = async (req: Request, res: Response) =>
     const { directorId } = req.params;
     const convenios = await prisma.convenio.findMany({
       where: { directorId: Number(directorId) },
-      include: { empresa: true },
+      include: {
+        empresa: {
+          select: { nit: true },
+        },
+      },
+      orderBy: { actualizadoEn: "desc" },
     });
 
     if (!convenios.length) return res.status(404).json({ message: "No hay convenios para este director" });
@@ -151,8 +156,9 @@ export const listarConveniosVigentes = async (req: AuthenticatedRequest, res: Re
     if (!director) return res.status(404).json({ message: "Director no encontrado" });
 
     const convenios = await prisma.convenio.findMany({
-      where: { directorId: director.id, estado: EstadoConvenio.ACTIVO },
-      include: { empresa: true },
+      where: { directorId: director.id, estado: "ACTIVO" },
+      include: { empresa: { select: { id: true, nit: true } } },
+      orderBy: { actualizadoEn: "desc" },
     });
 
     res.status(200).json(convenios);
