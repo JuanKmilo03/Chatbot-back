@@ -116,3 +116,23 @@ export const login = async (email: string, password: string) => {
 
   return usuarioSinPassword;
 };
+
+
+export const getUserById = async (userId: number) => {
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: userId },
+    include: {
+      empresa: true,
+      estudiante: true,
+      director: true,
+    },
+  });
+
+  if (!usuario) {
+    throw new Error("Usuario no encontrado");
+  }
+
+  // Evitar enviar el password
+  const { password: _, ...usuarioSinPassword } = usuario;
+  return usuarioSinPassword;
+};

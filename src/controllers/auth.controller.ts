@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as authService from '../services/auth.service.js';
 import { Rol } from '@prisma/client';
+import { AuthRequest } from '../middlewares/auth.middleware.js';
 
 export const registrarUsuario = async (req: Request, res: Response) => {
   try {
@@ -67,5 +68,29 @@ export const login = async (req: Request, res: Response) => {
       error: error.message
     });
   }
+  
 };
 
+export const refreshSession = async (req: AuthRequest, res: Response) => {
+  try {
+    const user  = req.user;
+
+    if (!user?.id) {
+      return res.status(401).json({ message: "Token inválido o expirado" });
+    }
+
+    const usuario = await authService.getUserById(user.id);
+
+    if (!usuario) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    return res.status(200).json({
+      message: "Sesión validada correctamente",
+      usuario: usuario,
+    });
+  } catch (error) {
+    console.error("Error al refrescar sesión:", error);
+    return res.status(500).json({ message: "Error al validar la sesión" });
+  }
+};
