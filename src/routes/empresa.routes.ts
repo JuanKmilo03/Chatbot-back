@@ -129,6 +129,14 @@ const router = Router();
  *                   example: Ya existe un usuario registrado con este correo
  *       500:
  *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Error al registrar empresa
  */
 router.post("/registro", registrarEmpresa);
 
@@ -137,7 +145,7 @@ router.post("/registro", registrarEmpresa);
  * /api/empresas/login:
  *   post:
  *     summary: Login de empresa
- *     description: Autentica una empresa con email y contraseña, devuelve un token JWT válido por 7 días
+ *     description: Autentica una empresa usando NIT y contraseña. Devuelve un token JWT válido por 7 días si la empresa está aprobada.
  *     tags: [Empresas]
  *     requestBody:
  *       required: true
@@ -149,11 +157,10 @@ router.post("/registro", registrarEmpresa);
  *               - nit
  *               - password
  *             properties:
- *               email:
+ *               nit:
  *                 type: string
- *                 format: email
- *                 description: Email de la empresa
- *                 example: contacto@techsolutions.com
+ *                 description: NIT de la empresa
+ *                 example: "900123456"
  *               password:
  *                 type: string
  *                 format: password
@@ -167,10 +174,38 @@ router.post("/registro", registrarEmpresa);
  *             schema:
  *               type: object
  *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: empresa logueada correctamente
+ *                 usuario:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 5
+ *                     nombre:
+ *                       type: string
+ *                       example: "Tech Solutions SAS"
+ *                     email:
+ *                       type: string
+ *                       example: "contacto@techsolutions.com"
+ *                     rol:
+ *                       type: string
+ *                       example: "EMPRESA"
  *                 token:
  *                   type: string
  *                   description: Token JWT válido por 7 días
- *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sIjoiRU1QUkVTQSIsImlhdCI6MTYxNjIzOTAyMn0.Xm5ZqY5fJ_9J0X
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *       400:
+ *         description: Datos inválidos o empresa no aprobada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Tu cuenta aún no ha sido aprobada o activada."
  *       401:
  *         description: Credenciales incorrectas
  *         content:
@@ -180,16 +215,29 @@ router.post("/registro", registrarEmpresa);
  *               properties:
  *                 error:
  *                   type: string
- *             examples:
- *               usuarioNoEncontrado:
- *                 value:
- *                   error: Usuario no encontrado
- *               passwordIncorrecta:
- *                 value:
- *                   error: Contraseña incorrecta
+ *                   example: "Contraseña incorrecta"
+ *       404:
+ *         description: Empresa no encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Usuario no encontrado"
  *       500:
  *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Error al procesar login"
  */
+
 router.post("/login", loginEmpresa);
 
 /**
