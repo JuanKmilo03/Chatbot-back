@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as empresaService from "../services/empresa.service.js";
+import {AuthRequest} from "../middlewares/auth.middleware.js"
 
 export const registrarEmpresa = async (req: Request, res: Response) => {
   try {
@@ -47,4 +48,25 @@ export const actualizarEstadoEmpresa = async (req: Request, res: Response) => {
     console.error("Error al actualizar estado:", error);
     res.status(400).json({ error: error.message });
   }
+};
+
+export const obtenerPerfilEmpresa = async (req: AuthRequest, res: Response) => {
+  try {
+    const usuarioId = req.user?.id;
+
+    if (!usuarioId) {
+      return res.status(400).json({ message: "Usuario no válido o sin sesión activa" });
+    }
+
+    const empresa = await empresaService.obtenerEmpresaPorUsuarioId(usuarioId);
+
+    if (!empresa) {
+      return res.status(404).json({ message: "No se encontró información de la empresa" });
+    }
+
+    return res.status(200).json(empresa);
+  } catch (error: unknown) {
+    console.error("Error al obtener perfil de empresa:", error);
+    return res.status(500).json({ message: "Error al obtener la información de la empresa" });
+  }
 };

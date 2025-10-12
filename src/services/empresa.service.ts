@@ -115,4 +115,15 @@ export const obtenerEmpresasPendientes = async () => {
   return empresas;
 };
 
+export const obtenerEmpresaPorUsuarioId = async (usuarioId: number) => {
+  const empresa = await prisma.empresa.findUnique({
+    where: { usuarioId },
+    include: {
+      usuario: {
+        select: { id: true, nombre: true, email: true },
+      },
+    },
+  });
 
+  return empresa;
+};

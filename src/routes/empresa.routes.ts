@@ -4,6 +4,7 @@ import {
   loginEmpresa,
   obtenerEmpresasPendientes,
   actualizarEstadoEmpresa,
+  obtenerPerfilEmpresa,
 } from "../controllers/empresa.controller.js";
 import { verifyToken, authorizeRoles } from "../middlewares/auth.middleware.js";
 
@@ -415,5 +416,91 @@ router.get("/", obtenerEmpresasPendientes);
  *         description: Error interno del servidor
  */
 router.patch("/:id/estado", actualizarEstadoEmpresa);
+
+/**
+ * @swagger
+ * /api/empresas/profile:
+ *   get:
+ *     summary: Obtener perfil de empresa autenticada
+ *     description: Retorna la información de la empresa asociada al usuario autenticado mediante el token JWT.
+ *     tags: [Empresas]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Información de la empresa obtenida correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                   example: 1
+ *                 nit:
+ *                   type: string
+ *                   example: "901456789-1"
+ *                 telefono:
+ *                   type: string
+ *                   example: "3109876543"
+ *                 direccion:
+ *                   type: string
+ *                   example: "Calle 45 #23-10"
+ *                 sector:
+ *                   type: string
+ *                   example: "Tecnología"
+ *                 descripcion:
+ *                   type: string
+ *                   example: "Desarrollamos software de impacto."
+ *                 estado:
+ *                   type: string
+ *                   enum: [PENDIENTE, APROBADA, RECHAZADA]
+ *                   example: "APROBADA"
+ *                 usuario:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 5
+ *                     nombre:
+ *                       type: string
+ *                       example: "Wiedii Tech"
+ *                     email:
+ *                       type: string
+ *                       example: "info@wiedii.com"
+ *       401:
+ *         description: Token faltante o inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Token no proporcionado"
+ *       403:
+ *         description: Token expirado o rol no autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Acceso denegado: solo empresas pueden acceder"
+ *       404:
+ *         description: No se encontró la empresa asociada al usuario
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "No se encontró información de la empresa"
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get("/profile", verifyToken, authorizeRoles("EMPRESA"), obtenerPerfilEmpresa);
 
 export default router;
