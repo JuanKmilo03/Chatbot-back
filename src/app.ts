@@ -45,7 +45,7 @@ app.use("/api/vacantes", vacanteRoutes);
 app.use("/api/empresas", empresaRoutes);
 
 // ruta spor roles
-app.use("/api/convenios", verifyToken, authorizeRoles("DIRECTOR", "ADMIN"), convenioRoutes);
+app.use("/api/convenios", convenioRoutes);
 app.use("/api/usuarios", verifyToken, authorizeRoles("ADMIN"), usuarioRoutes);
 app.use("/api/directores", verifyToken, authorizeRoles("ADMIN"), directorRoutes);
 app.use("/api/empresas", verifyToken, authorizeRoles("EMPRESA"), empresaRoutes);

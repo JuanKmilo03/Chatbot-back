@@ -1,6 +1,10 @@
-import { Router } from "express";
+import express, { Request, Response, NextFunction, RequestHandler } from "express";
+import { authFirebase } from "../middlewares/authFirebase.js";
+import multer from "multer";
+import fs from "fs";
+
 import {
-  crearConvenio,
+  solicitarConvenio,
   listarConvenios,
   obtenerConvenioPorId,
   actualizarConvenio,
@@ -10,208 +14,56 @@ import {
   listarConveniosPendientes,
   aceptarConvenio,
   rechazarConvenio,
-  marcarConvenioCancelado
+  marcarConvenioCancelado,
 } from "../controllers/convenio.controller.js";
+import cloudinary from "../config/cloudinary.config.js";
 
-import { verifyToken, authorizeRoles } from "../middlewares/auth.middleware.js";
+const router = express.Router();
 
-const router = Router();
+const upload = multer({ dest: "uploads/" });
 
 /**
  * @swagger
  * tags:
  *   name: Convenios
- *   description: Gestión de convenios entre empresas y directores
+ *   description: Gestión de convenios entre empresas, directores y estudiantes
  */
 
-/**
- * @swagger
- * /api/convenios:
- *   post:
- *     summary: Crear un nuevo convenio
- *     tags: [Convenios]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - nombre
- *               - empresaId
- *               - directorId
- *             properties:
- *               nombre:
- *                 type: string
- *               empresaId:
- *                 type: integer
- *               directorId:
- *                 type: integer
- *               estado:
- *                 type: string
- *                 enum: [ACTIVO, INACTIVO]
- *               archivoUrl:
- *                 type: string
- *             example:
- *               nombre: Convenio Energía Solar
- *               empresaId: 2
- *               directorId: 1
- *               estado: ACTIVO
- *     responses:
- *       201:
- *         description: Convenio creado correctamente
- *       400:
- *         description: Datos incompletos o inválidos
- *       500:
- *         description: Error interno del servidor
- */
-router.post("/", verifyToken, authorizeRoles("DIRECTOR", "ADMIN"), crearConvenio);
+router.get("/", authFirebase, listarConvenios);
+router.get("/:id", authFirebase, obtenerConvenioPorId);
+router.post("/solicitar", authFirebase, upload.single("archivo"), solicitarConvenio);
+router.put("/:id", authFirebase, upload.single("archivo"), actualizarConvenio);
+router.delete("/:id", authFirebase, eliminarConvenio);
+router.get("/director/:directorId", authFirebase, listarConveniosPorDirector);
+router.get("/vigentes/mios", authFirebase, listarConveniosVigentes);
+router.get("/:directorId/conveniospend", authFirebase, listarConveniosPendientes);
+router.put("/convenios/:convenioId/aceptar", authFirebase, aceptarConvenio);
+router.put("/convenios/:convenioId/rechazar", authFirebase, rechazarConvenio);
+router.put("/convenios/:convenioId/vencido", authFirebase, marcarConvenioCancelado);
 
-/**
- * @swagger
- * /api/convenios:
- *   get:
- *     summary: Listar todos los convenios
- *     tags: [Convenios]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Lista de convenios obtenida correctamente
- *       401:
- *         description: Usuario no autenticado
- *       403:
- *         description: Rol no autorizado
- */
-router.get("/", verifyToken, authorizeRoles("ADMIN", "DIRECTOR", "EMPRESA"), listarConvenios);
+//pa probar sin auth
+router.post("/prueba/subida", upload.single("archivo"), async (req: Request, res: Response) => {
+  try {
+    const archivo = req.file;
+    if (!archivo) return res.status(400).json({ message: "Se debe subir un archivo" });
 
-/**
- * @swagger
- * /api/convenios/{id}:
- *   get:
- *     summary: Obtener un convenio por su ID
- *     tags: [Convenios]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: ID del convenio
- *     responses:
- *       200:
- *         description: Convenio encontrado
- *       404:
- *         description: Convenio no encontrado
- */
-router.get("/:id", verifyToken, authorizeRoles("ADMIN", "DIRECTOR", "EMPRESA"), obtenerConvenioPorId);
+    // Subida a Cloudinary (soporta PDF, Word e imágenes)
+    const result = await cloudinary.uploader.upload(archivo.path, {
+      folder: "ConveniosPracticas",
+      resource_type: "auto", // permite PDF, Word, imágenes
+    });
 
-/**
- * @swagger
- * /api/convenios/{id}:
- *   put:
- *     summary: Actualizar un convenio existente
- *     tags: [Convenios]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: ID del convenio a actualizar
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               nombre:
- *                 type: string
- *               estado:
- *                 type: string
- *               archivoUrl:
- *                 type: string
- *     responses:
- *       200:
- *         description: Convenio actualizado correctamente
- *       403:
- *         description: No autorizado
- *       404:
- *         description: Convenio no encontrado
- */
-router.put("/:id", verifyToken, authorizeRoles("DIRECTOR", "ADMIN"), actualizarConvenio);
+    // Eliminar archivo temporal
+    fs.unlinkSync(archivo.path);
 
-/**
- * @swagger
- * /api/convenios/{id}:
- *   delete:
- *     summary: Eliminar un convenio
- *     tags: [Convenios]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: ID del convenio a eliminar
- *     responses:
- *       200:
- *         description: Convenio eliminado correctamente
- *       404:
- *         description: Convenio no encontrado
- */
-router.delete("/:id", verifyToken, authorizeRoles("ADMIN"), eliminarConvenio);
-
-/**
- * @swagger
- * /api/convenios/director/{directorId}:
- *   get:
- *     summary: Listar convenios de un director específico
- *     tags: [Convenios]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: directorId
- *         required: true
- *         schema:
- *           type: integer
- *         description: ID del director
- *     responses:
- *       200:
- *         description: Lista de convenios del director
- *       404:
- *         description: No hay convenios para este director
- */
-router.get("/director/:directorId", verifyToken, authorizeRoles("DIRECTOR"), listarConveniosPorDirector);
-
-/**
- * @swagger
- * /api/convenios/vigentes/mios:
- *   get:
- *     summary: Listar convenios vigentes del director autenticado
- *     tags: [Convenios]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Lista de convenios vigentes
- *       403:
- *         description: El usuario no tiene rol DIRECTOR
- */
-router.get("/vigentes/mios", verifyToken, authorizeRoles("DIRECTOR"), listarConveniosVigentes);
-router.get("/:directorId/conveniospend",  verifyToken, authorizeRoles("DIRECTOR"), listarConveniosPendientes);
-router.put("/convenios/:convenioId/aceptar",  verifyToken, authorizeRoles("DIRECTOR"), aceptarConvenio);
-router.put("/convenios/:convenioId/rechazar",  verifyToken, authorizeRoles("DIRECTOR"), rechazarConvenio);
-router.put("/convenios/:convenioId/vencido",  verifyToken, authorizeRoles("DIRECTOR"), marcarConvenioCancelado);
+    res.status(200).json({
+      message: "Archivo subido correctamente a Cloudinary",
+      url: result.secure_url,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error al subir archivo", error });
+  }
+});
 
 export default router;
-

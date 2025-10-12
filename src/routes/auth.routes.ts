@@ -4,7 +4,6 @@ import { verifyToken } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-// Rutas de autenticación
 router.post("/login", login);
 router.post("/register", registrarUsuario);
 
