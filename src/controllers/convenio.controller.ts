@@ -160,7 +160,7 @@ export const listarConveniosPorDirector = async (req: Request, res: Response) =>
       where: { directorId: Number(directorId) },
       include: {
         empresa: {
-          select: { nombre: true, nit: true },
+          select: { nit: true },
         },
       },
       orderBy: { actualizadoEn: "desc" },
@@ -194,7 +194,7 @@ export const listarConveniosVigentes = async (req: AuthRequest, res: Response) =
 
     const convenios = await prisma.convenio.findMany({
       where: { directorId: director.id, estado: "ACTIVO" },
-      include: { empresa: { select: { id: true, nombre: true, nit: true } } },
+      include: { empresa: { select: { id: true, nit: true } } },
       orderBy: { actualizadoEn: "desc" },
     });
 

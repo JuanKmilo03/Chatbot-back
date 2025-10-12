@@ -1,7 +1,10 @@
-import { PrismaClient, EstadoVacante } from '@prisma/client';
+import { PrismaClient, EstadoGeneral } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+/**
+ * Crea una nueva vacante asociada a una empresa.
+ */
 export const crearVacante = async (data: {
   empresaId: number;
   titulo: string;
@@ -9,167 +12,139 @@ export const crearVacante = async (data: {
   area: string;
   requisitos?: string;
 }) => {
-  // Validar que la empresa existe
+  const { empresaId, titulo, descripcion, area, requisitos } = data;
+
+  // 🔍 Validar que la empresa exista
   const empresa = await prisma.empresa.findUnique({
-    where: { id: data.empresaId }
+    where: { id: empresaId },
   });
 
   if (!empresa) {
-    throw new Error('Empresa no encontrada');
+    throw new Error('La empresa especificada no existe.');
   }
 
-  // Crear la vacante con estado PENDIENTE por defecto
-  const vacante = await prisma.vacante.create({
+  // 🧱 Crear la vacante (estado pendiente por defecto)
+  const nuevaVacante = await prisma.vacante.create({
     data: {
-      empresaId: data.empresaId,
-      titulo: data.titulo,
-      descripcion: data.descripcion,
-      area: data.area,
-      requisitos: data.requisitos || null,
-      estado: EstadoVacante.PENDIENTE
-    },
-    include: {
-      empresa: {
-        select: {
-          nombre: true,
-          nit: true
-        }
-      }
-    }
-  });
-
-  return vacante;
-};
-
-export const listarVacantesPendientes = async () => {
-  const vacantes = await prisma.vacante.findMany({
-    where: {
-      estado: EstadoVacante.PENDIENTE
+      empresaId,
+      titulo,
+      descripcion,
+      area,
+      requisitos: requisitos || null,
+      estado: EstadoGeneral.PENDIENTE,
     },
     include: {
       empresa: {
         select: {
           id: true,
-          nombre: true,
-          nit: true
-        }
-      }
+          usuario: {
+            select: { nombre: true, email: true },
+          },
+        },
+      },
     },
-    orderBy: {
-      creadaEn: 'desc'
-    }
+  });
+
+  return nuevaVacante;
+};
+
+/**
+ * Lista todas las vacantes pendientes de aprobación.
+ */
+export const listarVacantesPendientes = async () => {
+  const vacantes = await prisma.vacante.findMany({
+    where: {
+      estado: EstadoGeneral.PENDIENTE,
+    },
+    include: {
+      empresa: {
+        select: {
+          id: true,
+          usuario: {
+            select: {
+              nombre: true,
+              email: true,
+            },
+          },
+          nit: true,
+        },
+      },
+    },
+    orderBy: { creadaEn: 'desc' },
   });
 
   return vacantes;
 };
 
-export const aprobarVacante = async (
-  vacanteId: number,
-  directorId: number
-) => {
-  // Verificar que la vacante existe
-  const vacante = await prisma.vacante.findUnique({
-    where: { id: vacanteId }
-  });
+/**
+ * Aprueba una vacante pendiente por parte de un director.
+ */
+export const aprobarVacante = async (vacanteId: number, directorId: number) => {
+  const vacante = await prisma.vacante.findUnique({ where: { id: vacanteId } });
+  if (!vacante) throw new Error('Vacante no encontrada.');
+  if (vacante.estado !== EstadoGeneral.PENDIENTE)
+    throw new Error('Solo se pueden aprobar vacantes pendientes.');
 
-  if (!vacante) {
-    throw new Error('Vacante no encontrada');
-  }
+  const director = await prisma.director.findUnique({ where: { id: directorId } });
+  if (!director) throw new Error('Director no encontrado.');
 
-  // Verificar que la vacante está pendiente
-  if (vacante.estado !== EstadoVacante.PENDIENTE) {
-    throw new Error('Solo se pueden aprobar vacantes en estado PENDIENTE');
-  }
-
-  // Verificar que el director existe
-  const director = await prisma.director.findUnique({
-    where: { id: directorId }
-  });
-
-  if (!director) {
-    throw new Error('Director no encontrado');
-  }
-
-  // Aprobar la vacante
   const vacanteAprobada = await prisma.vacante.update({
     where: { id: vacanteId },
     data: {
-      estado: EstadoVacante.APROBADA,
-      directorValidaId: directorId
+      estado: EstadoGeneral.APROBADA,
+      directorValidaId: directorId,
     },
     include: {
       empresa: {
         select: {
-          nombre: true
-        }
+          id: true,
+          usuario: { select: { nombre: true, email: true } },
+        },
       },
       directorValida: {
         select: {
           id: true,
-          usuario: {
-            select: {
-              nombre: true
-            }
-          }
-        }
-      }
-    }
+          usuario: { select: { nombre: true, email: true } },
+        },
+      },
+    },
   });
 
   return vacanteAprobada;
 };
 
-export const rechazarVacante = async (
-  vacanteId: number,
-  directorId: number
-) => {
-  // Verificar que la vacante existe
-  const vacante = await prisma.vacante.findUnique({
-    where: { id: vacanteId }
-  });
+/**
+ * Rechaza una vacante pendiente por parte de un director.
+ */
+export const rechazarVacante = async (vacanteId: number, directorId: number) => {
+  const vacante = await prisma.vacante.findUnique({ where: { id: vacanteId } });
+  if (!vacante) throw new Error('Vacante no encontrada.');
+  if (vacante.estado !== EstadoGeneral.PENDIENTE)
+    throw new Error('Solo se pueden rechazar vacantes pendientes.');
 
-  if (!vacante) {
-    throw new Error('Vacante no encontrada');
-  }
+  const director = await prisma.director.findUnique({ where: { id: directorId } });
+  if (!director) throw new Error('Director no encontrado.');
 
-  // Verificar que la vacante está pendiente
-  if (vacante.estado !== EstadoVacante.PENDIENTE) {
-    throw new Error('Solo se pueden rechazar vacantes en estado PENDIENTE');
-  }
-
-  // Verificar que el director existe
-  const director = await prisma.director.findUnique({
-    where: { id: directorId }
-  });
-
-  if (!director) {
-    throw new Error('Director no encontrado');
-  }
-
-  // Rechazar la vacante
   const vacanteRechazada = await prisma.vacante.update({
     where: { id: vacanteId },
     data: {
-      estado: EstadoVacante.RECHAZADA,
-      directorValidaId: directorId
+      estado: EstadoGeneral.RECHAZADA,
+      directorValidaId: directorId,
     },
     include: {
       empresa: {
         select: {
-          nombre: true
-        }
+          id: true,
+          usuario: { select: { nombre: true, email: true } },
+        },
       },
       directorValida: {
         select: {
           id: true,
-          usuario: {
-            select: {
-              nombre: true
-            }
-          }
-        }
-      }
-    }
+          usuario: { select: { nombre: true, email: true } },
+        },
+      },
+    },
   });
 
   return vacanteRechazada;
