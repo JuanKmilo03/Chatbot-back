@@ -88,74 +88,82 @@ router.get('/aprobadas', vacanteController.listarVacantesAprobadas);
  * @swagger
  * /api/vacantes/{id}/aprobar:
  *   patch:
- *     summary: Aprueba una vacante pendiente (director)
+ *     summary: Aprueba una vacante pendiente (solo director)
  *     tags: [Vacantes]
+ *     security:
+ *       - bearerAuth: []   # Indica que requiere token JWT
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID de la vacante
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - directorId
- *             properties:
- *               directorId:
- *                 type: integer
- *                 example: 1
+ *         description: ID de la vacante a aprobar
  *     responses:
  *       200:
  *         description: Vacante aprobada correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Vacante aprobada correctamente
+ *                 data:
+ *                   $ref: '#/components/schemas/Vacante'  # Suponiendo que tienes schema de Vacante
  *       400:
- *         description: ID inválido o datos faltantes
+ *         description: ID inválido o vacante no pendiente
+ *       401:
+ *         description: Token no proporcionado o inválido
+ *       403:
+ *         description: Usuario no autorizado (no es director)
  *       404:
  *         description: Vacante o director no encontrado
  *       500:
  *         description: Error interno del servidor
  */
-router.patch('/:id/aprobar', vacanteController.aprobarVacante);
+router.patch('/:id/aprobar', verifyToken, authorizeRoles('DIRECTOR'), vacanteController.aprobarVacante);
 
 /**
  * @swagger
  * /api/vacantes/{id}/rechazar:
  *   patch:
- *     summary: Rechaza una vacante pendiente (director)
+ *     summary: Rechaza una vacante pendiente (solo director)
  *     tags: [Vacantes]
+ *     security:
+ *       - bearerAuth: []   # Requiere token JWT
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID de la vacante
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - directorId
- *             properties:
- *               directorId:
- *                 type: integer
- *                 example: 1
+ *         description: ID de la vacante a rechazar
  *     responses:
  *       200:
  *         description: Vacante rechazada correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Vacante rechazada correctamente
+ *                 data:
+ *                   $ref: '#/components/schemas/Vacante'
  *       400:
- *         description: ID inválido o datos faltantes
+ *         description: ID inválido o vacante no pendiente
+ *       401:
+ *         description: Token no proporcionado o inválido
+ *       403:
+ *         description: Usuario no autorizado (no es director)
  *       404:
  *         description: Vacante o director no encontrado
  *       500:
  *         description: Error interno del servidor
  */
-router.patch('/:id/rechazar', vacanteController.rechazarVacante);
+router.patch('/:id/rechazar', verifyToken, authorizeRoles('DIRECTOR'),vacanteController.rechazarVacante);
 
 export default router;
