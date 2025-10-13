@@ -46,6 +46,23 @@ export const crearVacante = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const getVacanteById = async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    try {
+        const vacante = await vacanteService.getVacanteByIdService(Number(id));
+
+        if (!vacante) {
+            return res.status(404).json({ message: "Vacante no encontrada" });
+        }
+
+        return res.json({data:vacante});
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Error al obtener la vacante" });
+    }
+};
+
 export const listarVacantesPendientes = async (req: Request, res: Response) => {
   try {
     const vacantes = await vacanteService.listarVacantesPendientes();

@@ -1,4 +1,4 @@
-import { PrismaClient, EstadoGeneral } from '@prisma/client';
+import { PrismaClient, EstadoGeneral, Vacante } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -46,6 +46,17 @@ export const crearVacante = async (data: {
   });
 
   return nuevaVacante;
+};
+
+export const getVacanteByIdService = async (id: number): Promise<Vacante | null> => {
+    return prisma.vacante.findUnique({
+        where: { id },
+        include: {
+            empresa: true,         
+            directorValida: true, 
+            practicas: true        
+        }
+    });
 };
 
 /**

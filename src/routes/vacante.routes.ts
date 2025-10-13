@@ -81,8 +81,96 @@ router.get('/pendientes', vacanteController.listarVacantesPendientes);
  *         description: Lista de vacantes aprobadas
  *       500:
  *         description: Error interno del servidor
- */
+*/
 router.get('/aprobadas', vacanteController.listarVacantesAprobadas);
+
+/**
+ * @swagger
+ * /api/vacantes/{id}:
+ *   get:
+ *     summary: Obtiene una vacante por su ID
+ *     tags: [Vacantes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de la vacante a obtener
+ *     responses:
+ *       200:
+ *         description: Vacante encontrada correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                   example: 1
+ *                 titulo:
+ *                   type: string
+ *                   example: Desarrollador Backend
+ *                 descripcion:
+ *                   type: string
+ *                   example: Desarrollo de servicios en Node.js
+ *                 area:
+ *                   type: string
+ *                   example: Tecnología
+ *                 requisitos:
+ *                   type: string
+ *                   example: Experiencia en Express y Prisma
+ *                 estado:
+ *                   type: string
+ *                   example: PENDIENTE
+ *                 creadaEn:
+ *                   type: string
+ *                   format: date-time
+ *                   example: 2025-10-12T21:00:00.000Z
+ *                 empresa:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     nombre:
+ *                       type: string
+ *                       example: Empresa XYZ
+ *                 directorValida:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 2
+ *                     nombre:
+ *                       type: string
+ *                       example: Juan Pérez
+ *                 practicas:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       titulo:
+ *                         type: string
+ *                         example: Práctica en Desarrollo Web
+ *       404:
+ *         description: Vacante no encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Vacante no encontrada
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get("/:id", vacanteController.getVacanteById);
 
 /**
  * @swagger
