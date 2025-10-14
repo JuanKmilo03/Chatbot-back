@@ -46,6 +46,23 @@ export const crearVacante = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const getVacanteById = async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    try {
+        const vacante = await vacanteService.getVacanteByIdService(Number(id));
+
+        if (!vacante) {
+            return res.status(404).json({ message: "Vacante no encontrada" });
+        }
+
+        return res.json({data:vacante});
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Error al obtener la vacante" });
+    }
+};
+
 export const listarVacantesPendientes = async (req: Request, res: Response) => {
   try {
     const vacantes = await vacanteService.listarVacantesPendientes();
@@ -84,28 +101,18 @@ export const listarVacantesAprobadas = async (req: Request, res: Response) => {
   }
 };
 
-export const aprobarVacante = async (req: Request, res: Response) => {
+export const aprobarVacante = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { directorId } = req.body;
 
     // Validar que el ID de la vacante sea válido
     if (!id || isNaN(Number(id))) {
-      return res.status(400).json({
-        message: 'ID de vacante inválido'
-      });
-    }
-
-    // Validar que se proporcione el directorId
-    if (!directorId || isNaN(Number(directorId))) {
-      return res.status(400).json({
-        message: 'El directorId es obligatorio y debe ser un número válido'
-      });
+      return res.status(400).json({ message: 'ID de vacante inválido' });
     }
 
     const vacanteAprobada = await vacanteService.aprobarVacante(
       Number(id),
-      Number(directorId)
+      req.user!.id
     );
 
     return res.status(200).json({
@@ -119,52 +126,35 @@ export const aprobarVacante = async (req: Request, res: Response) => {
       error.message === 'Vacante no encontrada' ||
       error.message === 'Director no encontrado'
     ) {
-      return res.status(404).json({
-        message: error.message
-      });
+      return res.status(404).json({ message: error.message });
     }
 
     if (error.message.includes('Solo se pueden aprobar')) {
-      return res.status(400).json({
-        message: error.message
-      });
+      return res.status(400).json({ message: error.message });
     }
 
-    return res.status(500).json({
-      message: 'Error al aprobar la vacante',
-      error: error.message
-    });
+    return res.status(500).json({ message: 'Error al aprobar la vacante', error: error.message });
   }
 };
 
-export const rechazarVacante = async (req: Request, res: Response) => {
+export const rechazarVacante = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { directorId } = req.body;
 
-    // Validar que el ID de la vacante sea válido
     if (!id || isNaN(Number(id))) {
-      return res.status(400).json({
-        message: 'ID de vacante inválido'
-      });
-    }
-
-    // Validar que se proporcione el directorId
-    if (!directorId || isNaN(Number(directorId))) {
-      return res.status(400).json({
-        message: 'El directorId es obligatorio y debe ser un número válido'
-      });
+      return res.status(400).json({ message: 'ID de vacante inválido' });
     }
 
     const vacanteRechazada = await vacanteService.rechazarVacante(
       Number(id),
-      Number(directorId)
+      req.user!.id
     );
 
     return res.status(200).json({
       message: 'Vacante rechazada correctamente',
       data: vacanteRechazada
     });
+
   } catch (error: any) {
     console.error('Error al rechazar vacante:', error);
 
@@ -172,20 +162,13 @@ export const rechazarVacante = async (req: Request, res: Response) => {
       error.message === 'Vacante no encontrada' ||
       error.message === 'Director no encontrado'
     ) {
-      return res.status(404).json({
-        message: error.message
-      });
+      return res.status(404).json({ message: error.message });
     }
 
     if (error.message.includes('Solo se pueden rechazar')) {
-      return res.status(400).json({
-        message: error.message
-      });
+      return res.status(400).json({ message: error.message });
     }
 
-    return res.status(500).json({
-      message: 'Error al rechazar la vacante',
-      error: error.message
-    });
+    return res.status(500).json({ message: 'Error al rechazar la vacante', error: error.message });
   }
 };

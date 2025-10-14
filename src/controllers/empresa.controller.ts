@@ -18,7 +18,7 @@ export const registrarEmpresa = async (req: Request, res: Response) => {
 export const loginEmpresa = async (req: Request, res: Response) => {
   try {
     const { nit, password } = req.body;
-    const data = await loginEmpresa(nit, password);
+    const data = await empresaService.loginEmpresa(nit, password);
     res.json(data);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
