@@ -5,6 +5,7 @@ import {
   obtenerEmpresasPendientes,
   actualizarEstadoEmpresa,
   obtenerPerfilEmpresa,
+  editarEmpresa,
 } from "../controllers/empresa.controller.js";
 import { verifyToken, authorizeRoles } from "../middlewares/auth.middleware.js";
 
@@ -550,5 +551,131 @@ router.patch("/:id/estado", actualizarEstadoEmpresa);
  *         description: Error interno del servidor
  */
 router.get("/profile", verifyToken, authorizeRoles("EMPRESA"), obtenerPerfilEmpresa);
+
+/**
+ * @swagger
+ * /api/empresas/{id}/editar:
+ *   put:
+ *     summary: Editar una empresa
+ *     description: >
+ *       Actualiza los datos básicos de una empresa existente.  
+ *       Solo se pueden modificar los campos de información general:  
+ *       **nombre, email, teléfono, dirección, sector, descripción**.  
+ *       Campos como **NIT** o **estado** no pueden modificarse con este endpoint.
+ *     tags:
+ *       - Empresas
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID de la empresa que se desea actualizar
+ *         schema:
+ *           type: integer
+ *           example: 5
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nombre:
+ *                 type: string
+ *                 example: EMSITEL S.A.S.
+ *               email:
+ *                 type: string
+ *                 example: contacto@emsitel.co
+ *               telefono:
+ *                 type: string
+ *                 example: "3214567890"
+ *               direccion:
+ *                 type: string
+ *                 example: "Cra 15 #20-33"
+ *               sector:
+ *                 type: string
+ *                 example: Tecnología
+ *               descripcion:
+ *                 type: string
+ *                 example: Empresa líder en soluciones IoT e infraestructura.
+ *     responses:
+ *       200:
+ *         description: Empresa actualizada correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Empresa actualizada correctamente
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 5
+ *                     nit:
+ *                       type: string
+ *                       example: "900999123"
+ *                     telefono:
+ *                       type: string
+ *                       example: "3214567890"
+ *                     direccion:
+ *                       type: string
+ *                       example: "Cra 15 #20-33"
+ *                     sector:
+ *                       type: string
+ *                       example: "Tecnología"
+ *                     descripcion:
+ *                       type: string
+ *                       example: Empresa líder en soluciones IoT e infraestructura.
+ *                     estado:
+ *                       type: string
+ *                       enum: [PENDIENTE, APROBADA, RECHAZADA]
+ *                       example: APROBADA
+ *                     usuario:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                           example: 12
+ *                         nombre:
+ *                           type: string
+ *                           example: Empresa de servicios.
+ *                         email:
+ *                           type: string
+ *                           example: contacto@gmail.com
+ *       400:
+ *         description: Error en los datos enviados o conflicto (por ejemplo, correo ya registrado)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Ya existe un usuario registrado con este correo
+ *       404:
+ *         description: Empresa no encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Empresa no encontrada
+ *       500:
+ *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Error interno del servidor
+ */
+router.put("/:id/editar", editarEmpresa);
 
 export default router;
