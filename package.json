@@ -8,6 +8,9 @@
     "start": "node dist/app.js",
     "prisma:generate": "npx prisma generate"
   },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
