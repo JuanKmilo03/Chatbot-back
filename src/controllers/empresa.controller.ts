@@ -35,20 +35,77 @@ export const obtenerEmpresasPendientes = async (req: Request, res: Response) => 
   }
 };
 
-export const actualizarEstadoEmpresa = async (req: Request, res: Response) => {
+export const obtenerEmpresas = async (req: Request, res: Response) => {
+  try {
+    const empresas = await empresaService.obtenerEmpresas();
+    res.status(200).json(empresas);
+  } catch (error: any) {
+    console.error("Error al obtener empresas:", error);
+    res.status(500).json({ error: "Error al listar empresas" });
+  }
+};
+
+export const obtenerEmpresaPorId = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { estado } = req.body;
-    const empresaActualizada = await empresaService.actualizarEstadoEmpresa(Number(id), estado);
-    res.status(200).json({
-      message: "Estado de empresa actualizado",
-      data: empresaActualizada,
-    });
+    const empresa = await empresaService.obtenerEmpresaPorId(Number(id));
+
+    if (!empresa) {
+      return res.status(404).json({ error: "Empresa no encontrada" });
+    }
+
+    res.status(200).json(empresa);
+  } catch (error: any) {
+    console.error("Error al obtener empresa:", error);
+    res.status(500).json({ error: "Error al obtener la información de la empresa" });
+  }
+};
+
+// export const actualizarEstadoEmpresa = async (req: Request, res: Response) => {
+//   try {
+//     const { id } = req.params;
+//     const { estado } = req.body;
+//     const empresaActualizada = await empresaService.actualizarEstadoEmpresa(Number(id), estado);
+//     res.status(200).json({
+//       message: "Estado de empresa actualizado",
+//       data: empresaActualizada,
+//     });
+//   } catch (error: any) {
+//     console.error("Error al actualizar estado:", error);
+//     res.status(400).json({ error: error.message });
+//   }
+// };
+
+export const aprobarEmpresa = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const empresa = await empresaService.aprobarEmpresa(Number(id));
+    res.status(200).json({ message: "Empresa aprobada", data: empresa });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const rechazarEmpresa = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const empresa = await empresaService.rechazarEmpresa(Number(id));
+    res.status(200).json({ message: "Empresa rechazada", data: empresa });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const toggleEstadoEmpresa = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const empresa = await empresaService.toggleEstadoEmpresa(Number(id));
+    res.status(200).json({ message: "Estado de empresa actualizado", data: empresa });
   } catch (error: any) {
     console.error("Error al actualizar estado:", error);
     res.status(400).json({ error: error.message });
   }
-};
+}
 
 export const obtenerPerfilEmpresa = async (req: AuthRequest, res: Response) => {
   try {
