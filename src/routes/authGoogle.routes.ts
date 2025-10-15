@@ -1,6 +1,7 @@
 import express, { Request, Response } from "express";
 import { authFirebase } from "../middlewares/authFirebase.js";
 import { Usuario } from "@prisma/client";
+import jwt from "jsonwebtoken";
 
 const router = express.Router();
 
@@ -92,9 +93,16 @@ router.get("/verify", authFirebase, async (req: AuthenticatedRequest, res: Respo
       return res.status(401).json({ message: "Usuario no autenticado" });
     }
 
+    const token = jwt.sign(
+        { id: req.user.id, rol: req.user.rol },
+        process.env.JWT_SECRET as string,
+        { expiresIn: "7d" }
+      );
+
     res.status(200).json({
       message: "Token válido",
       usuario: req.user,
+      token
     });
   } catch (error) {
     console.error("Error en /auth/verify:", error);

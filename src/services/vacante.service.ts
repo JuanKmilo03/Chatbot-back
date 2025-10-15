@@ -1,4 +1,4 @@
-import { PrismaClient, EstadoGeneral } from '@prisma/client';
+import { PrismaClient, EstadoGeneral, Vacante } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -46,6 +46,17 @@ export const crearVacante = async (data: {
   });
 
   return nuevaVacante;
+};
+
+export const getVacanteByIdService = async (id: number): Promise<Vacante | null> => {
+    return prisma.vacante.findUnique({
+        where: { id },
+        include: {
+            empresa: true,         
+            directorValida: true, 
+            practicas: true        
+        }
+    });
 };
 
 /**
@@ -116,29 +127,17 @@ export const aprobarVacante = async (vacanteId: number, directorId: number) => {
   const director = await prisma.director.findUnique({ where: { id: directorId } });
   if (!director) throw new Error('Director no encontrado.');
 
-  const vacanteAprobada = await prisma.vacante.update({
+  return await prisma.vacante.update({
     where: { id: vacanteId },
     data: {
       estado: EstadoGeneral.APROBADA,
       directorValidaId: directorId,
     },
     include: {
-      empresa: {
-        select: {
-          id: true,
-          usuario: { select: { nombre: true, email: true } },
-        },
-      },
-      directorValida: {
-        select: {
-          id: true,
-          usuario: { select: { nombre: true, email: true } },
-        },
-      },
+      empresa: { select: { id: true, usuario: { select: { nombre: true, email: true } } } },
+      directorValida: { select: { id: true, usuario: { select: { nombre: true, email: true } } } },
     },
   });
-
-  return vacanteAprobada;
 };
 
 /**
@@ -153,27 +152,16 @@ export const rechazarVacante = async (vacanteId: number, directorId: number) => 
   const director = await prisma.director.findUnique({ where: { id: directorId } });
   if (!director) throw new Error('Director no encontrado.');
 
-  const vacanteRechazada = await prisma.vacante.update({
+  return await prisma.vacante.update({
     where: { id: vacanteId },
     data: {
       estado: EstadoGeneral.RECHAZADA,
       directorValidaId: directorId,
     },
     include: {
-      empresa: {
-        select: {
-          id: true,
-          usuario: { select: { nombre: true, email: true } },
-        },
-      },
-      directorValida: {
-        select: {
-          id: true,
-          usuario: { select: { nombre: true, email: true } },
-        },
-      },
+      empresa: { select: { id: true, usuario: { select: { nombre: true, email: true } } } },
+      directorValida: { select: { id: true, usuario: { select: { nombre: true, email: true } } } },
     },
   });
-
-  return vacanteRechazada;
 };
+

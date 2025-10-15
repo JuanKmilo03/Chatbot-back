@@ -18,7 +18,7 @@ export const registrarEmpresa = async (req: Request, res: Response) => {
 export const loginEmpresa = async (req: Request, res: Response) => {
   try {
     const { nit, password } = req.body;
-    const data = await loginEmpresa(nit, password);
+    const data = await empresaService.loginEmpresa(nit, password);
     res.json(data);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -68,5 +68,22 @@ export const obtenerPerfilEmpresa = async (req: AuthRequest, res: Response) => {
   } catch (error: unknown) {
     console.error("Error al obtener perfil de empresa:", error);
     return res.status(500).json({ message: "Error al obtener la información de la empresa" });
-  }
+  }
+};
+
+export const editarEmpresa = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+
+    const empresaActualizada = await empresaService.editarEmpresa(Number(id), data);
+
+    res.status(200).json({
+      message: "Empresa actualizada correctamente",
+      data: empresaActualizada,
+    });
+  } catch (error: any) {
+    console.error("Error al editar empresa:", error);
+    res.status(400).json({ error: error.message });
+  }
 };
