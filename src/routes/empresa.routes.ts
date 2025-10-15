@@ -3,9 +3,13 @@ import {
   registrarEmpresa,
   loginEmpresa,
   obtenerEmpresasPendientes,
-  actualizarEstadoEmpresa,
   obtenerPerfilEmpresa,
   editarEmpresa,
+  obtenerEmpresas,
+  obtenerEmpresaPorId,
+  aprobarEmpresa,
+  rechazarEmpresa,
+  toggleEstadoEmpresa,
 } from "../controllers/empresa.controller.js";
 import { verifyToken, authorizeRoles } from "../middlewares/auth.middleware.js";
 
@@ -243,16 +247,110 @@ router.post("/login", loginEmpresa);
 
 /**
  * @swagger
- * /api/empresas:
+ * /api/empresas/pendientes:
  *   get:
- *     summary: Listar empresas pendientes (Director/Admin)
- *     description: Obtiene todas las empresas con estado PENDIENTE. Requiere autenticación y rol de DIRECTOR o ADMIN.
+ *     summary: Listar empresas pendientes (ADMIN)
+ *     description: Obtiene todas las empresas con estado PENDIENTE. Requiere autenticación y rol ADMIN.
  *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Lista de empresas pendientes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                     example: 1
+ *                   usuarioId:
+ *                     type: integer
+ *                     example: 5
+ *                   nit:
+ *                     type: string
+ *                     example: "900123456"
+ *                   telefono:
+ *                     type: string
+ *                     example: "3001234567"
+ *                   direccion:
+ *                     type: string
+ *                     example: "Calle 100 #20-30, Bogotá"
+ *                   sector:
+ *                     type: string
+ *                     example: "Tecnología"
+ *                   descripcion:
+ *                     type: string
+ *                     example: "Empresa de desarrollo de software"
+ *                   estado:
+ *                     type: string
+ *                     enum: [PENDIENTE, APROBADA, RECHAZADA]
+ *                     example: PENDIENTE
+ *                   directorId:
+ *                     type: integer
+ *                     nullable: true
+ *                     example: null
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *                     example: "2025-10-12T10:30:00.000Z"
+ *                   usuario:
+ *                     type: object
+ *                     properties:
+ *                       nombre:
+ *                         type: string
+ *                         example: "Tech Solutions SAS"
+ *                       email:
+ *                         type: string
+ *                         example: "contacto@techsolutions.com"
+ *       401:
+ *         description: No autenticado - Token faltante o inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Token no proporcionado o inválido"
+ *       403:
+ *         description: Sin permisos suficientes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "No tienes permisos para realizar esta acción"
+ *       500:
+ *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Error al listar empresas"
+ */
+router.get("/pendientes", verifyToken, authorizeRoles("DIRECTOR"), obtenerEmpresasPendientes);
+
+/**
+ * @swagger
+ * /api/empresas:
+ *   get:
+ *     summary: Listar empresas  (Director/Admin)
+ *     description: Obtiene todas las empresas cuyo estado no sea PENDIENTE. Requiere autenticación ADMIN.
+ *     tags: [Empresas]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de empresas
  *         content:
  *           application/json:
  *             schema:
@@ -333,14 +431,126 @@ router.post("/login", loginEmpresa);
  *                   type: string
  *                   example: Error al listar empresas
  */
-router.get("/", obtenerEmpresasPendientes);
+router.get("/", verifyToken, authorizeRoles("DIRECTOR"), obtenerEmpresas)
 
 /**
  * @swagger
- * /api/empresas/{id}/estado:
+ * /api/empresas/{id}:
+ *   get:
+ *     summary: Obtener empresa por ID (DIRECTOR)
+ *     description: Obtiene la información de una empresa específica por su ID. Requiere autenticación y rol DIRECTOR.
+ *     tags: [Empresas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID de la empresa
+ *     responses:
+ *       200:
+ *         description: Empresa encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                   example: 1
+ *                 usuarioId:
+ *                   type: integer
+ *                   example: 5
+ *                 nit:
+ *                   type: string
+ *                   example: "900123456"
+ *                 telefono:
+ *                   type: string
+ *                   example: "3001234567"
+ *                 direccion:
+ *                   type: string
+ *                   example: "Calle 100 #20-30, Bogotá"
+ *                 sector:
+ *                   type: string
+ *                   example: "Tecnología"
+ *                 descripcion:
+ *                   type: string
+ *                   example: "Empresa de desarrollo de software"
+ *                 estado:
+ *                   type: string
+ *                   enum: [PENDIENTE, APROBADA, RECHAZADA]
+ *                   example: APROBADA
+ *                 directorId:
+ *                   type: integer
+ *                   nullable: true
+ *                   example: 3
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-10-12T10:30:00.000Z"
+ *                 usuario:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 5
+ *                     nombre:
+ *                       type: string
+ *                       example: "Tech Solutions SAS"
+ *                     email:
+ *                       type: string
+ *                       example: "contacto@techsolutions.com"
+ *       401:
+ *         description: No autenticado - Token faltante o inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Token no proporcionado o inválido"
+ *       403:
+ *         description: Sin permisos suficientes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "No tienes permisos para realizar esta acción"
+ *       404:
+ *         description: Empresa no encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Empresa no encontrada"
+ *       500:
+ *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Error al obtener la información de la empresa"
+ */
+router.get("/:id", verifyToken, authorizeRoles("DIRECTOR"), obtenerEmpresaPorId)
+
+/**
+ * @swagger
+ * /api/empresas/{id}/aprobar:
  *   patch:
- *     summary: Actualizar estado de empresa (Director/Admin)
- *     description: Permite aprobar o rechazar una solicitud de empresa. Requiere autenticación y rol de DIRECTOR o ADMIN.
+ *     summary: Aprobar una empresa pendiente
+ *     description: Cambia el estado de la empresa de PENDIENTE a APROBADA. Solo Admin o Director.
  *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
@@ -348,36 +558,12 @@ router.get("/", obtenerEmpresasPendientes);
  *       - in: path
  *         name: id
  *         required: true
+ *         description: ID de la empresa
  *         schema:
  *           type: integer
- *         description: ID de la empresa a actualizar
- *         example: 1
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - estado
- *             properties:
- *               estado:
- *                 type: string
- *                 enum: [PENDIENTE, APROBADA, RECHAZADA]
- *                 description: Nuevo estado de la empresa
- *                 example: APROBADA
- *           examples:
- *             aprobar:
- *               summary: Aprobar empresa
- *               value:
- *                 estado: APROBADA
- *             rechazar:
- *               summary: Rechazar empresa
- *               value:
- *                 estado: RECHAZADA
  *     responses:
  *       200:
- *         description: Estado actualizado correctamente
+ *         description: Empresa aprobada correctamente
  *         content:
  *           application/json:
  *             schema:
@@ -385,72 +571,9 @@ router.get("/", obtenerEmpresasPendientes);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Estado de empresa actualizado
+ *                   example: Empresa aprobada correctamente
  *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: integer
- *                       example: 1
- *                     usuarioId:
- *                       type: integer
- *                       example: 5
- *                     nit:
- *                       type: string
- *                       example: "900123456"
- *                     telefono:
- *                       type: string
- *                       example: "3001234567"
- *                     direccion:
- *                       type: string
- *                       example: Calle 100 #20-30, Bogotá
- *                     sector:
- *                       type: string
- *                       example: Tecnología
- *                     descripcion:
- *                       type: string
- *                       example: Empresa de desarrollo de software
- *                     estado:
- *                       type: string
- *                       enum: [PENDIENTE, APROBADA, RECHAZADA]
- *                       example: APROBADA
- *                     directorId:
- *                       type: integer
- *                       example: 1
- *                     createdAt:
- *                       type: string
- *                       format: date-time
- *                       example: "2025-10-12T10:30:00.000Z"
- *       400:
- *         description: Datos inválidos o estado incorrecto
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Estado inválido
- *       401:
- *         description: No autenticado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Token no proporcionado o inválido
- *       403:
- *         description: Sin permisos
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: No tienes permisos para realizar esta acción
+ *                   $ref: '#/components/schemas/Empresa'
  *       404:
  *         description: Empresa no encontrada
  *         content:
@@ -461,10 +584,104 @@ router.get("/", obtenerEmpresasPendientes);
  *                 error:
  *                   type: string
  *                   example: Empresa no encontrada
- *       500:
- *         description: Error interno del servidor
  */
-router.patch("/:id/estado", actualizarEstadoEmpresa);
+router.patch("/:id/aprobar", verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), aprobarEmpresa);
+
+/**
+ * @swagger
+ * /api/empresas/{id}/rechazar:
+ *   patch:
+ *     summary: Rechazar una empresa pendiente
+ *     description: Cambia el estado de la empresa de PENDIENTE a RECHAZADA. Solo Admin o Director.
+ *     tags: [Empresas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID de la empresa
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Empresa rechazada correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Empresa rechazada correctamente
+ *                 data:
+ *                   $ref: '#/components/schemas/Empresa'
+ *       404:
+ *         description: Empresa no encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Empresa no encontrada
+ */
+router.patch("/:id/rechazar", verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), rechazarEmpresa);
+
+/**
+ * @swagger
+ * /api/empresas/{id}/estado:
+ *   patch:
+ *     summary: Activar o desactivar una empresa aprobada
+ *     description: Cambia el estado de una empresa aprobada entre APROBADA e INACTIVA. Solo Admin o Director.
+ *     tags: [Empresas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID de la empresa
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               estado:
+ *                 type: string
+ *                 enum: [APROBADA, INACTIVA]
+ *                 description: Nuevo estado de la empresa
+ *                 example: INACTIVA
+ *     responses:
+ *       200:
+ *         description: Estado actualizado correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Estado actualizado correctamente
+ *                 data:
+ *                   $ref: '#/components/schemas/Empresa'
+ *       404:
+ *         description: Empresa no encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Empresa no encontrada
+ */
+router.patch("/:id/estado", verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), toggleEstadoEmpresa)
 
 /**
  * @swagger

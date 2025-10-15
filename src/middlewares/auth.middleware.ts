@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.config.js";
+import { Rol } from "@prisma/client";
 
 export interface AuthRequest extends Request {
   user?: {
@@ -27,9 +28,9 @@ export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction)
   }
 };
 
-export const authorizeRoles = (...roles: string[]) => {
+export const authorizeRoles = (...roles: Rol[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!roles.includes(req.user?.rol || "")) {
+    if (!roles.includes(req.user?.rol as Rol)) {
       return res.status(403).json({ message: "Acceso denegado" });
     }
     next();

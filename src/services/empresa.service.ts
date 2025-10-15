@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { EstadoGeneral, PrismaClient } from '@prisma/client';
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendMail } from '../utils/mailer.js';
@@ -36,41 +36,105 @@ export const registrarEmpresa = async (data: any) => {
   return empresa;
 };
 
-export const actualizarEstadoEmpresa = async (id: number, estado: "PENDIENTE" | "APROBADA" | "RECHAZADA") => {
-  const empresa = await prisma.empresa.update({
+// export const actualizarEstadoEmpresa = async (id: number, estado: "PENDIENTE" | "APROBADA" | "RECHAZADA") => {
+//   const empresa = await prisma.empresa.update({
+//     where: { id },
+//     data: { estado },
+//     include: { usuario: true },
+//   });
+
+//   if (estado === "APROBADA") {
+//     // Generar contraseña aleatoria
+//     const nuevaPassword = Math.random().toString(36).slice(-10);
+//     const hashedPassword = await bcrypt.hash(nuevaPassword, 10);
+
+//     // Actualizar usuario con nueva contraseña
+//     await prisma.usuario.update({
+//       where: { id: empresa.usuarioId },
+//       data: { password: hashedPassword },
+//     });
+
+//     // Enviar correo
+//     const html = `
+//       <h2>Tu solicitud ha sido aprobada 🎉</h2>
+//       <p>Hola ${empresa.usuario.nombre},</p>
+//       <p>Tu empresa ha sido aprobada en la plataforma. Aquí tienes tu nueva contraseña:</p>
+//       <p><b>${nuevaPassword}</b></p>
+//       <p>Por favor, inicia sesión y cámbiala lo antes posible.</p>
+//       <br>
+//       <p>Atentamente,<br>Equipo EMSITEL</p>
+//     `;
+
+//     await sendMail(empresa.usuario.email, "Aprobación de empresa - EMSITEL", html);
+//   }
+
+//   return empresa;
+// };
+
+export const aprobarEmpresa = async (id: number) => {
+  const empresa = await prisma.empresa.findUnique({ where: { id } });
+  if (!empresa) throw new Error("Empresa no encontrada"); // ✅ Validación
+
+  const empresaActualizada = await prisma.empresa.update({
     where: { id },
-    data: { estado },
+    data: { estado: EstadoGeneral.APROBADA },
     include: { usuario: true },
   });
 
-  if (estado === "APROBADA") {
-    // Generar contraseña aleatoria
-    const nuevaPassword = Math.random().toString(36).slice(-10);
-    const hashedPassword = await bcrypt.hash(nuevaPassword, 10);
+  // Generar contraseña y enviar correo
+  const nuevaPassword = Math.random().toString(36).slice(-10);
+  const hashedPassword = await bcrypt.hash(nuevaPassword, 10);
 
-    // Actualizar usuario con nueva contraseña
-    await prisma.usuario.update({
-      where: { id: empresa.usuarioId },
-      data: { password: hashedPassword },
-    });
+  await prisma.usuario.update({
+    where: { id: empresa.usuarioId },
+    data: { password: hashedPassword },
+  });
 
-    // Enviar correo
-    const html = `
-      <h2>Tu solicitud ha sido aprobada 🎉</h2>
-      <p>Hola ${empresa.usuario.nombre},</p>
-      <p>Tu empresa ha sido aprobada en la plataforma. Aquí tienes tu nueva contraseña:</p>
-      <p><b>${nuevaPassword}</b></p>
-      <p>Por favor, inicia sesión y cámbiala lo antes posible.</p>
-      <br>
-      <p>Atentamente,<br>Equipo EMSITEL</p>
-    `;
+  const html = `
+    <h2>Tu solicitud ha sido aprobada 🎉</h2>
+    <p>Hola ${empresaActualizada .usuario.nombre},</p>
+    <p>Tu empresa ha sido aprobada en la plataforma. Aquí tienes tu nueva contraseña:</p>
+    <p><b>${nuevaPassword}</b></p>
+    <p>Por favor, inicia sesión y cámbiala lo antes posible.</p>
+    <br>
+    <p>Atentamente,<br>Equipo EMSITEL</p>
+  `;
 
-    await sendMail(empresa.usuario.email, "Aprobación de empresa - EMSITEL", html);
-  }
+  await sendMail(empresaActualizada.usuario.email, "Aprobación de empresa - EMSITEL", html);
 
-  return empresa;
+  return empresaActualizada;
 };
 
+export const rechazarEmpresa = async (id: number) => {
+  const empresa = await prisma.empresa.findUnique({ where: { id } });
+  if (!empresa) throw new Error("Empresa no encontrada");
+  const empresaActualizada = await prisma.empresa.update({
+    where: { id },
+    data: { estado: EstadoGeneral.RECHAZADA },
+    include: { usuario: true },
+  });
+  return empresaActualizada;
+};
+
+export const toggleEstadoEmpresa = async (id: number) => {
+  const empresa = await prisma.empresa.findUnique({ where: { id } });
+  if (!empresa) throw new Error("Empresa no encontrada");
+
+  let nuevoEstado: EstadoGeneral;
+  if (empresa.estado === EstadoGeneral.APROBADA) {
+    nuevoEstado = EstadoGeneral.INACTIVA;
+  } else if (empresa.estado === EstadoGeneral.INACTIVA) {
+    nuevoEstado = EstadoGeneral.APROBADA;
+  } else {
+    throw new Error("Solo se pueden activar/desactivar empresas aprobadas");
+  }
+
+  return await prisma.empresa.update({
+    where: { id },
+    data: { estado: nuevoEstado },
+    include: { usuario: true },
+  });
+};
 
 export const loginEmpresa = async (nit: string, password: string) => {
   const empresa = await prisma.empresa.findUnique({ where: { nit }, include: { usuario: true } });
@@ -113,6 +177,37 @@ export const obtenerEmpresasPendientes = async () => {
   });
 
   return empresas;
+};
+
+export const obtenerEmpresas = async () => {
+  const empresas = await prisma.empresa.findMany({
+    where: { estado: {
+      notIn: ["PENDIENTE"]
+    } },
+    include: {
+      usuario: {
+        select: {
+          nombre: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  return empresas;
+};
+
+export const obtenerEmpresaPorId = async (id: number) => {
+  const empresa = await prisma.empresa.findUnique({
+    where: { id },
+    include: {
+      usuario: {
+        select: { id: true, nombre: true, email: true },
+      },
+    },
+  });
+
+  return empresa;
 };
 
 export const obtenerEmpresaPorUsuarioId = async (usuarioId: number) => {
