@@ -33,7 +33,26 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Middlewares base
-app.use(cors({ origin: env.FRONTEND_URL }));
+
+const allowedOrigins = [
+  env.FRONTEND_URL, // tu dominio de producción
+  "http://localhost:3000", // para desarrollo local
+  "https://wfgp12.github.io/practibot_ufps/" // opcional, tu dominio real
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("No permitido por CORS"));
+      }
+    },
+    credentials: true, // si usas cookies o auth headers
+  })
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
