@@ -1,4 +1,4 @@
-import { sendMail } from "./utils/mailer";
+import { sendMail } from "./utils/mailer.js";
 
 sendMail(
   "enviadormilo@gmail.com",

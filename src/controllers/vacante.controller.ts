@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as vacanteService from '../services/vacante.service.js';
-import * as empresaService from "../services/empresa.service";
+import * as empresaService from "../services/empresa.service.js";
 
 import { AuthRequest } from '../middlewares/auth.middleware.js';
 
