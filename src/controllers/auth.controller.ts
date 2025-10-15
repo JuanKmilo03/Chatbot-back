@@ -7,17 +7,14 @@ export const registrarUsuario = async (req: Request, res: Response) => {
   try {
     const { nombre, email, password, rol, habilidades, perfil } = req.body;
 
-    // Validar campos básicos
     if (!nombre || !email || !password || !rol) {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
 
-    // Verificar que el rol sea válido
     if (![Rol.DIRECTOR, Rol.ESTUDIANTE].includes(rol)) {
       return res.status(400).json({ error: "Rol no válido. Solo DIRECTOR o ESTUDIANTE" });
     }
 
-    // Registrar usuario según su rol
     const usuario = await authService.register({
       nombre,
       email,
@@ -41,7 +38,6 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
-    // Validar campos obligatorios
     if (!email || !password) {
       return res.status(400).json({
         message: 'Email y password son obligatorios'

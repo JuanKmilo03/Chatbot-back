@@ -13,7 +13,6 @@ import { Rol } from "@prisma/client";
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
-// ✅ Middleware auxiliar para verificar roles
 function requireRole(roles: Rol[]) {
   return (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
     if (!req.user) {
@@ -26,22 +25,18 @@ function requireRole(roles: Rol[]) {
   };
 }
 
-// 📁 Subir un documento (solo DIRECTOR o ADMIN)
 router.post(
-  "/",
+  "/subir",
   authFirebase,
   requireRole([Rol.DIRECTOR, Rol.ADMIN]),
   upload.single("archivo"),
   subirDocumento
 );
 
-// 📄 Listar todos los documentos (público)
 router.get("/", listarDocumentos);
 
-// 🔍 Obtener documento por ID (público)
 router.get("/:id", obtenerDocumentoPorId);
 
-// ✏️ Actualizar documento (solo DIRECTOR o ADMIN)
 router.put(
   "/:id",
   authFirebase,
@@ -50,7 +45,6 @@ router.put(
   actualizarDocumento
 );
 
-// 🗑️ Eliminar documento (solo ADMIN)
 router.delete(
   "/:id",
   authFirebase,

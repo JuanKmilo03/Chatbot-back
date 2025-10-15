@@ -10,6 +10,9 @@ import { fileURLToPath } from "url";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
+//de prueba
+import testRouter from "./routes/test.route.js";
+
 // Rutas
 import authRoutes from "./routes/auth.routes.js";
 import authGoogleRoutes from "./routes/authGoogle.routes.js";
@@ -34,6 +37,8 @@ app.use(cors({ origin: env.FRONTEND_URL }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
+
+app.use("/api", testRouter);
 
 // Swagger UI
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));

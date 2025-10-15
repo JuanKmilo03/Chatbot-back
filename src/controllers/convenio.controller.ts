@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 export const solicitarConvenio = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const usuario = req.user;
-    if (!usuario || usuario.rol !== "ESTUDIANTE") {
+    if (!usuario || usuario.rol !== "EMPRESA") {
       return res.status(403).json({ message: "Solo estudiantes pueden solicitar convenios" });
     }
 

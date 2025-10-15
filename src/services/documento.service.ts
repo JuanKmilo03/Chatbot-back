@@ -1,4 +1,3 @@
-// src/services/documento.service.ts
 import { PrismaClient } from "@prisma/client";
 import cloudinary from "../config/cloudinary.config.js";
 import fs from "fs";
