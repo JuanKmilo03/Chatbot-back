@@ -22,6 +22,7 @@ import directorRoutes from "./routes/director.routes.js";
 import empresaRoutes from "./routes/empresa.routes.js";
 import vacanteRoutes from "./routes/vacante.routes.js";
 import documentoRoutes from "./routes/documento.routes.js";
+import estudianteRoutes from "./routes/estudiante.routes.js";
 
 // Middlewares
 import { verifyToken, authorizeRoles } from "./middlewares/auth.middleware.js";
@@ -68,6 +69,7 @@ app.use("/api/auth", authGoogleRoutes);
 app.use("/api/vacantes", vacanteRoutes);
 app.use("/api/documentos", documentoRoutes);
 app.use("/api/empresas", empresaRoutes);
+app.use('/api/estudiantes', estudianteRoutes);
 
 // ruta spor roles
 app.use("/api/convenios", convenioRoutes);
