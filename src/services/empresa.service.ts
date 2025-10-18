@@ -36,41 +36,6 @@ export const registrarEmpresa = async (data: any) => {
   return empresa;
 };
 
-// export const actualizarEstadoEmpresa = async (id: number, estado: "PENDIENTE" | "APROBADA" | "RECHAZADA") => {
-//   const empresa = await prisma.empresa.update({
-//     where: { id },
-//     data: { estado },
-//     include: { usuario: true },
-//   });
-
-//   if (estado === "APROBADA") {
-//     // Generar contraseña aleatoria
-//     const nuevaPassword = Math.random().toString(36).slice(-10);
-//     const hashedPassword = await bcrypt.hash(nuevaPassword, 10);
-
-//     // Actualizar usuario con nueva contraseña
-//     await prisma.usuario.update({
-//       where: { id: empresa.usuarioId },
-//       data: { password: hashedPassword },
-//     });
-
-//     // Enviar correo
-//     const html = `
-//       <h2>Tu solicitud ha sido aprobada 🎉</h2>
-//       <p>Hola ${empresa.usuario.nombre},</p>
-//       <p>Tu empresa ha sido aprobada en la plataforma. Aquí tienes tu nueva contraseña:</p>
-//       <p><b>${nuevaPassword}</b></p>
-//       <p>Por favor, inicia sesión y cámbiala lo antes posible.</p>
-//       <br>
-//       <p>Atentamente,<br>Equipo EMSITEL</p>
-//     `;
-
-//     await sendMail(empresa.usuario.email, "Aprobación de empresa - EMSITEL", html);
-//   }
-
-//   return empresa;
-// };
-
 export const aprobarEmpresa = async (id: number) => {
   const empresa = await prisma.empresa.findUnique({ where: { id } });
   if (!empresa) throw new Error("Empresa no encontrada"); // ✅ Validación
@@ -240,9 +205,7 @@ export const editarEmpresa = async (
     include: { usuario: true },
   });
 
-  if (!empresaExistente) {
-    throw new Error("Empresa no encontrada");
-  }
+  if (!empresaExistente) throw new Error("Empresa no encontrada");
 
   const updatesEmpresa: any = {};
   const updatesUsuario: any = {};
@@ -273,16 +236,88 @@ export const editarEmpresa = async (
       });
     }
 
-    const empresa = await tx.empresa.update({
+    return tx.empresa.update({
       where: { id },
       data: updatesEmpresa,
       include: {
         usuario: { select: { id: true, nombre: true, email: true } },
       },
     });
-
-    return empresa;
   });
 
-  return empresaActualizada;
+  // Asegurarte de devolver también los campos que no se modificaron
+  return {
+    id: empresaActualizada.id,
+    usuarioId: empresaActualizada.usuarioId,
+    directorId: empresaActualizada.directorId ?? null,
+    estado: empresaActualizada.estado,
+    createdAt: empresaActualizada.createdAt,
+    nit: empresaActualizada.nit,
+    telefono: empresaActualizada.telefono,
+    direccion: empresaActualizada.direccion,
+    sector: empresaActualizada.sector,
+    descripcion: empresaActualizada.descripcion,
+    usuario: empresaActualizada.usuario,
+  };
+};
+
+export const crearEmpresaPorDirector = async (data: any, directorId: number) => {
+  const { nombre, email, nit, telefono, direccion, sector, descripcion } = data;
+
+  // Validar que el correo y el NIT sean únicos
+  const existeEmail = await prisma.usuario.findUnique({ where: { email } });
+  if (existeEmail) throw new Error("Ya existe un usuario registrado con este correo");
+
+  const existeNit = await prisma.empresa.findUnique({ where: { nit } });
+  if (existeNit) throw new Error("Ya existe una empresa registrada con este NIT");
+
+  // 🔐 Generar contraseña automática
+  const passwordGenerada = Math.random().toString(36).slice(-10);
+  const hashedPassword = await bcrypt.hash(passwordGenerada, 10);
+
+  // Crear el usuario con rol EMPRESA
+  const usuario = await prisma.usuario.create({
+    data: {
+      nombre,
+      email,
+      password: hashedPassword,
+      rol: "EMPRESA",
+    },
+  });
+
+  // Crear la empresa con estado APROBADA y asociar al director
+  const empresa = await prisma.empresa.create({
+    data: {
+      usuarioId: usuario.id,
+      nit,
+      telefono,
+      direccion,
+      sector,
+      descripcion,
+      estado: EstadoGeneral.APROBADA,
+      directorId,
+    },
+    include: {
+      usuario: { select: { id: true, nombre: true, email: true } },
+    },
+  });
+
+  // Enviar correo con la contraseña generada
+  const html = `
+    <h2>¡Bienvenido a EMSITEL!</h2>
+    <p>Hola ${nombre},</p>
+    <p>Tu empresa ha sido registrada y aprobada por el director.</p>
+    <p>Estos son tus datos de acceso:</p>
+    <ul>
+      <li><b>Correo:</b> ${email}</li>
+      <li><b>Contraseña:</b> ${passwordGenerada}</li>
+    </ul>
+    <p>Te recomendamos cambiar tu contraseña una vez inicies sesión.</p>
+    <br>
+    <p>Atentamente,<br>Equipo EMSITEL</p>
+  `;
+
+  await sendMail(email, "Registro de empresa aprobado - EMSITEL", html);
+
+  return empresa;
 };

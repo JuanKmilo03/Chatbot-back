@@ -2,6 +2,32 @@ import { Request, Response } from "express";
 import * as empresaService from "../services/empresa.service.js";
 import {AuthRequest} from "../middlewares/auth.middleware.js"
 
+
+export const crearEmpresaPorDirectorController = async (req: AuthRequest, res: Response) => {
+  try {
+    // el ID del director viene del token decodificado
+    const directorId = req.user?.id;
+    const rol = req.user?.rol;
+
+    if (!directorId || !rol) {
+      return res.status(401).json({ message: "No autorizado" });
+    }
+    const data = req.body;
+    if (!data.nombre || !data.email || !data.nit) {
+      return res
+        .status(400)
+        .json({ message: "Nombre, email y NIT son campos obligatorios" });
+    }
+
+    const empresa = await empresaService.crearEmpresaPorDirector(req.body, directorId);
+
+    res.status(201).json(empresa);
+  } catch (error: any) {
+    console.error(error);
+    res.status(400).json({ message: error.message });
+  }
+};
+
 export const registrarEmpresa = async (req: Request, res: Response) => {
   try {
     const empresa = await empresaService.registrarEmpresa(req.body);
@@ -60,21 +86,6 @@ export const obtenerEmpresaPorId = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Error al obtener la información de la empresa" });
   }
 };
-
-// export const actualizarEstadoEmpresa = async (req: Request, res: Response) => {
-//   try {
-//     const { id } = req.params;
-//     const { estado } = req.body;
-//     const empresaActualizada = await empresaService.actualizarEstadoEmpresa(Number(id), estado);
-//     res.status(200).json({
-//       message: "Estado de empresa actualizado",
-//       data: empresaActualizada,
-//     });
-//   } catch (error: any) {
-//     console.error("Error al actualizar estado:", error);
-//     res.status(400).json({ error: error.message });
-//   }
-// };
 
 export const aprobarEmpresa = async (req: Request, res: Response) => {
   try {

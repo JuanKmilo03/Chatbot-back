@@ -10,8 +10,10 @@ import {
   aprobarEmpresa,
   rechazarEmpresa,
   toggleEstadoEmpresa,
+  crearEmpresaPorDirectorController,
 } from "../controllers/empresa.controller.js";
 import { verifyToken, authorizeRoles } from "../middlewares/auth.middleware.js";
+import { Rol } from "@prisma/client";
 
 const router = Router();
 
@@ -435,6 +437,225 @@ router.get("/", verifyToken, authorizeRoles("DIRECTOR"), obtenerEmpresas)
 
 /**
  * @swagger
+ * /api/empresas/profile:
+ *   get:
+ *     summary: Obtener perfil de empresa autenticada
+ *     description: Retorna la información de la empresa asociada al usuario autenticado mediante el token JWT.
+ *     tags: [Empresas]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Información de la empresa obtenida correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                   example: 1
+ *                 nit:
+ *                   type: string
+ *                   example: "901456789-1"
+ *                 telefono:
+ *                   type: string
+ *                   example: "3109876543"
+ *                 direccion:
+ *                   type: string
+ *                   example: "Calle 45 #23-10"
+ *                 sector:
+ *                   type: string
+ *                   example: "Tecnología"
+ *                 descripcion:
+ *                   type: string
+ *                   example: "Desarrollamos software de impacto."
+ *                 estado:
+ *                   type: string
+ *                   enum: [PENDIENTE, APROBADA, RECHAZADA]
+ *                   example: "APROBADA"
+ *                 usuario:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 5
+ *                     nombre:
+ *                       type: string
+ *                       example: "Wiedii Tech"
+ *                     email:
+ *                       type: string
+ *                       example: "info@wiedii.com"
+ *       401:
+ *         description: Token faltante o inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Token no proporcionado"
+ *       403:
+ *         description: Token expirado o rol no autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Acceso denegado: solo empresas pueden acceder"
+ *       404:
+ *         description: No se encontró la empresa asociada al usuario
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "No se encontró información de la empresa"
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get("/profile", verifyToken, authorizeRoles("EMPRESA"), obtenerPerfilEmpresa);
+
+/**
+ * @swagger
+ * /api/empresas/create:
+ *   post:
+ *     summary: Crear empresa directamente aprobada (ADMIN o DIRECTOR)
+ *     description: >
+ *       Permite al **ADMIN** o **DIRECTOR** crear una empresa que quedará **APROBADA automáticamente**.  
+ *       Se genera una contraseña aleatoria en el backend y se envía al correo registrado.  
+ *       Esta empresa podrá iniciar sesión de inmediato.
+ *     tags: [Empresas]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - nombre
+ *               - email
+ *               - nit
+ *             properties:
+ *               nombre:
+ *                 type: string
+ *                 example: "SoftSolutions SAS"
+ *                 description: Nombre o razón social de la empresa
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "contacto@softsolutions.com"
+ *                 description: Correo de contacto (usado para el login)
+ *               nit:
+ *                 type: string
+ *                 example: "900123456"
+ *                 description: Número de identificación tributaria
+ *               telefono:
+ *                 type: string
+ *                 example: "3004567890"
+ *               direccion:
+ *                 type: string
+ *                 example: "Cra 12 #34-56, Bucaramanga"
+ *               sector:
+ *                 type: string
+ *                 example: "Tecnología"
+ *                 description: Sector económico al que pertenece
+ *               descripcion:
+ *                 type: string
+ *                 example: "Empresa de soluciones tecnológicas y consultoría."
+ *     responses:
+ *       201:
+ *         description: Empresa creada y aprobada exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                   example: 25
+ *                 nit:
+ *                   type: string
+ *                   example: "900123456"
+ *                 telefono:
+ *                   type: string
+ *                   example: "3004567890"
+ *                 direccion:
+ *                   type: string
+ *                   example: "Cra 12 #34-56"
+ *                 sector:
+ *                   type: string
+ *                   example: "Tecnología"
+ *                 descripcion:
+ *                   type: string
+ *                   example: "Empresa de desarrollo de software"
+ *                 estado:
+ *                   type: string
+ *                   example: "APROBADA"
+ *                 usuario:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 10
+ *                     nombre:
+ *                       type: string
+ *                       example: "SoftSolutions SAS"
+ *                     email:
+ *                       type: string
+ *                       example: "contacto@softsolutions.com"
+ *       400:
+ *         description: Datos inválidos o empresa duplicada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Ya existe un usuario registrado con este correo"
+ *       401:
+ *         description: Token no proporcionado o inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Token no proporcionado"
+ *       403:
+ *         description: Acceso denegado (rol no autorizado)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Acceso denegado"
+ *       500:
+ *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Error al crear la empresa"
+ */
+router.post("/create", verifyToken, authorizeRoles(Rol.ADMIN, Rol.DIRECTOR), crearEmpresaPorDirectorController);
+
+/**
+ * @swagger
  * /api/empresas/{id}:
  *   get:
  *     summary: Obtener empresa por ID (DIRECTOR)
@@ -683,91 +904,6 @@ router.patch("/:id/rechazar", verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), 
  */
 router.patch("/:id/estado", verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), toggleEstadoEmpresa)
 
-/**
- * @swagger
- * /api/empresas/profile:
- *   get:
- *     summary: Obtener perfil de empresa autenticada
- *     description: Retorna la información de la empresa asociada al usuario autenticado mediante el token JWT.
- *     tags: [Empresas]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Información de la empresa obtenida correctamente
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 id:
- *                   type: integer
- *                   example: 1
- *                 nit:
- *                   type: string
- *                   example: "901456789-1"
- *                 telefono:
- *                   type: string
- *                   example: "3109876543"
- *                 direccion:
- *                   type: string
- *                   example: "Calle 45 #23-10"
- *                 sector:
- *                   type: string
- *                   example: "Tecnología"
- *                 descripcion:
- *                   type: string
- *                   example: "Desarrollamos software de impacto."
- *                 estado:
- *                   type: string
- *                   enum: [PENDIENTE, APROBADA, RECHAZADA]
- *                   example: "APROBADA"
- *                 usuario:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: integer
- *                       example: 5
- *                     nombre:
- *                       type: string
- *                       example: "Wiedii Tech"
- *                     email:
- *                       type: string
- *                       example: "info@wiedii.com"
- *       401:
- *         description: Token faltante o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Token no proporcionado"
- *       403:
- *         description: Token expirado o rol no autorizado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Acceso denegado: solo empresas pueden acceder"
- *       404:
- *         description: No se encontró la empresa asociada al usuario
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "No se encontró información de la empresa"
- *       500:
- *         description: Error interno del servidor
- */
-router.get("/profile", verifyToken, authorizeRoles("EMPRESA"), obtenerPerfilEmpresa);
 
 /**
  * @swagger
