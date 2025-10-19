@@ -55,7 +55,6 @@ const router = Router();
  */
 router.post('/crear', verifyToken, authorizeRoles('EMPRESA'), vacanteController.crearVacante);
 
-
 /**
  * @swagger
  * /api/vacantes/pendientes:
@@ -211,7 +210,7 @@ router.get("/:id", vacanteController.getVacanteById);
  *       500:
  *         description: Error interno del servidor
  */
-router.patch('/:id/aprobar', verifyToken, authorizeRoles('DIRECTOR'), vacanteController.aprobarVacante);
+router.patch('/:id/aprobar', verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), vacanteController.aprobarVacante);
 
 /**
  * @swagger
@@ -252,6 +251,80 @@ router.patch('/:id/aprobar', verifyToken, authorizeRoles('DIRECTOR'), vacanteCon
  *       500:
  *         description: Error interno del servidor
  */
-router.patch('/:id/rechazar', verifyToken, authorizeRoles('DIRECTOR'),vacanteController.rechazarVacante);
+router.patch('/:id/rechazar', verifyToken, authorizeRoles("ADMIN", "DIRECTOR"),vacanteController.rechazarVacante);
+
+/**
+ * @swagger
+ * /vacantes/{id}/solicitar-eliminacion:
+ *   post:
+ *     summary: Solicitar la eliminación de una vacante
+ *     description: La empresa solicita que un director elimine una vacante.
+ *     tags: [Vacantes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de la vacante a eliminar
+ *     responses:
+ *       200:
+ *         description: Solicitud de eliminación enviada correctamente
+ *       400:
+ *         description: Error o permisos insuficientes
+ */
+router.post("/:id/solicitar-eliminacion", verifyToken, authorizeRoles("EMPRESA"), vacanteController.solicitarEliminacionVacante);
+
+
+/**
+ * @swagger
+ * /vacantes/{id}:
+ *   delete:
+ *     summary: Eliminar una vacante de forma definitiva
+ *     description: Elimina completamente una vacante de la base de datos. Solo permitido para DIRECTOR o ADMIN.
+ *     tags: [Vacantes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de la vacante
+ *     responses:
+ *       200:
+ *         description: Vacante eliminada permanentemente
+ *       403:
+ *         description: No autorizado
+ */
+router.delete("/:id", verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), vacanteController.eliminarVacanteDefinitiva);
+
+
+/**
+ * @swagger
+ * /vacantes/{id}/inactivar:
+ *   patch:
+ *     summary: Marcar vacante como inactiva (soft delete)
+ *     description: La empresa puede marcar una vacante como inactiva sin eliminarla de la base de datos.
+ *     tags: [Vacantes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de la vacante
+ *     responses:
+ *       200:
+ *         description: Vacante marcada como inactiva correctamente
+ *       400:
+ *         description: Error o permisos insuficientes
+ */
+router.patch("/:id/inactivar", verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), vacanteController.inactivarVacante);
 
 export default router;
