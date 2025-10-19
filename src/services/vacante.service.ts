@@ -165,3 +165,63 @@ export const rechazarVacante = async (vacanteId: number, directorId: number) => 
   });
 };
 
+/**
+ * Solicitar eliminación de una vacante (la empresa lo solicita, no la elimina directamente)
+ */
+export const solicitarEliminacionVacante = async (vacanteId: number, empresaId: number) => {
+  const vacante = await prisma.vacante.findUnique({
+    where: { id: vacanteId },
+  });
+
+  if (!vacante) throw new Error("Vacante no encontrada.");
+  if (vacante.empresaId !== empresaId)
+    throw new Error("No tienes permiso para solicitar eliminación de esta vacante.");
+
+  // Solo se puede solicitar eliminación si no está ya inactiva
+  if (vacante.estado === EstadoGeneral.INACTIVA)
+    throw new Error("La vacante ya está inactiva o eliminada.");
+
+  // Aquí podrías implementar una notificación o marcar una columna especial si quisieras.
+  // Por ahora devolvemos una confirmación de solicitud.
+  return {
+    message: "Solicitud de eliminación enviada. Un director revisará la solicitud.",
+    vacanteId,
+    estadoActual: vacante.estado,
+  };
+};
+
+/**
+ * Eliminar definitivamente (solo admin o director)
+ */
+export const eliminarVacanteDefinitiva = async (vacanteId: number) => {
+  const vacante = await prisma.vacante.findUnique({ where: { id: vacanteId } });
+
+  if (!vacante) throw new Error("Vacante no encontrada.");
+
+  await prisma.vacante.delete({
+    where: { id: vacanteId },
+  });
+
+  return { message: "Vacante eliminada permanentemente.", vacanteId };
+};
+
+/**
+ * Soft delete (solo inactiva la vacante)
+ */
+export const inactivarVacante = async (vacanteId: number, empresaId: number) => {
+  const vacante = await prisma.vacante.findUnique({ where: { id: vacanteId } });
+
+  if (!vacante) throw new Error("Vacante no encontrada.");
+  if (vacante.empresaId !== empresaId)
+    throw new Error("No tienes permiso para modificar esta vacante.");
+
+  if (vacante.estado === EstadoGeneral.INACTIVA)
+    throw new Error("La vacante ya se encuentra inactiva.");
+
+  const vacanteInactiva = await prisma.vacante.update({
+    where: { id: vacanteId },
+    data: { estado: EstadoGeneral.INACTIVA },
+  });
+
+  return vacanteInactiva;
+};

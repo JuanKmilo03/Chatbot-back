@@ -172,3 +172,59 @@ export const rechazarVacante = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ message: 'Error al rechazar la vacante', error: error.message });
   }
 };
+
+
+export const solicitarEliminacionVacante = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const empresa = await empresaService.obtenerEmpresaPorUsuarioId(req.user!.id);
+
+    if (!empresa)
+      return res.status(404).json({ message: "Empresa no encontrada para el usuario autenticado." });
+
+    const resultado = await vacanteService.solicitarEliminacionVacante(Number(id), empresa.id);
+
+    return res.status(200).json(resultado);
+  } catch (error: any) {
+    console.error("Error al solicitar eliminación:", error);
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+
+export const eliminarVacanteDefinitiva = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (req.user!.rol !== "DIRECTOR" && req.user!.rol !== "ADMIN") {
+      return res.status(403).json({ message: "No tienes permisos para eliminar vacantes." });
+    }
+
+    const resultado = await vacanteService.eliminarVacanteDefinitiva(Number(id));
+    return res.status(200).json(resultado);
+  } catch (error: any) {
+    console.error("Error al eliminar vacante:", error);
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+
+export const inactivarVacante = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const empresa = await empresaService.obtenerEmpresaPorUsuarioId(req.user!.id);
+
+    if (!empresa)
+      return res.status(404).json({ message: "Empresa no encontrada para el usuario autenticado." });
+
+    const vacanteInactiva = await vacanteService.inactivarVacante(Number(id), empresa.id);
+
+    return res.status(200).json({
+      message: "Vacante marcada como inactiva correctamente.",
+      data: vacanteInactiva,
+    });
+  } catch (error: any) {
+    console.error("Error al inactivar vacante:", error);
+    return res.status(400).json({ message: error.message });
+  }
+};
