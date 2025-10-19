@@ -945,6 +945,54 @@ router.put("/:id/editar", editarEmpresa);
  */
 router.post("/recuperar", solicitarRecuperacionContrasenia);
 
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: Restablecer contraseña
+ *     description: |
+ *       Permite al usuario restablecer su contraseña usando el token recibido en el correo.
+ *       El token debe ser válido (no expirado) y emitido por el backend en el proceso de recuperación.
+ *     tags:
+ *       - Autenticación
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - nuevaPassword
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 example: "eyJhbGciOiJIUzI1NiIsInR5..."
+ *               nuevaPassword:
+ *                 type: string
+ *                 example: "NuevaContraseña123"
+ *     responses:
+ *       200:
+ *         description: Contraseña actualizada correctamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Contraseña actualizada correctamente"
+ *       400:
+ *         description: Token inválido o expirado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Token inválido o expirado"
+ */
 router.post("/restablecer", restablecerContrasenia);
 
 export default router;
