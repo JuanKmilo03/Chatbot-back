@@ -10,6 +10,9 @@ import {
   aprobarEmpresa,
   rechazarEmpresa,
   toggleEstadoEmpresa,
+  solicitarRecuperacionContrasenia,
+  restablecerContrasenia,
+
 } from "../controllers/empresa.controller.js";
 import { verifyToken, authorizeRoles } from "../middlewares/auth.middleware.js";
 
@@ -894,5 +897,54 @@ router.get("/profile", verifyToken, authorizeRoles("EMPRESA"), obtenerPerfilEmpr
  *                   example: Error interno del servidor
  */
 router.put("/:id/editar", editarEmpresa);
+
+/**
+ * @swagger
+ * /auth/recuperar:
+ *   post:
+ *     summary: Enviar enlace de recuperación de contraseña
+ *     description: |
+ *       Recibe el NIT de la empresa y envía un correo con un enlace temporal
+ *       para restablecer la contraseña. El enlace se genera dinámicamente desde
+ *       una variable de entorno (APP_URL) y contiene un token JWT válido por 15 minutos.
+ *     tags:
+ *       - Autenticación
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - nit
+ *             properties:
+ *               nit:
+ *                 type: string
+ *                 example: "901234567"
+ *     responses:
+ *       200:
+ *         description: Correo de recuperación enviado correctamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Correo de recuperación enviado correctamente"
+ *       404:
+ *         description: Empresa no encontrada.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Empresa no encontrada"
+ */
+router.post("/recuperar", solicitarRecuperacionContrasenia);
+
+router.post("/restablecer", restablecerContrasenia);
 
 export default router;

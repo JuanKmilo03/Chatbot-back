@@ -144,3 +144,23 @@ export const editarEmpresa = async (req: Request, res: Response) => {
     res.status(400).json({ error: error.message });
   }
 };
+
+export const solicitarRecuperacionContrasenia = async (req: Request, res: Response) => {
+  try {
+    const { nit } = req.body;
+    const result = await empresaService.solicitarRecuperacionContrasenia(nit);
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const restablecerContrasenia = async (req: Request, res: Response) => {
+  try {
+    const { token, nuevaPassword } = req.body;
+    const result = await empresaService.restablecerContrasenia(token, nuevaPassword);
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
