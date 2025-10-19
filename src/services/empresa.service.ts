@@ -128,38 +128,80 @@ export const loginEmpresa = async (nit: string, password: string) => {
   };
 };
 
-export const obtenerEmpresasPendientes = async () => {
-  const empresas = await prisma.empresa.findMany({
-    where: { estado: "PENDIENTE" },
-    include: {
-      usuario: {
-        select: {
-          nombre: true,
-          email: true,
-        },
-      },
-    },
-  });
+export const obtenerEmpresasPendientes = async (params: {
+  page?: number;
+  pageSize?: number;
+  nombre?: string;
+  correo?: string;
+  nit?: string;
+  sector?: string;
+}) => {
+  const { page = 1, pageSize = 10, nombre, correo, nit, sector } = params;
 
-  return empresas;
+  const where: any = {
+    estado: "PENDIENTE",
+    AND: [
+      ...(sector ? [{ sector: { contains: sector, mode: "insensitive" } }] : []),
+      ...(nombre ? [{ usuario: { nombre: { contains: nombre, mode: "insensitive" } } }] : []),
+      ...(correo ? [{ usuario: { email: { contains: correo, mode: "insensitive" } } }] : []),
+      ...(nit ? [{ nit: { contains: nit, mode: "insensitive" } }] : []),
+    ],
+  };
+
+  const [data, total] = await Promise.all([
+    prisma.empresa.findMany({
+      where,
+      include: { usuario: { select: { nombre: true, email: true } } },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.empresa.count({ where }),
+  ]);
+
+  return { data, total, page, pageSize };
 };
 
-export const obtenerEmpresas = async () => {
-  const empresas = await prisma.empresa.findMany({
-    where: { estado: {
-      notIn: ["PENDIENTE"]
-    } },
-    include: {
-      usuario: {
-        select: {
-          nombre: true,
-          email: true,
-        },
-      },
-    },
-  });
+export const obtenerEmpresas = async (params: {
+  page?: number;
+  pageSize?: number;
+  estado?: string;
+  nombre?: string;
+  correo?: string;
+  nit?: string;
+  sector?: string;
+}) => {
+  const { page = 1, pageSize = 10, estado, nombre, correo, nit, sector } = params;
 
-  return empresas;
+  console.log({params})
+
+  const where: any = {
+    AND: [
+      // Estado
+      estado
+        ? { estado }
+        : { estado: { notIn: ["PENDIENTE"] } },
+
+      // Filtros opcionales
+      ...(sector ? [{ sector: { contains: sector, mode: "insensitive" } }] : []),
+      ...(nombre ? [{ usuario: { nombre: { contains: nombre, mode: "insensitive" } } }] : []),
+      ...(correo ? [{ usuario: { email: { contains: correo, mode: "insensitive" } } }] : []),
+      ...(nit ? [{ nit: { contains: nit, mode: "insensitive" } }] : []),
+    ],
+  };
+
+  const [data, total] = await Promise.all([
+    prisma.empresa.findMany({
+      where,
+      include: { usuario: { select: { nombre: true, email: true } } },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.empresa.count({ where }),
+  ]);
+
+  return { data, total, page, pageSize };
 };
 
 export const obtenerEmpresaPorId = async (id: number) => {

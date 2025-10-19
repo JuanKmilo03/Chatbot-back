@@ -53,7 +53,17 @@ export const loginEmpresa = async (req: Request, res: Response) => {
 
 export const obtenerEmpresasPendientes = async (req: Request, res: Response) => {
   try {
-    const empresas = await empresaService.obtenerEmpresasPendientes();
+    const { page, pageSize, nombre, correo, nit, sector } = req.query;
+
+    const empresas = await empresaService.obtenerEmpresasPendientes({
+      page: Number(page) || 1,
+      pageSize: Number(pageSize) || 10,
+      nombre: nombre?.toString(),
+      correo: correo?.toString(),
+      nit: nit?.toString(),
+      sector: sector?.toString(),
+    });
+
     res.status(200).json(empresas);
   } catch (error: any) {
     console.error("Error al obtener empresas:", error);
@@ -63,7 +73,18 @@ export const obtenerEmpresasPendientes = async (req: Request, res: Response) => 
 
 export const obtenerEmpresas = async (req: Request, res: Response) => {
   try {
-    const empresas = await empresaService.obtenerEmpresas();
+    const { page, pageSize, estado,nombre, correo, nit, sector } = req.query;
+
+    const empresas = await empresaService.obtenerEmpresas({
+      page: Number(page) || 1,
+      pageSize: Number(pageSize) || 10,
+      nombre: nombre?.toString(),
+      estado: estado?.toString(),
+      correo: correo?.toString(),
+      nit: nit?.toString(),
+      sector: sector?.toString(),
+    });
+
     res.status(200).json(empresas);
   } catch (error: any) {
     console.error("Error al obtener empresas:", error);

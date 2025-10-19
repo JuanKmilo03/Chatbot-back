@@ -249,95 +249,65 @@ router.post("/login", loginEmpresa);
 
 /**
  * @swagger
- * /api/empresas/pendientes:
+ * /api/pendientes:
  *   get:
- *     summary: Listar empresas pendientes (ADMIN)
- *     description: Obtiene todas las empresas con estado PENDIENTE. Requiere autenticación y rol ADMIN.
+ *     summary: Listar empresas con filtros y paginación
+ *     description: Obtiene empresas filtradas o paginadas. Si no se envían parámetros, devuelve todas.
  *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: estado
+ *         schema:
+ *           type: string
+ *           enum: [APROBADA, INACTIVA, RECHAZADA]
+ *         description: Filtrar por estado
+ *       - in: query
+ *         name: sector
+ *         schema:
+ *           type: string
+ *         description: Filtrar por sector
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Buscar por nombre, correo o NIT
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 10
  *     responses:
  *       200:
- *         description: Lista de empresas pendientes
+ *         description: Lista de empresas filtradas
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: integer
- *                     example: 1
- *                   usuarioId:
- *                     type: integer
- *                     example: 5
- *                   nit:
- *                     type: string
- *                     example: "900123456"
- *                   telefono:
- *                     type: string
- *                     example: "3001234567"
- *                   direccion:
- *                     type: string
- *                     example: "Calle 100 #20-30, Bogotá"
- *                   sector:
- *                     type: string
- *                     example: "Tecnología"
- *                   descripcion:
- *                     type: string
- *                     example: "Empresa de desarrollo de software"
- *                   estado:
- *                     type: string
- *                     enum: [PENDIENTE, APROBADA, RECHAZADA]
- *                     example: PENDIENTE
- *                   directorId:
- *                     type: integer
- *                     nullable: true
- *                     example: null
- *                   createdAt:
- *                     type: string
- *                     format: date-time
- *                     example: "2025-10-12T10:30:00.000Z"
- *                   usuario:
- *                     type: object
- *                     properties:
- *                       nombre:
- *                         type: string
- *                         example: "Tech Solutions SAS"
- *                       email:
- *                         type: string
- *                         example: "contacto@techsolutions.com"
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Empresa'
+ *                 total:
+ *                   type: integer
+ *                   example: 42
+ *                 page:
+ *                   type: integer
+ *                   example: 1
+ *                 pageSize:
+ *                   type: integer
+ *                   example: 10
  *       401:
- *         description: No autenticado - Token faltante o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "Token no proporcionado o inválido"
- *       403:
- *         description: Sin permisos suficientes
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "No tienes permisos para realizar esta acción"
+ *         description: Token inválido
  *       500:
- *         description: Error interno del servidor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "Error al listar empresas"
+ *         description: Error interno
  */
 router.get("/pendientes", verifyToken, authorizeRoles("DIRECTOR"), obtenerEmpresasPendientes);
 
@@ -345,93 +315,63 @@ router.get("/pendientes", verifyToken, authorizeRoles("DIRECTOR"), obtenerEmpres
  * @swagger
  * /api/empresas:
  *   get:
- *     summary: Listar empresas  (Director/Admin)
- *     description: Obtiene todas las empresas cuyo estado no sea PENDIENTE. Requiere autenticación ADMIN.
+ *     summary: Listar empresas con filtros y paginación
+ *     description: Obtiene empresas filtradas o paginadas. Si no se envían parámetros, devuelve todas.
  *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: estado
+ *         schema:
+ *           type: string
+ *           enum: [APROBADA, INACTIVA, RECHAZADA]
+ *         description: Filtrar por estado
+ *       - in: query
+ *         name: sector
+ *         schema:
+ *           type: string
+ *         description: Filtrar por sector
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Buscar por nombre, correo o NIT
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 10
  *     responses:
  *       200:
- *         description: Lista de empresas
+ *         description: Lista de empresas filtradas
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: integer
- *                     example: 1
- *                   usuarioId:
- *                     type: integer
- *                     example: 5
- *                   nit:
- *                     type: string
- *                     example: "900123456"
- *                   telefono:
- *                     type: string
- *                     example: "3001234567"
- *                   direccion:
- *                     type: string
- *                     example: Calle 100 #20-30, Bogotá
- *                   sector:
- *                     type: string
- *                     example: Tecnología
- *                   descripcion:
- *                     type: string
- *                     example: Empresa de desarrollo de software
- *                   estado:
- *                     type: string
- *                     enum: [PENDIENTE, APROBADA, RECHAZADA]
- *                     example: PENDIENTE
- *                   directorId:
- *                     type: integer
- *                     nullable: true
- *                     example: null
- *                   createdAt:
- *                     type: string
- *                     format: date-time
- *                     example: "2025-10-12T10:30:00.000Z"
- *                   usuario:
- *                     type: object
- *                     properties:
- *                       nombre:
- *                         type: string
- *                         example: Tech Solutions SAS
- *                       email:
- *                         type: string
- *                         example: contacto@techsolutions.com
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Empresa'
+ *                 total:
+ *                   type: integer
+ *                   example: 42
+ *                 page:
+ *                   type: integer
+ *                   example: 1
+ *                 pageSize:
+ *                   type: integer
+ *                   example: 10
  *       401:
- *         description: No autenticado - Token faltante o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Token no proporcionado o inválido
- *       403:
- *         description: Sin permisos suficientes
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: No tienes permisos para realizar esta acción
+ *         description: Token inválido
  *       500:
- *         description: Error interno del servidor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Error al listar empresas
+ *         description: Error interno
  */
 router.get("/", verifyToken, authorizeRoles("DIRECTOR"), obtenerEmpresas)
 
