@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 interface FiltrosVacantes {
   titulo?: string;
-  empresa?: string ;
+  empresa?: string;
   estado?: EstadoGeneral;
   area?: string;
 }
@@ -175,7 +175,7 @@ export const listarVacantesAprobadas = async ({ page, limit, filters }: {
       },
     }),
   };
-  
+
   const [data, total] = await Promise.all([
     prisma.vacante.findMany({
       where,
@@ -289,22 +289,20 @@ export const eliminarVacanteDefinitiva = async (vacanteId: number) => {
 };
 
 /**
- * Soft delete (solo inactiva la vacante)
+ * Cambia el estado de una vacante (reutilizable para inactivar/activar).
  */
-export const inactivarVacante = async (vacanteId: number, empresaId: number) => {
+export const cambiarEstadoVacante = async (
+  vacanteId: number,
+  nuevoEstado: EstadoGeneral
+) => {
   const vacante = await prisma.vacante.findUnique({ where: { id: vacanteId } });
-
   if (!vacante) throw new Error("Vacante no encontrada.");
-  if (vacante.empresaId !== empresaId)
-    throw new Error("No tienes permiso para modificar esta vacante.");
 
-  if (vacante.estado === EstadoGeneral.INACTIVA)
-    throw new Error("La vacante ya se encuentra inactiva.");
+  if (vacante.estado === nuevoEstado)
+    throw new Error(`La vacante ya se encuentra en estado ${nuevoEstado}.`);
 
-  const vacanteInactiva = await prisma.vacante.update({
+  return prisma.vacante.update({
     where: { id: vacanteId },
-    data: { estado: EstadoGeneral.INACTIVA },
+    data: { estado: nuevoEstado },
   });
-
-  return vacanteInactiva;
 };

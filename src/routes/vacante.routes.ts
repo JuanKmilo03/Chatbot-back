@@ -305,13 +305,12 @@ router.post("/:id/solicitar-eliminacion", verifyToken, authorizeRoles("EMPRESA")
  */
 router.delete("/:id", verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), vacanteController.eliminarVacanteDefinitiva);
 
-
 /**
  * @swagger
- * /api/vacantes/{id}/inactivar:
+ * /api/vacantes/{id}/activar:
  *   patch:
- *     summary: Marcar vacante como inactiva (soft delete)
- *     description: La empresa puede marcar una vacante como inactiva sin eliminarla de la base de datos.
+ *     summary: Activa una vacante inactiva
+ *     description: Cambia el estado de una vacante a ACTIVA. Puede ser usada tanto por empresas, directores o administradores.
  *     tags: [Vacantes]
  *     security:
  *       - bearerAuth: []
@@ -321,13 +320,49 @@ router.delete("/:id", verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), vacanteC
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID de la vacante
+ *         description: ID de la vacante a activar
  *     responses:
  *       200:
- *         description: Vacante marcada como inactiva correctamente
+ *         description: Vacante activada correctamente
  *       400:
- *         description: Error o permisos insuficientes
+ *         description: Error o vacante ya activa
+ *       401:
+ *         description: Token inválido o no proporcionado
+ *       403:
+ *         description: Usuario no autorizado
+ *       404:
+ *         description: Vacante no encontrada
  */
-router.patch("/:id/inactivar", verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), vacanteController.inactivarVacante);
+router.patch("/:id/activar",verifyToken,authorizeRoles("ADMIN", "DIRECTOR", "EMPRESA"),vacanteController.activarVacante);
+
+/**
+ * @swagger
+ * /api/vacantes/{id}/inactivar:
+ *   patch:
+ *     summary: Inactiva una vacante activa
+ *     description: Cambia el estado de una vacante a INACTIVA (soft delete). Puede ser usada por empresas, directores o administradores.
+ *     tags: [Vacantes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de la vacante a inactivar
+ *     responses:
+ *       200:
+ *         description: Vacante inactivada correctamente
+ *       400:
+ *         description: Error o vacante ya inactiva
+ *       401:
+ *         description: Token inválido o no proporcionado
+ *       403:
+ *         description: Usuario no autorizado
+ *       404:
+ *         description: Vacante no encontrada
+ */
+router.patch("/:id/inactivar",verifyToken,authorizeRoles("ADMIN", "DIRECTOR", "EMPRESA"),vacanteController.inactivarVacante);
 
 export default router;

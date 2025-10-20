@@ -262,16 +262,14 @@ export const eliminarVacanteDefinitiva = async (req: AuthRequest, res: Response)
   }
 };
 
-
 export const inactivarVacante = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const empresa = await empresaService.obtenerEmpresaPorUsuarioId(req.user!.id);
 
-    if (!empresa)
-      return res.status(404).json({ message: "Empresa no encontrada para el usuario autenticado." });
-
-    const vacanteInactiva = await vacanteService.inactivarVacante(Number(id), empresa.id);
+    const vacanteInactiva = await vacanteService.cambiarEstadoVacante(
+      Number(id),
+      EstadoGeneral.INACTIVA
+    );
 
     return res.status(200).json({
       message: "Vacante marcada como inactiva correctamente.",
@@ -279,6 +277,28 @@ export const inactivarVacante = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error("Error al inactivar vacante:", error);
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+/**
+ * Reactivar una vacante inactiva
+ */
+export const activarVacante = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const vacanteActiva = await vacanteService.cambiarEstadoVacante(
+      Number(id),
+      EstadoGeneral.APROBADA
+    );
+
+    return res.status(200).json({
+      message: "Vacante reactivada correctamente.",
+      data: vacanteActiva,
+    });
+  } catch (error: any) {
+    console.error("Error al activar vacante:", error);
     return res.status(400).json({ message: error.message });
   }
 };
