@@ -71,7 +71,7 @@ app.use("/api/documentos", documentoRoutes);
 app.use("/api/empresas", empresaRoutes);
 app.use('/api/estudiantes', estudianteRoutes);
 
-// ruta spor roles
+// Rutas por roles
 app.use("/api/convenios", convenioRoutes);
 app.use("/api/usuarios", usuarioRoutes);
 app.use("/api/directores", directorRoutes);
