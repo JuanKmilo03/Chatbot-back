@@ -10,6 +10,8 @@ import {
   aprobarEmpresa,
   rechazarEmpresa,
   toggleEstadoEmpresa,
+  solicitarRecuperacionContrasenia,
+  restablecerContrasenia,
   crearEmpresaPorDirectorController,
   listarEmpresas,
 } from "../controllers/empresa.controller.js";
@@ -989,5 +991,102 @@ router.patch("/:id/estado", verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), to
  *                   example: Error interno del servidor
  */
 router.put("/:id/editar", editarEmpresa);
+
+/**
+ * @swagger
+ * /api/empresas/recuperar:
+ *   post:
+ *     summary: Enviar enlace de recuperación de contraseña
+ *     description: |
+ *       Recibe el NIT de la empresa y envía un correo con un enlace temporal
+ *       para restablecer la contraseña. El enlace se genera dinámicamente desde
+ *       una variable de entorno (APP_URL) y contiene un token JWT válido por 15 minutos.
+ *     tags:
+ *       - Autenticación
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - nit
+ *             properties:
+ *               nit:
+ *                 type: string
+ *                 example: "901234567"
+ *     responses:
+ *       200:
+ *         description: Correo de recuperación enviado correctamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Correo de recuperación enviado correctamente"
+ *       404:
+ *         description: Empresa no encontrada.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Empresa no encontrada"
+ */
+router.post("/recuperar", solicitarRecuperacionContrasenia);
+
+/**
+ * @swagger
+ * /api/empresas/reset-password:
+ *   post:
+ *     summary: Restablecer contraseña
+ *     description: |
+ *       Permite al usuario restablecer su contraseña usando el token recibido en el correo.
+ *       El token debe ser válido (no expirado) y emitido por el backend en el proceso de recuperación.
+ *     tags:
+ *       - Autenticación
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - nuevaPassword
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 example: "eyJhbGciOiJIUzI1NiIsInR5..."
+ *               nuevaPassword:
+ *                 type: string
+ *                 example: "NuevaContraseña123"
+ *     responses:
+ *       200:
+ *         description: Contraseña actualizada correctamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Contraseña actualizada correctamente"
+ *       400:
+ *         description: Token inválido o expirado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Token inválido o expirado"
+ */
+router.post("/restablecer", restablecerContrasenia);
 
 export default router;

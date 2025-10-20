@@ -9,7 +9,7 @@ router.post("/register", registrarUsuario);
 
 /**
  * @swagger
- * /auth/refresh:
+ * /api/auth/refresh:
  *   get:
  *     summary: Refresca la sesión del usuario autenticado
  *     tags: [Auth]

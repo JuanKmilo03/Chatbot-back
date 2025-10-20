@@ -37,7 +37,7 @@ const __dirname = path.dirname(__filename);
 
 const allowedOrigins = [
   env.FRONTEND_URL, // tu dominio de producción
-  "http://localhost:3000", // para desarrollo local
+  "http://localhost:4000", // para desarrollo local
   "https://wfgp12.github.io/practibot_ufps/" // opcional, tu dominio real
 ];
 
@@ -71,7 +71,7 @@ app.use("/api/documentos", documentoRoutes);
 app.use("/api/empresas", empresaRoutes);
 app.use('/api/estudiantes', estudianteRoutes);
 
-// ruta spor roles
+// Rutas por roles
 app.use("/api/convenios", convenioRoutes);
 app.use("/api/usuarios", usuarioRoutes);
 app.use("/api/directores", directorRoutes);

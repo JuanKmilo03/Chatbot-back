@@ -56,16 +56,16 @@ export const aprobarEmpresa = async (id: number) => {
   });
 
   const html = `
-    <h2>Tu solicitud ha sido aprobada 🎉</h2>
+    <h2>Tu solicitud ha sido aprobada</h2>
     <p>Hola ${empresaActualizada .usuario.nombre},</p>
     <p>Tu empresa ha sido aprobada en la plataforma. Aquí tienes tu nueva contraseña:</p>
     <p><b>${nuevaPassword}</b></p>
     <p>Por favor, inicia sesión y cámbiala lo antes posible.</p>
     <br>
-    <p>Atentamente,<br>Equipo EMSITEL</p>
+    <p>Atentamente,<br>la UFPS</p>
   `;
 
-  await sendMail(empresaActualizada.usuario.email, "Aprobación de empresa - EMSITEL", html);
+  await sendMail(empresaActualizada.usuario.email, "Aprobación de empresa", html);
 
   return empresaActualizada;
 };
@@ -284,7 +284,6 @@ export const editarEmpresa = async (
       },
     });
   });
-
   // Asegurarte de devolver también los campos que no se modificaron
   return {
     id: empresaActualizada.id,
@@ -374,4 +373,70 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
   await sendMail(email, "Registro de empresa aprobado - Portal de Prácticas Empresariales de la UFPS", html);
 
   return empresa;
+};
+
+//Funciones para recuperar contraseña
+export const solicitarRecuperacionContrasenia = async (identificador: string) => {
+
+  const empresa = await prisma.empresa.findUnique({
+    where: { nit: identificador },
+    include: { usuario: true },
+  });
+
+  if (!empresa || !empresa.usuario) {
+    throw new Error("Empresa no encontrada");
+  }
+
+  const usuario = empresa.usuario;
+
+  const token = jwt.sign(
+    { id: usuario.id, tipo: "recuperacion" },
+    process.env.JWT_SECRET as string,
+    { expiresIn: "15m" }
+  );
+
+  const enlace = `${process.env.FRONTEND_URL}/recuperar-contrasenia?token=${token}`;
+
+  const html = `
+    <h2>Recuperación de contraseña 🔐</h2>
+    <p>Hola ${usuario.nombre},</p>
+    <p>Has solicitado recuperar tu contraseña. Haz clic en el siguiente enlace:</p>
+    <p><a href="${enlace}" target="_blank">Restablecer contraseña</a></p>
+    <p>Este enlace expirará en 15 minutos.</p>
+    <br>
+    <p>Si no solicitaste esto, puedes ignorar el correo.</p>
+    <br>
+    <p>Atentamente,<br>la UFPS</p>
+  `;
+
+  await sendMail(usuario.email, "Recuperación de contraseña", html);
+
+  return { message: "Correo de recuperación enviado correctamente" };
+};
+
+export const restablecerContrasenia = async (token: string, nuevaPassword: string) => {
+  try {
+    const decoded: any = jwt.verify(token, process.env.JWT_SECRET as string);
+
+    if (!decoded || decoded.tipo !== "recuperacion") {
+      throw new Error("Token inválido");
+    }
+
+    const usuario = await prisma.usuario.findUnique({ where: { id: decoded.id } });
+    if (!usuario) throw new Error("Usuario no encontrado");
+
+    const hashedPassword = await bcrypt.hash(nuevaPassword, 10);
+
+    await prisma.usuario.update({
+      where: { id: usuario.id },
+      data: { password: hashedPassword },
+    });
+
+    return { message: "Contraseña actualizada correctamente" };
+  } catch (error) {
+    if (error instanceof jwt.TokenExpiredError) {
+      throw new Error("El enlace de recuperación ha expirado");
+    }
+    throw new Error("Token inválido o expirado");
+  }
 };
