@@ -302,3 +302,41 @@ export const activarVacante = async (req: AuthRequest, res: Response) => {
     return res.status(400).json({ message: error.message });
   }
 };
+
+/**
+ * Actualiza una vacante (solo ADMIN o DIRECTOR)
+ */
+export const actualizarVacanteAdminDirector = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const {
+      titulo,
+      descripcion,
+      area,
+      requisitos,
+      estado,
+      empresaId,
+      directorValidaId,
+    } = req.body;
+
+    console.log(id)
+
+    const vacanteActualizada = await vacanteService.actualizarVacante(Number(id), {
+      titulo,
+      descripcion,
+      area,
+      requisitos,
+      estado,
+      empresaId,
+      directorValidaId,
+    });
+
+    return res.status(200).json({
+      message: "Vacante actualizada correctamente.",
+      data: vacanteActualizada,
+    });
+  } catch (error: any) {
+    console.error("Error al actualizar vacante:", error);
+    return res.status(400).json({ message: error.message });
+  }
+};

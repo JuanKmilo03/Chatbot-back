@@ -254,7 +254,7 @@ router.patch('/:id/aprobar', verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), v
  *       500:
  *         description: Error interno del servidor
  */
-router.patch('/:id/rechazar', verifyToken, authorizeRoles("ADMIN", "DIRECTOR"),vacanteController.rechazarVacante);
+router.patch('/:id/rechazar', verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), vacanteController.rechazarVacante);
 
 /**
  * @swagger
@@ -307,6 +307,64 @@ router.delete("/:id", verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), vacanteC
 
 /**
  * @swagger
+ * /api/vacantes/{id}/editar:
+ *   put:
+ *     summary: Editar una vacante (solo ADMIN o DIRECTOR)
+ *     description: Permite actualizar los datos de una vacante. Solo ADMIN y DIRECTOR pueden modificar empresa o estado.
+ *     tags: [Vacantes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de la vacante a editar
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               titulo:
+ *                 type: string
+ *                 example: Desarrollador Backend Senior
+ *               descripcion:
+ *                 type: string
+ *                 example: Desarrollo y mantenimiento de microservicios con Node.js
+ *               area:
+ *                 type: string
+ *                 example: Tecnología
+ *               requisitos:
+ *                 type: string
+ *                 example: Experiencia con Prisma, PostgreSQL, y JWT.
+ *               estado:
+ *                 type: string
+ *                 enum: [PENDIENTE, APROBADA, RECHAZADA, INACTIVA]
+ *               empresaId:
+ *                 type: integer
+ *                 example: 3
+ *               directorValidaId:
+ *                 type: integer
+ *                 example: 2
+ *     responses:
+ *       200:
+ *         description: Vacante actualizada correctamente
+ *       400:
+ *         description: Error o datos inválidos
+ *       401:
+ *         description: Token inválido o no proporcionado
+ *       403:
+ *         description: Usuario no autorizado
+ *       404:
+ *         description: Vacante o entidad no encontrada
+ */
+router.put("/:id/editar", verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), vacanteController.actualizarVacanteAdminDirector);
+
+/**
+ * @swagger
  * /api/vacantes/{id}/activar:
  *   patch:
  *     summary: Activa una vacante inactiva
@@ -333,7 +391,7 @@ router.delete("/:id", verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), vacanteC
  *       404:
  *         description: Vacante no encontrada
  */
-router.patch("/:id/activar",verifyToken,authorizeRoles("ADMIN", "DIRECTOR", "EMPRESA"),vacanteController.activarVacante);
+router.patch("/:id/activar", verifyToken, authorizeRoles("ADMIN", "DIRECTOR", "EMPRESA"), vacanteController.activarVacante);
 
 /**
  * @swagger
@@ -363,6 +421,6 @@ router.patch("/:id/activar",verifyToken,authorizeRoles("ADMIN", "DIRECTOR", "EMP
  *       404:
  *         description: Vacante no encontrada
  */
-router.patch("/:id/inactivar",verifyToken,authorizeRoles("ADMIN", "DIRECTOR", "EMPRESA"),vacanteController.inactivarVacante);
+router.patch("/:id/inactivar", verifyToken, authorizeRoles("ADMIN", "DIRECTOR", "EMPRESA"), vacanteController.inactivarVacante);
 
 export default router;

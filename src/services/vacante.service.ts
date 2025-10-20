@@ -97,7 +97,11 @@ export const getVacanteByIdService = async (id: number): Promise<Vacante | null>
   return prisma.vacante.findUnique({
     where: { id },
     include: {
-      empresa: true,
+       empresa: {
+        include: {
+          usuario: true
+        },
+      },
       directorValida: true,
       practicas: true
     }
@@ -305,4 +309,58 @@ export const cambiarEstadoVacante = async (
     where: { id: vacanteId },
     data: { estado: nuevoEstado },
   });
+};
+
+/**
+ * Actualizar vacante (genérico)
+ * Reutilizable para admin, director o empresa (según controladores)
+ */
+export const actualizarVacante = async (
+  vacanteId: number,
+  data: Partial<{
+    titulo: string;
+    descripcion: string;
+    area: string;
+    requisitos?: string;
+    estado?: EstadoGeneral;
+    empresaId?: number; // solo lo usarán admin/director
+    directorValidaId?: number;
+  }>
+) => {
+  // Verificar existencia
+  const vacante = await prisma.vacante.findUnique({ where: { id: vacanteId } });
+  if (!vacante) throw new Error("Vacante no encontrada.");
+
+  // Si se envía empresaId, validar que exista
+  if (data.empresaId) {
+    const empresa = await prisma.empresa.findUnique({ where: { id: data.empresaId } });
+    if (!empresa) throw new Error("La empresa especificada no existe.");
+  }
+
+  // Si se envía directorValidaId, validar que exista
+  if (data.directorValidaId) {
+    const director = await prisma.director.findUnique({ where: { id: data.directorValidaId } });
+    if (!director) throw new Error("Director no encontrado.");
+  }
+
+  const vacanteActualizada = await prisma.vacante.update({
+    where: { id: vacanteId },
+    data,
+    include: {
+      empresa: {
+        select: {
+          id: true,
+          usuario: { select: { nombre: true, email: true } },
+        },
+      },
+      directorValida: {
+        select: {
+          id: true,
+          usuario: { select: { nombre: true, email: true } },
+        },
+      },
+    },
+  });
+
+  return vacanteActualizada;
 };
