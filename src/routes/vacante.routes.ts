@@ -255,7 +255,7 @@ router.patch('/:id/rechazar', verifyToken, authorizeRoles("ADMIN", "DIRECTOR"),v
 
 /**
  * @swagger
- * /vacantes/{id}/solicitar-eliminacion:
+ * /api/vacantes/{id}/solicitar-eliminacion:
  *   post:
  *     summary: Solicitar la eliminación de una vacante
  *     description: La empresa solicita que un director elimine una vacante.
@@ -280,7 +280,7 @@ router.post("/:id/solicitar-eliminacion", verifyToken, authorizeRoles("EMPRESA")
 
 /**
  * @swagger
- * /vacantes/{id}:
+ * /api/vacantes/{id}:
  *   delete:
  *     summary: Eliminar una vacante de forma definitiva
  *     description: Elimina completamente una vacante de la base de datos. Solo permitido para DIRECTOR o ADMIN.
@@ -305,7 +305,7 @@ router.delete("/:id", verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), vacanteC
 
 /**
  * @swagger
- * /vacantes/{id}/inactivar:
+ * /api/vacantes/{id}/inactivar:
  *   patch:
  *     summary: Marcar vacante como inactiva (soft delete)
  *     description: La empresa puede marcar una vacante como inactiva sin eliminarla de la base de datos.
