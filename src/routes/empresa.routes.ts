@@ -900,7 +900,7 @@ router.put("/:id/editar", editarEmpresa);
 
 /**
  * @swagger
- * /auth/recuperar:
+ * /api/auth/recuperar:
  *   post:
  *     summary: Enviar enlace de recuperación de contraseña
  *     description: |
@@ -947,7 +947,7 @@ router.post("/recuperar", solicitarRecuperacionContrasenia);
 
 /**
  * @swagger
- * /auth/reset-password:
+ * /api/auth/reset-password:
  *   post:
  *     summary: Restablecer contraseña
  *     description: |

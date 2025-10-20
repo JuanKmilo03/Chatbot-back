@@ -12,7 +12,7 @@ const router = Router();
 
 /**
  * @swagger
- * /estudiantes:
+ * /api/estudiantes:
  *   post:
  *     summary: Crea un nuevo estudiante
  *     tags: [Estudiantes]
@@ -48,7 +48,7 @@ router.post('/', EstudianteController.crear);
 
 /**
  * @swagger
- * /estudiantes:
+ * /api/estudiantes:
  *   get:
  *     summary: Obtiene todos los estudiantes
  *     tags: [Estudiantes]
@@ -60,7 +60,7 @@ router.get('/', EstudianteController.obtenerTodos);
 
 /**
  * @swagger
- * /estudiantes/{id}:
+ * /api/estudiantes/{id}:
  *   get:
  *     summary: Obtiene un estudiante por ID
  *     tags: [Estudiantes]
@@ -81,7 +81,7 @@ router.get('/:id', EstudianteController.obtenerPorId);
 
 /**
  * @swagger
- * /estudiantes/{id}:
+ * /api/estudiantes/{id}:
  *   put:
  *     summary: Actualiza los datos de un estudiante
  *     tags: [Estudiantes]
@@ -116,7 +116,7 @@ router.put('/:id', EstudianteController.actualizar);
 
 /**
  * @swagger
- * /estudiantes/{id}/soft-delete:
+ * /api/estudiantes/{id}/soft-delete:
  *   patch:
  *     summary: Marca un estudiante como inactivo (soft delete)
  *     tags: [Estudiantes]
