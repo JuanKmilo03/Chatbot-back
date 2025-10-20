@@ -3,6 +3,7 @@ import * as vacanteService from '../services/vacante.service.js';
 import * as empresaService from "../services/empresa.service.js";
 
 import { AuthRequest } from '../middlewares/auth.middleware.js';
+import { EstadoGeneral } from '@prisma/client';
 
 export const crearVacante = async (req: AuthRequest, res: Response) => {
   try {
@@ -46,35 +47,74 @@ export const crearVacante = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getVacanteById = async (req: Request, res: Response) => {
-    const { id } = req.params;
+export const registrarVacante = async (req: AuthRequest, res: Response) => {
+  try {
+    const { titulo, descripcion, area, requisitos, empresaId } = req.body;
 
-    try {
-        const vacante = await vacanteService.getVacanteByIdService(Number(id));
-
-        if (!vacante) {
-            return res.status(404).json({ message: "Vacante no encontrada" });
-        }
-
-        return res.json({data:vacante});
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: "Error al obtener la vacante" });
+    if (!titulo || !descripcion || !area || !empresaId) {
+      return res.status(400).json({ message: "Faltan campos obligatorios: titulo, descripcion, area, empresaId" });
     }
+
+    const vacante = await vacanteService.crearVacanteAprobada({
+      titulo,
+      descripcion,
+      area,
+      requisitos,
+      empresaId,
+      directorId: req.user!.id
+    });
+
+    return res.status(201).json({
+      message: "Vacante creada y aprobada correctamente",
+      data: vacante
+    });
+  } catch (error: any) {
+    console.error("Error al crear vacante aprobada:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getVacanteById = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    const vacante = await vacanteService.getVacanteByIdService(Number(id));
+
+    if (!vacante) {
+      return res.status(404).json({ message: "Vacante no encontrada" });
+    }
+
+    return res.json({ data: vacante });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Error al obtener la vacante" });
+  }
 };
 
 export const listarVacantesPendientes = async (req: Request, res: Response) => {
   try {
-    const vacantes = await vacanteService.listarVacantesPendientes();
+    const { page = 1, limit = 10, titulo, empresa, estado, modalidad } = req.query;
+    const filters = {
+      titulo: req.query.titulo ? String(req.query.titulo) : undefined,
+      empresa: req.query.empresa ? String(req.query.empresa) : undefined,
+      modalidad: req.query.modalidad ? String(req.query.modalidad) : undefined,
+    };
+
+    const { data, total } = await vacanteService.listarVacantesPendientes({
+      page: Number(page),
+      limit: Number(limit),
+      filters
+    });
 
     return res.status(200).json({
       message: 'Vacantes pendientes obtenidas correctamente',
-      data: vacantes,
-      total: vacantes.length
+      data,
+      total,
+      page: Number(page),
+      totalPages: Math.ceil(total / Number(limit))
     });
   } catch (error: any) {
     console.error('Error al listar vacantes pendientes:', error);
-
     return res.status(500).json({
       message: 'Error al obtener las vacantes pendientes',
       error: error.message
@@ -84,16 +124,30 @@ export const listarVacantesPendientes = async (req: Request, res: Response) => {
 
 export const listarVacantesAprobadas = async (req: Request, res: Response) => {
   try {
-    const vacantes = await vacanteService.listarVacantesAprobadas();
+    const { page = 1, limit = 10, titulo, empresa, estado, modalidad } = req.query;
+    const filters = {
+      titulo: req.query.titulo ? String(req.query.titulo) : undefined,
+      empresa: req.query.empresa ? String(req.query.empresa) : undefined,
+      estado: req.query.estado
+        ? (req.query.estado.toString().toUpperCase() as EstadoGeneral)
+        : undefined,
+      area: req.query.area ? String(req.query.area) : undefined,
+    };
+    const { data, total } = await vacanteService.listarVacantesAprobadas({
+      page: Number(page),
+      limit: Number(limit),
+      filters
+    });
 
     return res.status(200).json({
       message: 'Vacantes aprobadas obtenidas correctamente',
-      data: vacantes,
-      total: vacantes.length
+      data,
+      total,
+      page: Number(page),
+      totalPages: Math.ceil(total / Number(limit))
     });
   } catch (error: any) {
     console.error('Error al listar vacantes aprobadas:', error);
-
     return res.status(500).json({
       message: 'Error al obtener las vacantes aprobadas',
       error: error.message

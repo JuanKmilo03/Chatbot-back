@@ -11,6 +11,7 @@ import {
   rechazarEmpresa,
   toggleEstadoEmpresa,
   crearEmpresaPorDirectorController,
+  listarEmpresas,
 } from "../controllers/empresa.controller.js";
 import { verifyToken, authorizeRoles } from "../middlewares/auth.middleware.js";
 import { Rol } from "@prisma/client";
@@ -374,6 +375,24 @@ router.get("/pendientes", verifyToken, authorizeRoles("DIRECTOR"), obtenerEmpres
  *         description: Error interno
  */
 router.get("/", verifyToken, authorizeRoles("DIRECTOR"), obtenerEmpresas)
+
+/**
+ * @swagger
+ * /api/empresas/listar:
+ *   get:
+ *     summary: Lista todas las empresas aprobadas (para selector)
+ *     tags: [Empresas]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de empresas aprobadas obtenida correctamente
+ *       403:
+ *         description: Usuario no autorizado
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get('/listar', verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), listarEmpresas);
 
 /**
  * @swagger

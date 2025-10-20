@@ -55,6 +55,9 @@ const router = Router();
  */
 router.post('/crear', verifyToken, authorizeRoles('EMPRESA'), vacanteController.crearVacante);
 
+router.post('/registrar', verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), vacanteController.registrarVacante);
+
+
 /**
  * @swagger
  * /api/vacantes/pendientes:

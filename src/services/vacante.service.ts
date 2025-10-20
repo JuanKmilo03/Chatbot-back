@@ -1,6 +1,13 @@
-import { PrismaClient, EstadoGeneral, Vacante } from '@prisma/client';
+import { PrismaClient, EstadoGeneral, Vacante, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+interface FiltrosVacantes {
+  titulo?: string;
+  empresa?: string ;
+  estado?: EstadoGeneral;
+  area?: string;
+}
 
 /**
  * Crea una nueva vacante asociada a una empresa.
@@ -48,71 +55,147 @@ export const crearVacante = async (data: {
   return nuevaVacante;
 };
 
-export const getVacanteByIdService = async (id: number): Promise<Vacante | null> => {
-    return prisma.vacante.findUnique({
-        where: { id },
-        include: {
-            empresa: true,         
-            directorValida: true, 
-            practicas: true        
-        }
-    });
-};
+export const crearVacanteAprobada = async (data: {
+  titulo: string;
+  descripcion: string;
+  area: string;
+  requisitos?: string;
+  empresaId: number;
+  directorId: number;
+}) => {
+  const { titulo, descripcion, area, requisitos, empresaId, directorId } = data;
 
-/**
- * Lista todas las vacantes pendientes de aprobación.
- */
-export const listarVacantesPendientes = async () => {
-  const vacantes = await prisma.vacante.findMany({
-    where: {
-      estado: EstadoGeneral.PENDIENTE,
-    },
-    include: {
-      empresa: {
-        select: {
-          id: true,
-          usuario: {
-            select: {
-              nombre: true,
-              email: true,
-            },
-          },
-          nit: true,
-        },
-      },
-    },
-    orderBy: { creadaEn: 'desc' },
-  });
+  // Validar empresa
+  const empresa = await prisma.empresa.findUnique({ where: { id: empresaId } });
+  if (!empresa) throw new Error("Empresa no encontrada.");
 
-  return vacantes;
-};
+  // Validar director
+  const director = await prisma.director.findUnique({ where: { id: directorId } });
+  if (!director) throw new Error("Director no encontrado.");
 
-/**
- * Lista todas las vacantes aprobadas.
- */
-export const listarVacantesAprobadas = async () => {
-  const vacantes = await prisma.vacante.findMany({
-    where: {
+  // Crear vacante como aprobada
+  const vacante = await prisma.vacante.create({
+    data: {
+      titulo,
+      descripcion,
+      area,
+      requisitos: requisitos || null,
       estado: EstadoGeneral.APROBADA,
+      empresaId,
+      directorValidaId: directorId
     },
     include: {
-      empresa: {
-        select: {
-          id: true,
-          usuario: {
-            select: {
-              nombre: true,
-              email: true,
-            },
-          },
-          nit: true,
-        },
-      },
-    },
-    orderBy: { creadaEn: 'desc' },
+      empresa: { select: { id: true, usuario: { select: { nombre: true } } } },
+      directorValida: { select: { id: true, usuario: { select: { nombre: true } } } }
+    }
   });
 
-  return vacantes;
+  return vacante;
+};
+
+export const getVacanteByIdService = async (id: number): Promise<Vacante | null> => {
+  return prisma.vacante.findUnique({
+    where: { id },
+    include: {
+      empresa: true,
+      directorValida: true,
+      practicas: true
+    }
+  });
+};
+
+export const listarVacantesPendientes = async ({ page, limit, filters }: {
+  page: number;
+  limit: number;
+  filters: FiltrosVacantes;
+}) => {
+  const skip = (page - 1) * limit;
+
+  const where: Prisma.VacanteWhereInput = {
+    estado: EstadoGeneral.PENDIENTE,
+    ...(filters.titulo && {
+      titulo: { contains: String(filters.titulo), mode: Prisma.QueryMode.insensitive },
+    }),
+    ...(filters.area && {
+      area: { contains: String(filters.area), mode: Prisma.QueryMode.insensitive },
+    }),
+    ...(filters.empresa && {
+      empresa: {
+        usuario: {
+          nombre: { contains: String(filters.empresa), mode: Prisma.QueryMode.insensitive },
+        },
+      },
+    }),
+  };
+
+  const [data, total] = await Promise.all([
+    prisma.vacante.findMany({
+      where,
+      include: {
+        empresa: {
+          select: {
+            id: true,
+            nit: true,
+            usuario: { select: { nombre: true, email: true } },
+          },
+        },
+      },
+      orderBy: { creadaEn: 'desc' },
+      skip,
+      take: limit,
+    }),
+    prisma.vacante.count({ where }),
+  ]);
+
+  return { data, total };
+};
+
+export const listarVacantesAprobadas = async ({ page, limit, filters }: {
+  page: number;
+  limit: number;
+  filters: FiltrosVacantes;
+}) => {
+  const skip = (page - 1) * limit;
+
+  const where: Prisma.VacanteWhereInput = {
+    ...(filters.estado
+      ? { estado: filters.estado }
+      : { NOT: { estado: EstadoGeneral.PENDIENTE } }),
+    ...(filters.titulo && {
+      titulo: { contains: filters.titulo, mode: Prisma.QueryMode.insensitive },
+    }),
+    ...(filters.area && {
+      area: { contains: filters.area, mode: Prisma.QueryMode.insensitive },
+    }),
+    ...(filters.empresa && {
+      empresa: {
+        usuario: {
+          nombre: { contains: filters.empresa, mode: Prisma.QueryMode.insensitive },
+        },
+      },
+    }),
+  };
+  
+  const [data, total] = await Promise.all([
+    prisma.vacante.findMany({
+      where,
+      include: {
+        empresa: {
+          select: {
+            id: true,
+            nit: true,
+            usuario: { select: { nombre: true, email: true } },
+          },
+        },
+      },
+      orderBy: { creadaEn: 'desc' },
+      skip,
+      take: limit,
+    }),
+    prisma.vacante.count({ where }),
+  ]);
+
+  return { data, total };
 };
 
 /**

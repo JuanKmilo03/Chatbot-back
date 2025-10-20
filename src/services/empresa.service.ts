@@ -173,8 +173,6 @@ export const obtenerEmpresas = async (params: {
 }) => {
   const { page = 1, pageSize = 10, estado, nombre, correo, nit, sector } = params;
 
-  console.log({params})
-
   const where: any = {
     AND: [
       // Estado
@@ -303,6 +301,21 @@ export const editarEmpresa = async (
   };
 };
 
+export const listarEmpresasSelector = async () => {
+  const empresas = await prisma.empresa.findMany({
+    where: { estado: EstadoGeneral.APROBADA }, // opcional: solo activas/aprobadas
+    select: {
+      id: true,
+      usuario: { select: { nombre: true } }
+    },
+    orderBy: { usuario: { nombre: 'asc' } }
+  });
+
+  // Devolver en formato {id, nombre}
+  return empresas.map(e => ({ id: e.id, nombre: e.usuario.nombre }));
+};
+
+
 export const crearEmpresaPorDirector = async (data: any, directorId: number) => {
   const { nombre, email, nit, telefono, direccion, sector, descripcion } = data;
 
@@ -346,20 +359,19 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
 
   // Enviar correo con la contraseña generada
   const html = `
-    <h2>¡Bienvenido a EMSITEL!</h2>
+    <h2>¡Bienvenido al Portal de Prácticas Empresariales de la UFPS!</h2>
     <p>Hola ${nombre},</p>
     <p>Tu empresa ha sido registrada y aprobada por el director.</p>
     <p>Estos son tus datos de acceso:</p>
     <ul>
-      <li><b>Correo:</b> ${email}</li>
+      <li><b>NIT:</b> ${nit}</li>
       <li><b>Contraseña:</b> ${passwordGenerada}</li>
     </ul>
     <p>Te recomendamos cambiar tu contraseña una vez inicies sesión.</p>
     <br>
-    <p>Atentamente,<br>Equipo EMSITEL</p>
   `;
 
-  await sendMail(email, "Registro de empresa aprobado - EMSITEL", html);
+  await sendMail(email, "Registro de empresa aprobado - Portal de Prácticas Empresariales de la UFPS", html);
 
   return empresa;
 };

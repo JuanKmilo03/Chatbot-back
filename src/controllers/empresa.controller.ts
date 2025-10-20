@@ -71,6 +71,16 @@ export const obtenerEmpresasPendientes = async (req: Request, res: Response) => 
   }
 };
 
+export const listarEmpresas = async (req: AuthRequest, res: Response) => {
+  try {
+    const empresas = await empresaService.listarEmpresasSelector();
+    return res.status(200).json({ data: empresas });
+  } catch (error: any) {
+    console.error("Error al listar empresas:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const obtenerEmpresas = async (req: Request, res: Response) => {
   try {
     const { page, pageSize, estado,nombre, correo, nit, sector } = req.query;
