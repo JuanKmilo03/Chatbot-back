@@ -74,7 +74,7 @@ app.use("/api", testRouter);
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Rutas públicas
-app.use("/api/auth", authRoutes);
+//app.use("/api/auth", authRoutes);
 app.use("/api/auth", authGoogleRoutes);
 app.use("/api/vacantes", vacanteRoutes);
 app.use("/api/documentos", documentoRoutes);
