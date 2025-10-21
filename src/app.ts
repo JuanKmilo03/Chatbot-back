@@ -38,7 +38,9 @@ const __dirname = path.dirname(__filename);
 const allowedOrigins = [
   env.FRONTEND_URL, // tu dominio de producción
   "http://localhost:4000", // para desarrollo local
-  "https://wfgp12.github.io/practibot_ufps/" // opcional, tu dominio real
+  "https://wfgp12.github.io/practibot_ufps/",// opcional, tu dominio real
+  "https://n8n.juanpctsoftware.online/",
+  "https://wfgp12.github.io"
 ];
 
 app.use(
