@@ -10,6 +10,7 @@
     "forceConsistentCasingInFileNames": true,
     "outDir": "dist",
     "rootDir": "src"
+    "removeComments": false
   },
   "include": ["src"]
 }
