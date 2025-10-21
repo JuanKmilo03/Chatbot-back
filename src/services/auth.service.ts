@@ -136,3 +136,26 @@ export const getUserById = async (userId: number) => {
   const { password: _, ...usuarioSinPassword } = usuario;
   return usuarioSinPassword;
 };
+
+export const changePasswordService = async (
+  userId: number,
+  currentPassword: string,
+  newPassword: string
+) => {
+  const user = await prisma.usuario.findUnique({ where: { id: userId } });
+  if (!user) throw new Error("Usuario no encontrado");
+  if (!user.password)
+    throw new Error("El usuario no tiene una contraseña registrada");
+
+  const isMatch = await bcrypt.compare(currentPassword, user.password);
+  if (!isMatch) throw new Error("Contraseña actual incorrecta");
+
+  const hashed = await bcrypt.hash(newPassword, 10);
+
+  await prisma.usuario.update({
+    where: { id: userId },
+    data: { password: hashed },
+  });
+
+  return { message: "Contraseña actualizada correctamente" };
+};

@@ -87,6 +87,38 @@ export const refreshSession = async (req: AuthRequest, res: Response) => {
     });
   } catch (error) {
     console.error("Error al refrescar sesión:", error);
-    return res.status(500).json({ message: "Error al validar la sesión" });
+      return res.status(500).json({ message: "Error al validar la sesión" });
   }
 };
+
+
+export const cambiarContrasenia = async (req: AuthRequest, res: Response) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Usuario no autenticado" });
+    }
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Faltan campos obligatorios" });
+    }
+
+    const result = await authService.changePasswordService(
+      userId,
+      currentPassword,
+      newPassword
+    );
+
+    return res.status(200).json({
+      message: "Contraseña actualizada correctamente",
+      data:result
+    });
+  } catch (error) {
+    console.error("Error al cambiar contraseña:", error);
+    return res.status(500).json({
+      message: "Error al cambiar la contraseña"
+    });
+  }
+}
