@@ -5,7 +5,7 @@ import path from "path";
 import { env } from "./config/env.config.js";
 import { connectDB } from "./config/db.js";
 import { fileURLToPath } from "url";
- 
+
 // Swagger
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
@@ -13,27 +13,11 @@ import { swaggerSpec } from "./config/swagger.js";
 //de prueba
 import testRouter from "./routes/test.route.js";
 
-// Rutas
-import authRoutes from "./routes/auth.routes.js";
-import authGoogleRoutes from "./routes/authGoogle.routes.js";
-import convenioRoutes from "./routes/convenio.routes.js";
-import usuarioRoutes from "./routes/usuario.routes.js";
-import directorRoutes from "./routes/director.routes.js";
-import empresaRoutes from "./routes/empresa.routes.js";
-import vacanteRoutes from "./routes/vacante.routes.js";
-import documentoRoutes from "./routes/documento.routes.js";
-import estudianteRoutes from "./routes/estudiante.routes.js";
-
-// Middlewares
-import { verifyToken, authorizeRoles } from "./middlewares/auth.middleware.js";
-
 dotenv.config();
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Middlewares base
 
 const allowedOrigins = [
   env.FRONTEND_URL, // tu dominio de producción
@@ -55,6 +39,30 @@ app.use(
     credentials: true, // si usas cookies o auth headers
   })
 );
+
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
+  next();
+});
+
+// Rutas
+import authRoutes from "./routes/auth.routes.js";
+import authGoogleRoutes from "./routes/authGoogle.routes.js";
+import convenioRoutes from "./routes/convenio.routes.js";
+import usuarioRoutes from "./routes/usuario.routes.js";
+import directorRoutes from "./routes/director.routes.js";
+import empresaRoutes from "./routes/empresa.routes.js";
+import vacanteRoutes from "./routes/vacante.routes.js";
+import documentoRoutes from "./routes/documento.routes.js";
+import estudianteRoutes from "./routes/estudiante.routes.js";
+
+// Middlewares
+import { verifyToken, authorizeRoles } from "./middlewares/auth.middleware.js";
+
+
+
+// Middlewares base
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
