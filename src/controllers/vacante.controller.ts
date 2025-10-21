@@ -340,3 +340,29 @@ export const actualizarVacanteAdminDirector = async (req: Request, res: Response
     return res.status(400).json({ message: error.message });
   }
 };
+
+export const listarVacantesEmpresa = async (req: AuthRequest, res: Response) => {
+  try {
+    const companyId = req.user?.id;
+    const { page = 1, limit = 10, titulo, estado, requisitos, area } = req.query;
+
+    if (!companyId) {
+      return res.status(401).json({ message: "No autorizado" });
+    }
+
+    const response = await vacanteService.listarVacantesEmpresaService({
+      companyId,
+      page: Number(page),
+      limit: Number(limit),
+      titulo: titulo as string,
+      estado: estado as EstadoGeneral,
+      requisitos: requisitos as string,
+      area: area as string,
+    });
+
+    return res.json(response);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Error al obtener vacantes de la empresa" });
+  }
+};

@@ -88,6 +88,22 @@ router.get('/aprobadas', vacanteController.listarVacantesAprobadas);
 
 /**
  * @swagger
+ * /api/vacantes/empresa:
+ *   get:
+ *     summary: Lista todas las vacantes  por empresa
+ *     tags: [Vacantes]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de vacantes por empresa
+ *       500:
+ *         description: Error interno del servidor
+*/
+router.get('/empresa', verifyToken, authorizeRoles("EMPRESA"), vacanteController.listarVacantesEmpresa);
+
+/**
+ * @swagger
  * /api/vacantes/{id}:
  *   get:
  *     summary: Obtiene una vacante por su ID

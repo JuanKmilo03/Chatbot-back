@@ -364,3 +364,45 @@ export const actualizarVacante = async (
 
   return vacanteActualizada;
 };
+
+
+export const listarVacantesEmpresaService = async ({ companyId, page, limit, titulo, estado, area, requisitos }: {
+  companyId: number;
+  page: number;
+  limit: number;
+  titulo?: string;
+  estado?: EstadoGeneral;
+  area?: string;
+  requisitos?: string;
+}) => {
+  const skip = (page - 1) * limit;
+
+  const where: Prisma.VacanteWhereInput = {
+    empresaId: companyId,
+    ...(titulo && { titulo: { contains: titulo, mode: Prisma.QueryMode.insensitive } }),
+    ...(estado && { estado }),
+    ...(area && { area: { contains: area, mode: Prisma.QueryMode.insensitive } }),
+    ...(requisitos && { requisitos: { contains: requisitos, mode: Prisma.QueryMode.insensitive } }),
+  };
+
+  const [data, total] = await Promise.all([
+    prisma.vacante.findMany({
+      where,
+      include: {
+        empresa: {
+          select: {
+            id: true,
+            nit: true,
+            usuario: { select: { nombre: true, email: true } },
+          },
+        },
+      },
+      orderBy: { creadaEn: "desc" },
+      skip,
+      take: limit,
+    }),
+    prisma.vacante.count({ where }),
+  ]);
+
+  return { data, total, page, pageSize: limit };
+};
