@@ -1,29 +1,21 @@
-import nodemailer from 'nodemailer';
+import sgMail from '@sendgrid/mail';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-export const transporter = nodemailer.createTransport({
-  host: process.env.MAIL_HOST,
-  port: Number(process.env.MAIL_PORT),
-  secure: false,
-  auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS,
-  },
-});
+sgMail.setApiKey(process.env.MAIL_PASS as string);
 
 export const sendMail = async (to: string, subject: string, html: string) => {
-  const mailOptions = {
-    from: `"Prácticas UFPS" <${process.env.MAIL_FROM}>`,
+  const msg = {
     to,
+    from: process.env.MAIL_FROM || 'practicas@dominio.com',
     subject,
     html,
   };
 
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Correo enviado:', info.messageId);
+    const info = await sgMail.send(msg);
+    console.log('✅ Correo enviado:', info[0].statusCode);
   } catch (error) {
     console.error('❌ Error enviando correo:', error);
     throw error;
