@@ -22,8 +22,8 @@ const __dirname = path.dirname(__filename);
 const allowedOrigins = [
   env.FRONTEND_URL, // tu dominio de producción
   "http://localhost:4000", // para desarrollo local
-  "https://wfgp12.github.io/practibot_ufps/",// opcional, tu dominio real
-  "https://n8n.juanpctsoftware.online/",
+  "https://wfgp12.github.io/practibot_ufps",// opcional, tu dominio real
+  "https://n8n.juanpctsoftware.online",
   "https://wfgp12.github.io"
 ];
 
@@ -37,12 +37,17 @@ app.use(
       }
     },
     credentials: true, // si usas cookies o auth headers
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
 app.use((req, res, next) => {
-  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
-  res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
+  res.removeHeader("Cross-Origin-Opener-Policy");
+  res.removeHeader("Cross-Origin-Embedder-Policy");
+  res.header("Cross-Origin-Resource-Policy", "cross-origin");
+  res.header("Cross-Origin-Opener-Policy", "unsafe-none");
+  res.header("Cross-Origin-Embedder-Policy", "unsafe-none");
   next();
 });
 
