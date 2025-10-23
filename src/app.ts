@@ -43,12 +43,14 @@ app.use(
 );
 
 app.use((req, res, next) => {
-  res.removeHeader("Cross-Origin-Opener-Policy");
-  res.removeHeader("Cross-Origin-Embedder-Policy");
-  res.header("Cross-Origin-Resource-Policy", "cross-origin");
-  res.header("Cross-Origin-Opener-Policy", "unsafe-none");
-  res.header("Cross-Origin-Embedder-Policy", "unsafe-none");
+  res.setHeader("Cross-Origin-Opener-Policy", "unsafe-none");
+  res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
   next();
+});
+
+app.get("/headers", (req, res) => {
+  res.json(req.headers);
 });
 
 // Rutas
