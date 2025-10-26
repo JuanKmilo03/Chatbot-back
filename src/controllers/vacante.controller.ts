@@ -7,12 +7,12 @@ import { EstadoGeneral } from '@prisma/client';
 
 export const crearVacante = async (req: AuthRequest, res: Response) => {
   try {
-    const { titulo, descripcion, area, requisitos } = req.body;
+    const { titulo, descripcion, area, modalidad, habilidadesBlandas, habilidadesTecnicas } = req.body;
 
     // Validar campos obligatorios
-    if (!titulo || !descripcion || !area) {
+    if (!titulo || !descripcion || !area || !modalidad) {
       return res.status(400).json({
-        message: "Faltan campos obligatorios: titulo, descripcion, area",
+        message: "Faltan campos obligatorios: titulo, descripcion, area o modalidad",
       });
     }
 
@@ -30,7 +30,9 @@ export const crearVacante = async (req: AuthRequest, res: Response) => {
       titulo,
       descripcion,
       area,
-      requisitos,
+      modalidad,
+      habilidadesBlandas,
+      habilidadesTecnicas,
     });
 
     return res.status(201).json({
@@ -49,19 +51,23 @@ export const crearVacante = async (req: AuthRequest, res: Response) => {
 
 export const registrarVacante = async (req: AuthRequest, res: Response) => {
   try {
-    const { titulo, descripcion, area, requisitos, empresaId } = req.body;
+    const { titulo, descripcion, area, modalidad, habilidadesBlandas, habilidadesTecnicas, empresaId } = req.body;
 
-    if (!titulo || !descripcion || !area || !empresaId) {
-      return res.status(400).json({ message: "Faltan campos obligatorios: titulo, descripcion, area, empresaId" });
+    if (!titulo || !descripcion || !area || !empresaId || !modalidad) {
+      return res.status(400).json({
+        message: "Faltan campos obligatorios: titulo, descripcion, area, empresaId o modalidad",
+      });
     }
 
     const vacante = await vacanteService.crearVacanteAprobada({
       titulo,
       descripcion,
       area,
-      requisitos,
+      modalidad,
+      habilidadesBlandas,
+      habilidadesTecnicas,
       empresaId,
-      directorId: req.user!.id
+      directorId: req.user!.id,
     });
 
     return res.status(201).json({
@@ -313,19 +319,25 @@ export const actualizarVacanteAdminDirector = async (req: Request, res: Response
       titulo,
       descripcion,
       area,
-      requisitos,
+      modalidad,
+      habilidadesBlandas,
+      habilidadesTecnicas,
       estado,
       empresaId,
       directorValidaId,
     } = req.body;
 
-    console.log(id)
+    if (!id) {
+      return res.status(400).json({ message: "El ID de la vacante es obligatorio." });
+    }
 
     const vacanteActualizada = await vacanteService.actualizarVacante(Number(id), {
       titulo,
       descripcion,
       area,
-      requisitos,
+      modalidad,
+      habilidadesBlandas,
+      habilidadesTecnicas,
       estado,
       empresaId,
       directorValidaId,
@@ -340,6 +352,7 @@ export const actualizarVacanteAdminDirector = async (req: Request, res: Response
     return res.status(400).json({ message: error.message });
   }
 };
+
 
 export const listarVacantesEmpresa = async (req: AuthRequest, res: Response) => {
   try {

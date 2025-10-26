@@ -81,18 +81,26 @@ model Convenio {
 }
 
 model Vacante {
-  id               Int           @id @default(autoincrement())
-  empresaId        Int
-  directorValidaId Int?
-  titulo           String
-  descripcion      String
-  area             String
-  requisitos       String?
-  estado           EstadoGeneral @default(PENDIENTE)
-  creadaEn         DateTime      @default(now())
-  practicas        Practica[]
-  directorValida   Director?     @relation(fields: [directorValidaId], references: [id])
-  empresa          Empresa       @relation(fields: [empresaId], references: [id])
+  id                  Int             @id @default(autoincrement())
+  empresaId           Int
+  directorValidaId    Int?
+  titulo              String
+  modalidad           Modalidad
+  descripcion         String
+  area                String
+  habilidadesBlandas  String?         
+  habilidadesTecnicas String?
+  estado              EstadoGeneral   @default(PENDIENTE)
+  creadaEn            DateTime        @default(now())
+  practicas           Practica[]
+  directorValida      Director?     @relation(fields: [directorValidaId], references: [id])
+  empresa             Empresa       @relation(fields: [empresaId], references: [id])
+}
+
+enum Modalidad {
+  PRESENCIAL
+  REMOTO
+  HIBRIDO
 }
 
 enum EstadoGeneral {

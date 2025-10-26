@@ -17,17 +17,19 @@ export const crearVacante = async (data: {
   titulo: string;
   descripcion: string;
   area: string;
-  requisitos?: string;
+  modalidad: "PRESENCIAL" | "REMOTO" | "HIBRIDO";
+  habilidadesBlandas?: string;
+  habilidadesTecnicas?: string;
 }) => {
-  const { empresaId, titulo, descripcion, area, requisitos } = data;
+  const { empresaId, titulo, descripcion, area, modalidad, habilidadesBlandas, habilidadesTecnicas } = data;
 
-  // 🔍 Validar que la empresa exista
+  // Validar que la empresa exista
   const empresa = await prisma.empresa.findUnique({
     where: { id: empresaId },
   });
 
   if (!empresa) {
-    throw new Error('La empresa especificada no existe.');
+    throw new Error("La empresa especificada no existe.");
   }
 
   // Crear la vacante (estado pendiente por defecto)
@@ -37,8 +39,10 @@ export const crearVacante = async (data: {
       titulo,
       descripcion,
       area,
-      requisitos: requisitos || null,
-      estado: EstadoGeneral.PENDIENTE,
+      modalidad,
+      habilidadesBlandas: habilidadesBlandas || null,
+      habilidadesTecnicas: habilidadesTecnicas || null,
+      estado: "PENDIENTE", // o EstadoGeneral.PENDIENTE si usas el enum importado
     },
     include: {
       empresa: {
@@ -59,11 +63,13 @@ export const crearVacanteAprobada = async (data: {
   titulo: string;
   descripcion: string;
   area: string;
-  requisitos?: string;
+  modalidad: "PRESENCIAL" | "REMOTO" | "HIBRIDO";
+  habilidadesBlandas?: string;
+  habilidadesTecnicas?: string;
   empresaId: number;
   directorId: number;
 }) => {
-  const { titulo, descripcion, area, requisitos, empresaId, directorId } = data;
+  const { titulo, descripcion, area, modalidad, habilidadesBlandas, habilidadesTecnicas, empresaId, directorId } = data;
 
   // Validar empresa
   const empresa = await prisma.empresa.findUnique({ where: { id: empresaId } });
@@ -79,19 +85,22 @@ export const crearVacanteAprobada = async (data: {
       titulo,
       descripcion,
       area,
-      requisitos: requisitos || null,
-      estado: EstadoGeneral.APROBADA,
+      modalidad,
+      habilidadesBlandas: habilidadesBlandas || null,
+      habilidadesTecnicas: habilidadesTecnicas || null,
+      estado: "APROBADA",
       empresaId,
-      directorValidaId: directorId
+      directorValidaId: directorId,
     },
     include: {
       empresa: { select: { id: true, usuario: { select: { nombre: true } } } },
-      directorValida: { select: { id: true, usuario: { select: { nombre: true } } } }
-    }
+      directorValida: { select: { id: true, usuario: { select: { nombre: true } } } },
+    },
   });
 
   return vacante;
 };
+
 
 export const getVacanteByIdService = async (id: number): Promise<Vacante | null> => {
   return prisma.vacante.findUnique({
@@ -327,7 +336,9 @@ export const actualizarVacante = async (
     titulo: string;
     descripcion: string;
     area: string;
-    requisitos?: string;
+    modalidad?: "PRESENCIAL" | "REMOTO" | "HIBRIDO";
+    habilidadesBlandas?: string;
+    habilidadesTecnicas?: string;
     estado?: EstadoGeneral;
     empresaId?: number; // solo lo usarán admin/director
     directorValidaId?: number;
@@ -351,7 +362,11 @@ export const actualizarVacante = async (
 
   const vacanteActualizada = await prisma.vacante.update({
     where: { id: vacanteId },
-    data,
+    data: {
+      ...data,
+      habilidadesBlandas: data.habilidadesBlandas ?? vacante.habilidadesBlandas,
+      habilidadesTecnicas: data.habilidadesTecnicas ?? vacante.habilidadesTecnicas,
+    },
     include: {
       empresa: {
         select: {
@@ -370,6 +385,7 @@ export const actualizarVacante = async (
 
   return vacanteActualizada;
 };
+
 
 
 export const listarVacantesEmpresaService = async ({ companyId, page, limit, titulo, estado, area, requisitos }: {
