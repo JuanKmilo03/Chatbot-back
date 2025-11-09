@@ -22,17 +22,18 @@ model Usuario {
 }
 
 model Director {
-  id                Int        @id @default(autoincrement())
-  usuarioId         Int        @unique
-  programaId        Int?       @unique
+  id                Int             @id @default(autoincrement())
+  usuarioId         Int             @unique
+  programaId        Int?            @unique
   Facultad          String?
-  usuario           Usuario    @relation(fields: [usuarioId], references: [id])
-  programa          Programa?  @relation(fields: [programaId], references: [id])
+  usuario           Usuario         @relation(fields: [usuarioId], references: [id])
+  programa          Programa?       @relation(fields: [programaId], references: [id])
   convenios         Convenio[]
   reportes          Reporte[]
   vacantesValidadas Vacante[]
   empresas          Empresa[]
-  documentos Documento[]
+  documentos        Documento[]
+  conversaciones    Conversacion[]
 }
 
 model Programa {
@@ -68,6 +69,7 @@ model Empresa {
   vacantes           Vacante[]
   evaluaciones       Evaluacion[]
   representanteLegal RepresentanteLegal?
+  conversaciones     Conversacion[]
 }
 
 model Convenio {
@@ -171,6 +173,50 @@ model RepresentanteLegal {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+}
+
+model Conversacion {
+  id         Int       @id @default(autoincrement())
+  empresaId  Int
+  directorId Int
+  titulo     String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  empresa    Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  director   Director  @relation(fields: [directorId], references: [id], onDelete: Cascade)
+  mensajes   Mensaje[]
+
+  @@unique([empresaId, directorId])
+  @@index([empresaId])
+  @@index([directorId])
+}
+
+model Mensaje {
+  id              Int              @id @default(autoincrement())
+  conversacionId  Int
+  remitenteId     Int
+  remitenteRol    Rol
+  contenido       String?
+  createdAt       DateTime         @default(now())
+  conversacion    Conversacion     @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
+  archivos        ArchivoMensaje[]
+
+  @@index([conversacionId])
+  @@index([createdAt])
+}
+
+model ArchivoMensaje {
+  id           Int      @id @default(autoincrement())
+  mensajeId    Int
+  nombreArchivo String
+  archivoUrl   String
+  publicId     String?
+  mimeType     String?
+  fileSize     Int?
+  createdAt    DateTime @default(now())
+  mensaje      Mensaje  @relation(fields: [mensajeId], references: [id], onDelete: Cascade)
+
+  @@index([mensajeId])
 }
 
 enum Rol {

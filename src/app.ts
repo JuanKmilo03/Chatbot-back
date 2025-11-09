@@ -2,9 +2,11 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
+import { createServer } from "http";
 import { env } from "./config/env.config.js";
 import { connectDB } from "./config/db.js";
 import { fileURLToPath } from "url";
+import { initializeSocket } from "./config/socket.config.js";
 
 // Swagger
 import swaggerUi from "swagger-ui-express";
@@ -16,6 +18,12 @@ import testRouter from "./routes/test.route.js";
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
+const io = initializeSocket(httpServer);
+
+// Hacer io accesible en toda la aplicación
+export { io };
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -65,6 +73,7 @@ import vacanteRoutes from "./routes/vacante.routes.js";
 import documentoRoutes from "./routes/documento.routes.js";
 import estudianteRoutes from "./routes/estudiante.routes.js";
 import representanteRoutes from "./routes/representante.routes.js";
+import chatRoutes from "./routes/chat.routes.js";
 
 // Middlewares
 import { verifyToken, authorizeRoles } from "./middlewares/auth.middleware.js";
@@ -92,6 +101,7 @@ app.use('/api/estudiantes', estudianteRoutes);
 
 // Rutas protegidas
 app.use("/api/representantes", representanteRoutes);
+app.use("/api/chat", chatRoutes);
 
 // Rutas por roles
 app.use("/api/convenios", convenioRoutes);
@@ -106,7 +116,11 @@ app.get("/", (_req, res) => res.send("🚀 Servidor del Chatbot funcionando corr
 const startServer = async () => {
   try {
     await connectDB();
-    app.listen(env.PORT, () => console.log(`Servidor corriendo en http://localhost:${env.PORT}`));
+    httpServer.listen(env.PORT, () => {
+      console.log(`🚀 Servidor HTTP corriendo en http://localhost:${env.PORT}`);
+      console.log(`⚡ Socket.IO listo para conexiones WebSocket`);
+      console.log(`📚 Documentación disponible en http://localhost:${env.PORT}/docs`);
+    });
   } catch (error) {
     console.error("Error al iniciar el servidor:", error);
     process.exit(1);
