@@ -1,4 +1,4 @@
-import { PrismaClient, Rol, EstadoConvenio, EstadoPractica, EstadoGeneral } from '@prisma/client';
+import { PrismaClient, Rol, EstadoConvenio, EstadoPractica, EstadoGeneral, TipoConvenio } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -77,6 +77,7 @@ async function main() {
       descripcion: 'Empresa dedicada al desarrollo de software empresarial.',
       estado: EstadoGeneral.APROBADA,
       directorId: director.id,
+      habilitada: true,
     },
   });
 
@@ -100,21 +101,28 @@ async function main() {
         nombre: 'Convenio Prácticas UFPS 2025',
         empresaId: empresa1.id,
         directorId: director.id,
-        estado: EstadoConvenio.ACTIVO,
+        estado: EstadoConvenio.APROBADO,
+        tipo: TipoConvenio.MACRO,
+        fechaInicio: new Date('2025-02-01'),
+        fechaFin: new Date('2026-02-28'),
         archivoUrl: 'https://ufps.edu.co/docs/convenio2025.pdf',
       },
       {
         nombre: 'Convenio Desarrollo Web',
         empresaId: empresa1.id,
         directorId: director.id,
-        estado: EstadoConvenio.ACTIVO,
+        estado: EstadoConvenio.APROBADO,
+        tipo: TipoConvenio.ESPECIFICO,
+        fechaInicio: new Date('2025-02-01'),
+        fechaFin: new Date('2026-02-28'),
         archivoUrl: 'https://ufps.edu.co/docs/convenio_web.pdf',
       },
       {
         nombre: 'Convenio Innovación 2025',
         empresaId: empresa2.id,
         directorId: director.id,
-        estado: EstadoConvenio.PENDIENTE,
+        estado: EstadoConvenio.EN_REVISION,
+        tipo: TipoConvenio.MACRO,
         archivoUrl: 'https://ufps.edu.co/docs/convenio_innova.pdf',
       },
     ],
