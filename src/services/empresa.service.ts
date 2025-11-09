@@ -1,7 +1,7 @@
 import { EstadoGeneral, PrismaClient } from '@prisma/client';
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { sendMail } from '../utils/mailer.js';
+import { sendMailWithTemplate } from '../utils/mailer.js';
 
 const prisma = new PrismaClient();
 
@@ -98,17 +98,15 @@ export const aprobarEmpresa = async (id: number) => {
     data: { password: hashedPassword },
   });
 
-  const html = `
-    <h2>Tu solicitud ha sido aprobada</h2>
-    <p>Hola ${empresaActualizada .usuario.nombre},</p>
-    <p>Tu empresa ha sido aprobada en la plataforma. Aquí tienes tu nueva contraseña:</p>
-    <p><b>${nuevaPassword}</b></p>
-    <p>Por favor, inicia sesión y cámbiala lo antes posible.</p>
-    <br>
-    <p>Atentamente,<br>la UFPS</p>
-  `;
-
-  await sendMail(empresaActualizada.usuario.email, "Aprobación de empresa", html);
+  await sendMailWithTemplate(
+    empresaActualizada.usuario.email,
+    process.env.SENDGRID_TEMPLATE_EMPRESA_APROBADA || 'd-default-template-id',
+    {
+      nombre: empresaActualizada.usuario.nombre,
+      nit: empresa.nit,
+      contrasena: nuevaPassword,
+    }
+  );
 
   return empresaActualizada;
 };
@@ -443,21 +441,16 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
     return { empresa, representanteLegal };
   });
 
-  // Enviar correo con la contraseña generada
-  const html = `
-    <h2>¡Bienvenido al Portal de Prácticas Empresariales de la UFPS!</h2>
-    <p>Hola ${nombre},</p>
-    <p>Tu empresa ha sido registrada y aprobada por el director.</p>
-    <p>Estos son tus datos de acceso:</p>
-    <ul>
-      <li><b>NIT:</b> ${nit}</li>
-      <li><b>Contraseña:</b> ${passwordGenerada}</li>
-    </ul>
-    <p>Te recomendamos cambiar tu contraseña una vez inicies sesión.</p>
-    <br>
-  `;
-
-  await sendMail(email, "Registro de empresa aprobado - Portal de Prácticas Empresariales de la UFPS", html);
+  // Enviar correo con plantilla de SendGrid
+  await sendMailWithTemplate(
+    email,
+    process.env.SENDGRID_TEMPLATE_EMPRESA_APROBADA || 'd-default-template-id',
+    {
+      nombre: nombre,
+      nit: nit,
+      contrasena: passwordGenerada,
+    }
+  );
 
   return result.empresa;
 };
@@ -484,19 +477,14 @@ export const solicitarRecuperacionContrasenia = async (identificador: string) =>
 
   const enlace = `${process.env.FRONTEND_URL}/recuperar-contrasenia?token=${token}`;
 
-  const html = `
-    <h2>Recuperación de contraseña 🔐</h2>
-    <p>Hola ${usuario.nombre},</p>
-    <p>Has solicitado recuperar tu contraseña. Haz clic en el siguiente enlace:</p>
-    <p><a href="${enlace}" target="_blank">Restablecer contraseña</a></p>
-    <p>Este enlace expirará en 15 minutos.</p>
-    <br>
-    <p>Si no solicitaste esto, puedes ignorar el correo.</p>
-    <br>
-    <p>Atentamente,<br>la UFPS</p>
-  `;
-
-  await sendMail(usuario.email, "Recuperación de contraseña", html);
+  await sendMailWithTemplate(
+    usuario.email,
+    process.env.SENDGRID_TEMPLATE_RECUPERACION_PASSWORD || 'd-default-template-id',
+    {
+      nombre: usuario.nombre,
+      enlace: enlace,
+    }
+  );
 
   return { message: "Correo de recuperación enviado correctamente" };
 };
