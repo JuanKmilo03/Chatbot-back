@@ -64,6 +64,7 @@ import empresaRoutes from "./routes/empresa.routes.js";
 import vacanteRoutes from "./routes/vacante.routes.js";
 import documentoRoutes from "./routes/documento.routes.js";
 import estudianteRoutes from "./routes/estudiante.routes.js";
+import representanteRoutes from "./routes/representante.routes.js";
 
 // Middlewares
 import { verifyToken, authorizeRoles } from "./middlewares/auth.middleware.js";
@@ -88,6 +89,9 @@ app.use("/api/vacantes", vacanteRoutes);
 app.use("/api/documentos", documentoRoutes);
 app.use("/api/empresas", empresaRoutes);
 app.use('/api/estudiantes', estudianteRoutes);
+
+// Rutas protegidas
+app.use("/api/representantes", representanteRoutes);
 
 // Rutas por roles
 app.use("/api/convenios", convenioRoutes);

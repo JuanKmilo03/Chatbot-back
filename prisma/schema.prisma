@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model Usuario {
@@ -51,21 +52,22 @@ model Estudiante {
 }
 
 model Empresa {
-  id           Int           @id @default(autoincrement())
-  usuarioId    Int           @unique
-  usuario      Usuario       @relation(fields: [usuarioId], references: [id])
-  nit          String        @unique
-  telefono     String?
-  direccion    String?
-  sector       String?
-  descripcion  String?
-  estado       EstadoGeneral @default(PENDIENTE)
-  directorId   Int?
-  director     Director?     @relation(fields: [directorId], references: [id])
-  createdAt    DateTime      @default(now())
-  convenios    Convenio[]
-  vacantes     Vacante[]
-  evaluaciones Evaluacion[]
+  id                 Int                  @id @default(autoincrement())
+  usuarioId          Int                  @unique
+  usuario            Usuario              @relation(fields: [usuarioId], references: [id])
+  nit                String               @unique
+  telefono           String?
+  direccion          String?
+  sector             String?
+  descripcion        String?
+  estado             EstadoGeneral        @default(PENDIENTE)
+  directorId         Int?
+  director           Director?            @relation(fields: [directorId], references: [id])
+  createdAt          DateTime             @default(now())
+  convenios          Convenio[]
+  vacantes           Vacante[]
+  evaluaciones       Evaluacion[]
+  representanteLegal RepresentanteLegal?
 }
 
 model Convenio {
@@ -155,6 +157,20 @@ model Documento {
   updatedAt      DateTime  @updatedAt
   directorId     Int
   director       Director  @relation(fields: [directorId], references: [id], onDelete: Cascade)
+}
+
+model RepresentanteLegal {
+  id              Int      @id @default(autoincrement())
+  empresaId       Int      @unique
+  nombreCompleto  String
+  tipoDocumento   String
+  numeroDocumento String   @unique
+  cargo           String
+  telefono        String?
+  email           String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 }
 
 enum Rol {
