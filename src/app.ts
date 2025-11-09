@@ -12,9 +12,6 @@ import { initializeSocket } from "./config/socket.config.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
-//de prueba
-import testRouter from "./routes/test.route.js";
-
 dotenv.config();
 
 const app = express();
@@ -85,8 +82,6 @@ import { verifyToken, authorizeRoles } from "./middlewares/auth.middleware.js";
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
-
-app.use("/api", testRouter);
 
 // Swagger UI
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));

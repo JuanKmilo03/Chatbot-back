@@ -1,12 +1,16 @@
 import { Server as SocketIOServer } from "socket.io";
 
+// Tipos flexibles para los eventos de Socket.IO (usar any para evitar conflictos con Prisma)
+export type MensajeConArchivos = any;
+export type ConversacionCompleta = any;
+
 /**
  * Emite un evento de nuevo mensaje a todos los usuarios en una conversación
  */
 export const emitNewMessage = (
   io: SocketIOServer,
   conversacionId: number,
-  mensaje: any
+  mensaje: MensajeConArchivos
 ) => {
   io.to(`conversation-${conversacionId}`).emit("new-message", mensaje);
 };
@@ -18,7 +22,7 @@ export const emitNewConversation = (
   io: SocketIOServer,
   empresaId: number,
   directorId: number,
-  conversacion: any
+  conversacion: ConversacionCompleta
 ) => {
   // Notificar a la empresa
   io.to(`user-${empresaId}`).emit("new-conversation", conversacion);

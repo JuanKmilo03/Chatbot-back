@@ -1,18 +1,24 @@
 import { Server as HTTPServer } from "http";
-import { Server as SocketIOServer } from "socket.io";
+import { Server as SocketIOServer, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 import { env } from "./env.config.js";
+import { Rol } from "@prisma/client";
 
 export interface SocketUser {
   id: number;
-  rol: string;
+  rol: Rol;
 }
 
 export interface AuthenticatedSocket extends Socket {
   user?: SocketUser;
 }
 
-import { Socket } from "socket.io";
+/**
+ * Valida que el rol sea un valor válido del enum Rol
+ */
+const isValidRol = (rol: string): rol is Rol => {
+  return Object.values(Rol).includes(rol as Rol);
+};
 
 export const initializeSocket = (httpServer: HTTPServer) => {
   const io = new SocketIOServer(httpServer, {
@@ -36,8 +42,17 @@ export const initializeSocket = (httpServer: HTTPServer) => {
     }
 
     try {
-      const decoded = jwt.verify(token, env.JWT_SECRET) as SocketUser;
-      (socket as AuthenticatedSocket).user = decoded;
+      const decoded = jwt.verify(token, env.JWT_SECRET) as { id: number; rol: string };
+
+      // Validar que el rol sea válido
+      if (!isValidRol(decoded.rol)) {
+        return next(new Error("Rol inválido en el token"));
+      }
+
+      (socket as AuthenticatedSocket).user = {
+        id: decoded.id,
+        rol: decoded.rol,
+      };
       next();
     } catch (error) {
       next(new Error("Token inválido"));
@@ -54,7 +69,7 @@ export const initializeSocket = (httpServer: HTTPServer) => {
       return;
     }
 
-    console.log(`✅ Usuario conectado: ${user.id} (${user.rol})`);
+    console.log(`Usuario conectado: ${user.id} (${user.rol})`);
 
     // El usuario se une a su sala personal
     socket.join(`user-${user.id}`);
@@ -97,7 +112,7 @@ export const initializeSocket = (httpServer: HTTPServer) => {
 
     // Evento de desconexión
     socket.on("disconnect", () => {
-      console.log(`❌ Usuario desconectado: ${user.id}`);
+      console.log(`Usuario desconectado: ${user.id}`);
     });
   });
 

@@ -4,6 +4,15 @@ import * as chatService from "../services/chat.service.js";
 import cloudinary from "../config/cloudinary.config.js";
 import { io } from "../app.js";
 import * as socketChatService from "../services/socket-chat.service.js";
+import { Rol } from "@prisma/client";
+import { AppError } from "../utils/errors.js";
+
+/**
+ * Valida que el rol sea un valor válido del enum Rol
+ */
+const isValidRol = (rol: string): rol is Rol => {
+  return Object.values(Rol).includes(rol as Rol);
+};
 
 /**
  * Obtiene o crea una conversación entre empresa y director
@@ -17,7 +26,7 @@ export const obtenerOCrearConversacionController = async (
     const usuarioId = req.user?.id;
     const rol = req.user?.rol;
 
-    if (!usuarioId || !rol) {
+    if (!usuarioId || !rol || !isValidRol(rol)) {
       return res.status(401).json({ message: "No autorizado" });
     }
 
@@ -43,7 +52,8 @@ export const obtenerOCrearConversacionController = async (
     res.status(200).json(conversacion);
   } catch (error: any) {
     console.error("Error al obtener/crear conversación:", error);
-    res.status(400).json({ message: error.message });
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    res.status(statusCode).json({ message: error.message });
   }
 };
 
@@ -60,7 +70,7 @@ export const enviarMensajeController = async (
     const rol = req.user?.rol;
     const archivos = req.files as Express.Multer.File[];
 
-    if (!usuarioId || !rol) {
+    if (!usuarioId || !rol || !isValidRol(rol)) {
       return res.status(401).json({ message: "No autorizado" });
     }
 
@@ -124,7 +134,8 @@ export const enviarMensajeController = async (
     res.status(201).json(mensaje);
   } catch (error: any) {
     console.error("Error al enviar mensaje:", error);
-    res.status(400).json({ message: error.message });
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    res.status(statusCode).json({ message: error.message });
   }
 };
 
@@ -141,7 +152,7 @@ export const obtenerMensajesController = async (
     const usuarioId = req.user?.id;
     const rol = req.user?.rol;
 
-    if (!usuarioId || !rol) {
+    if (!usuarioId || !rol || !isValidRol(rol)) {
       return res.status(401).json({ message: "No autorizado" });
     }
 
@@ -158,7 +169,8 @@ export const obtenerMensajesController = async (
     res.status(200).json(result);
   } catch (error: any) {
     console.error("Error al obtener mensajes:", error);
-    res.status(400).json({ message: error.message });
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    res.status(statusCode).json({ message: error.message });
   }
 };
 
@@ -173,7 +185,7 @@ export const obtenerConversacionesController = async (
     const usuarioId = req.user?.id;
     const rol = req.user?.rol;
 
-    if (!usuarioId || !rol) {
+    if (!usuarioId || !rol || !isValidRol(rol)) {
       return res.status(401).json({ message: "No autorizado" });
     }
 
@@ -185,7 +197,8 @@ export const obtenerConversacionesController = async (
     res.status(200).json(conversaciones);
   } catch (error: any) {
     console.error("Error al obtener conversaciones:", error);
-    res.status(400).json({ message: error.message });
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    res.status(statusCode).json({ message: error.message });
   }
 };
 
@@ -201,7 +214,7 @@ export const obtenerConversacionPorIdController = async (
     const usuarioId = req.user?.id;
     const rol = req.user?.rol;
 
-    if (!usuarioId || !rol) {
+    if (!usuarioId || !rol || !isValidRol(rol)) {
       return res.status(401).json({ message: "No autorizado" });
     }
 
@@ -214,6 +227,7 @@ export const obtenerConversacionPorIdController = async (
     res.status(200).json(conversacion);
   } catch (error: any) {
     console.error("Error al obtener conversación:", error);
-    res.status(400).json({ message: error.message });
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    res.status(statusCode).json({ message: error.message });
   }
 };
