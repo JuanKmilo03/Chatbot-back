@@ -32,11 +32,20 @@ export const convenioService = {
       orderBy: { creadoEn: 'desc' },
     });
   },
+  listarConveniosPorEmpresaId: async (empresaId: number) => {
+    return await prisma.convenio.findMany({
+      where: { empresaId },
+      include: { empresa: true, director: true },
+      orderBy: { creadoEn: 'desc' },
+    });
+  },
   obtenerConvenioPorId: async (convenioId: number, usuario: AuthRequest["user"]) => {
     const convenio = await prisma.convenio.findUnique({
       where: { id: convenioId },
       include: {
-        empresa: true,         
+        empresa: {
+          include: { usuario: true },
+        },         
         director: true,        
         revisiones: true,
         documentos: true,

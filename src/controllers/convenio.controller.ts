@@ -262,6 +262,19 @@ export const listarTodosLosConvenios = async (_req: AuthRequest, res: Response) 
   }
 };
 
+export const listarConveniosPorEmpresaId = async (req: AuthRequest, res: Response) => {
+  try {
+    const empresaId = Number(req.params.empresaId);
+    if (!empresaId) return res.status(400).json({ message: "ID de empresa inválido" });
+
+    const convenios = await convenioService.listarConveniosPorEmpresaId(empresaId);
+    res.status(200).json({ data:convenios });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error al listar convenios por empresa", error });
+  }
+};
+
 export const obtenerConvenioPorId = async (req: AuthRequest, res: Response) => {
   try {
     const convenioId = Number(req.params.id);

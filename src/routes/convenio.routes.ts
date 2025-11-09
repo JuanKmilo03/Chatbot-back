@@ -17,6 +17,7 @@ import {
   marcarConvenioCancelado,
   iniciarConvenio,
   listarTodosLosConvenios,
+  listarConveniosPorEmpresaId,
 } from "../controllers/convenio.controller.js";
 import cloudinary from "../config/cloudinary.config.js";
 import { authorizeRoles, verifyToken } from "../middlewares/auth.middleware.js";
@@ -130,6 +131,14 @@ router.post('/iniciar', verifyToken, authorizeRoles('EMPRESA'), iniciarConvenio)
  *         description: Acceso denegado (solo director o admin)
  */
 router.get("/", verifyToken, authorizeRoles('DIRECTOR', 'ADMIN'), listarTodosLosConvenios);
+
+router.get(
+  "/empresa/:empresaId",
+  verifyToken,
+  authorizeRoles('DIRECTOR', 'ADMIN'),
+  listarConveniosPorEmpresaId
+);
+
 /**
  * @swagger
  * /api/convenios/me:
