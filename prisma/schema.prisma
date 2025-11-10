@@ -232,17 +232,23 @@ model Documento {
   id           Int       @id @default(autoincrement())
   titulo       String
   descripcion  String?
+  categoria    TipoDocumento @default(GENERAL)
   archivoUrl   String
   publicId     String?
-  originalName String?
-  mimeType     String?
-  fileSize     Int?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   directorId   Int
   director     Director  @relation(fields: [directorId], references: [id], onDelete: Cascade)
-  Convenio     Convenio? @relation(fields: [convenioId], references: [id])
   convenioId   Int?
+  Convenio     Convenio? @relation(fields: [convenioId], references: [id])
+}
+
+enum TipoDocumento {
+  GENERAL
+  CONVENIO_PLANTILLA
+  CONVENIO_EMPRESA
+  ESTUDIANTE
+  EMPRESA
 }
 
 enum Rol {

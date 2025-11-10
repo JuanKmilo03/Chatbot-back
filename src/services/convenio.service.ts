@@ -1,9 +1,14 @@
-import { EstadoConvenio, PrismaClient, TipoConvenio } from "@prisma/client";
+import { EstadoConvenio, PrismaClient, TipoConvenio, TipoDocumento } from "@prisma/client";
 import { AuthRequest } from "../middlewares/auth.middleware.js";
 const prisma = new PrismaClient();
 
 export const convenioService = {
   crearConvenioInicial: async (empresaId: number) => {
+    const plantilla = await prisma.documento.findFirst({
+      where: { categoria: TipoDocumento.CONVENIO_PLANTILLA },
+      orderBy: { createdAt: "desc" },
+    });
+
     const convenio = await prisma.convenio.create({
       data: {
         empresaId,
@@ -12,9 +17,22 @@ export const convenioService = {
         tipo: TipoConvenio.MACRO,
         estado: EstadoConvenio.EN_REVISION,
         version: 1,
-        archivoUrl: null,
+        archivoUrl: plantilla ? plantilla.archivoUrl : null,
       },
     });
+
+    if (plantilla) {
+      await prisma.documento.create({
+        data: {
+          titulo: `Convenio empresa #${empresaId}`,
+          descripcion: "Copia inicial del convenio generado a partir de la plantilla institucional.",
+          categoria: "CONVENIO_EMPRESA",
+          archivoUrl: plantilla.archivoUrl,
+          directorId: plantilla.directorId,
+          convenioId: convenio.id,
+        },
+      });
+    }
 
     return convenio;
   },
@@ -45,13 +63,13 @@ export const convenioService = {
       include: {
         empresa: {
           include: { usuario: true },
-        },         
-        director: true,        
+        },
+        director: true,
         revisiones: true,
         documentos: true,
         vacantes: true,
-        subConvenios: true,    
-        macroConvenio: true,   
+        subConvenios: true,
+        macroConvenio: true,
       },
     });
 

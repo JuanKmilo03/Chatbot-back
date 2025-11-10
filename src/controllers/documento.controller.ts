@@ -2,6 +2,7 @@
 import { Request, Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/authFirebase.js";
 import { DocumentoService } from "../services/documento.service.js";
+import { TipoDocumento } from "@prisma/client";
 
 export const subirDocumento = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -13,18 +14,33 @@ export const subirDocumento = async (req: AuthenticatedRequest, res: Response) =
     const archivo = req.file;
     if (!archivo) return res.status(400).json({ message: "Debe subir un archivo" });
 
-    const documento = await DocumentoService.crearDocumento(req.body, archivo, usuario.id);
+    const documento = await DocumentoService.crearDocumento(
+      {
+        ...req.body,
+        categoria: req.body.categoria || TipoDocumento.GENERAL,
+        convenioId: req.body.convenioId ? Number(req.body.convenioId) : null,
+      },
+      archivo,
+      usuario.id
+    );
     res.status(201).json({ message: "Documento subido correctamente", documento });
   } catch (error: any) {
     res.status(500).json({ message: error.message || "Error al subir documento" });
   }
 };
 
-export const listarDocumentos = async (_req: Request, res: Response) => {
+export const listarDocumentos = async (req: Request, res: Response) => {
   try {
-    const documentos = await DocumentoService.listarDocumentos();
+    const filtros: Record<string, any> = {convenioId: null};
+    filtros.categoria = (req.query.categoria) ?req.query.categoria : {not: "CONVENIO_EMPRESA",};
+    if (req.query.titulo) filtros.titulo = req.query.titulo;
+    if (req.query.directorId) filtros.directorId = Number(req.query.directorId);
+    if (req.query.convenioId) filtros.convenioId = Number(req.query.convenioId);
+
+    const documentos = await DocumentoService.listarDocumentos(filtros);
     res.status(200).json(documentos);
-  } catch {
+  } catch (error) {
+    console.error(error);
     res.status(500).json({ message: "Error al listar documentos" });
   }
 };
