@@ -1,4 +1,4 @@
-import { PrismaClient, Rol, EstadoConvenio, EstadoPractica, EstadoGeneral } from '@prisma/client';
+import { PrismaClient, Rol, EstadoConvenio, EstadoPractica, EstadoGeneral, TipoConvenio } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -10,6 +10,8 @@ async function main() {
   const hashedDirectorPass = await bcrypt.hash('123456', 10);
   const hashedEmpresaPass = await bcrypt.hash('empresa123', 10);
   const hashedEmpresa2Pass = await bcrypt.hash('empresa456', 10);
+  const hashedEmpresa3Pass = await bcrypt.hash('software123', 10);
+  const hashedEmpresa4Pass = await bcrypt.hash('codewave123', 10);
   const hashedEstudiantePass = await bcrypt.hash('estudiante123', 10);
 
   // ─── Usuarios ───────────────────────────────────────────────
@@ -36,6 +38,24 @@ async function main() {
       nombre: 'InnovaTech Group',
       email: 'info@innovatech.com',
       password: hashedEmpresa2Pass,
+      rol: Rol.EMPRESA,
+    },
+  });
+
+  const empresaUser3 = await prisma.usuario.create({
+    data: {
+      nombre: 'SoftWareHouse S.A.S',
+      email: 'contact@softwarehouse.com',
+      password: hashedEmpresa3Pass,
+      rol: Rol.EMPRESA,
+    },
+  });
+
+  const empresaUser4 = await prisma.usuario.create({
+    data: {
+      nombre: 'CodeWave Ltda.',
+      email: 'info@codewave.com',
+      password: hashedEmpresa4Pass,
       rol: Rol.EMPRESA,
     },
   });
@@ -77,6 +97,7 @@ async function main() {
       descripcion: 'Empresa dedicada al desarrollo de software empresarial.',
       estado: EstadoGeneral.APROBADA,
       directorId: director.id,
+      habilitada: true,
     },
   });
 
@@ -88,8 +109,37 @@ async function main() {
       direccion: 'Cra. 10 #45-23, Bucaramanga',
       sector: 'Consultoría TI',
       descripcion: 'Consultora en transformación digital y soluciones empresariales.',
+      estado: EstadoGeneral.APROBADA, // 🔹 Antes estaba PENDIENTE
+      directorId: director.id,
+      habilitada: true,
+    },
+  });
+
+  const empresa3 = await prisma.empresa.create({
+    data: {
+      usuarioId: empresaUser3.id,
+      nit: '900123987-2',
+      telefono: '3206547890',
+      direccion: 'Calle 15 #8-20, Cúcuta',
+      sector: 'Desarrollo Web',
+      descripcion: 'Agencia de desarrollo web con enfoque en startups y PYMEs.',
       estado: EstadoGeneral.PENDIENTE,
       directorId: director.id,
+      habilitada: true,
+    },
+  });
+
+  const empresa4 = await prisma.empresa.create({
+    data: {
+      usuarioId: empresaUser4.id,
+      nit: '901998877-3',
+      telefono: '3014561122',
+      direccion: 'Av. Libertadores #20-50, Cúcuta',
+      sector: 'Software Factory',
+      descripcion: 'Empresa enfocada en soluciones SaaS para educación y salud.',
+      estado: EstadoGeneral.APROBADA,
+      directorId: director.id,
+      habilitada: true,
     },
   });
 
@@ -100,21 +150,28 @@ async function main() {
         nombre: 'Convenio Prácticas UFPS 2025',
         empresaId: empresa1.id,
         directorId: director.id,
-        estado: EstadoConvenio.ACTIVO,
+        estado: EstadoConvenio.APROBADO,
+        tipo: TipoConvenio.MACRO,
+        fechaInicio: new Date('2025-02-01'),
+        fechaFin: new Date('2026-02-28'),
         archivoUrl: 'https://ufps.edu.co/docs/convenio2025.pdf',
       },
       {
         nombre: 'Convenio Desarrollo Web',
         empresaId: empresa1.id,
         directorId: director.id,
-        estado: EstadoConvenio.ACTIVO,
+        estado: EstadoConvenio.APROBADO,
+        tipo: TipoConvenio.ESPECIFICO,
+        fechaInicio: new Date('2025-02-01'),
+        fechaFin: new Date('2026-02-28'),
         archivoUrl: 'https://ufps.edu.co/docs/convenio_web.pdf',
       },
       {
         nombre: 'Convenio Innovación 2025',
         empresaId: empresa2.id,
         directorId: director.id,
-        estado: EstadoConvenio.PENDIENTE,
+        estado: EstadoConvenio.EN_REVISION,
+        tipo: TipoConvenio.MACRO,
         archivoUrl: 'https://ufps.edu.co/docs/convenio_innova.pdf',
       },
     ],
@@ -122,160 +179,33 @@ async function main() {
 
   // ─── Vacantes ───────────────────────────────────────────────
   await prisma.vacante.createMany({
-  data: [
-    // Aprobadas (6)
-    {
-      empresaId: empresa1.id,
-      titulo: 'Desarrollador Frontend React',
-      descripcion: 'Apoyar el desarrollo de interfaces en React.',
-      area: 'Desarrollo Web',
-      modalidad: 'HIBRIDO',
-      habilidadesTecnicas: 'React, Tailwind, REST APIs',
-      habilidadesBlandas: 'Comunicación, trabajo en equipo, adaptabilidad',
-      estado: EstadoGeneral.APROBADA,
-      directorValidaId: director.id,
-    },
-    {
-      empresaId: empresa1.id,
-      titulo: 'Backend Developer Node.js',
-      descripcion: 'Implementar microservicios con Node.js y Express.',
-      area: 'Desarrollo Backend',
-      modalidad: 'REMOTO',
-      habilidadesTecnicas: 'Node.js, PostgreSQL, Prisma',
-      habilidadesBlandas: 'Pensamiento crítico, resolución de problemas',
-      estado: EstadoGeneral.APROBADA,
-      directorValidaId: director.id,
-    },
-    {
-      empresaId: empresa1.id,
-      titulo: 'Data Analyst',
-      descripcion: 'Analizar datos y generar reportes con Power BI.',
-      area: 'Analítica',
-      modalidad: 'PRESENCIAL',
-      habilidadesTecnicas: 'SQL, Power BI, Python',
-      habilidadesBlandas: 'Atención al detalle, comunicación efectiva',
-      estado: EstadoGeneral.APROBADA,
-      directorValidaId: director.id,
-    },
-    {
-      empresaId: empresa1.id,
-      titulo: 'DevOps Intern',
-      descripcion: 'Apoyar la automatización e infraestructura.',
-      area: 'DevOps',
-      modalidad: 'REMOTO',
-      habilidadesTecnicas: 'Docker, AWS, GitHub Actions',
-      habilidadesBlandas: 'Responsabilidad, trabajo colaborativo',
-      estado: EstadoGeneral.APROBADA,
-      directorValidaId: director.id,
-    },
-    {
-      empresaId: empresa2.id,
-      titulo: 'Mobile Developer Flutter',
-      descripcion: 'Desarrollar apps móviles multiplataforma.',
-      area: 'Desarrollo Móvil',
-      modalidad: 'HIBRIDO',
-      habilidadesTecnicas: 'Flutter, Firebase, Clean Architecture',
-      habilidadesBlandas: 'Creatividad, proactividad, aprendizaje rápido',
-      estado: EstadoGeneral.APROBADA,
-      directorValidaId: director.id,
-    },
-    {
-      empresaId: empresa2.id,
-      titulo: 'Fullstack Developer Junior',
-      descripcion: 'Apoyar el desarrollo de aplicaciones web completas.',
-      area: 'Desarrollo Web',
-      modalidad: 'PRESENCIAL',
-      habilidadesTecnicas: 'React, Node.js, MongoDB',
-      habilidadesBlandas: 'Colaboración, autogestión',
-      estado: EstadoGeneral.APROBADA,
-      directorValidaId: director.id,
-    },
-    // Pendientes (3)
-    {
-      empresaId: empresa1.id,
-      titulo: 'Diseñador UI/UX',
-      descripcion: 'Diseñar interfaces atractivas para web y móvil.',
-      area: 'Diseño',
-      modalidad: 'HIBRIDO',
-      habilidadesTecnicas: 'Figma, UX Research, Design Systems',
-      habilidadesBlandas: 'Empatía, pensamiento creativo',
-      estado: EstadoGeneral.PENDIENTE,
-    },
-    {
-      empresaId: empresa2.id,
-      titulo: 'Analista QA Junior',
-      descripcion: 'Ejecutar pruebas y reportar bugs.',
-      area: 'Calidad de Software',
-      modalidad: 'PRESENCIAL',
-      habilidadesTecnicas: 'Cypress, Jest, Postman',
-      habilidadesBlandas: 'Atención al detalle, comunicación',
-      estado: EstadoGeneral.PENDIENTE,
-    },
-    {
-      empresaId: empresa2.id,
-      titulo: 'Soporte Técnico',
-      descripcion: 'Brindar soporte técnico y mantenimiento a sistemas internos.',
-      area: 'Soporte',
-      modalidad: 'REMOTO',
-      habilidadesTecnicas: 'Linux, Redes, Atención al usuario',
-      habilidadesBlandas: 'Paciencia, empatía, responsabilidad',
-      estado: EstadoGeneral.PENDIENTE,
-    },
-  ],
-});
-
-  // ─── Estudiante ─────────────────────────────────────────────
-  const estudiante = await prisma.estudiante.create({
-    data: {
-      usuarioId: estudianteUser.id,
-      habilidades: 'React, Node.js, SQL',
-      perfil: 'Estudiante de Ingeniería de Sistemas apasionada por el desarrollo web.',
-    },
-  });
-
-  // ─── Práctica ───────────────────────────────────────────────
-  const vacanteFrontend = await prisma.vacante.findFirst({
-    where: { titulo: 'Desarrollador Frontend React' },
-  });
-
-  if (vacanteFrontend) {
-    const practica = await prisma.practica.create({
-      data: {
-        estudianteId: estudiante.id,
-        vacanteId: vacanteFrontend.id,
-        estado: EstadoPractica.EN_PROCESO,
-        inicio: new Date('2025-02-10'),
-      },
-    });
-
-    // ─── Evaluación ─────────────────────────────────────────────
-    await prisma.evaluacion.create({
-      data: {
-        practicaId: practica.id,
-        empresaId: empresa1.id,
-        calificacion: 9,
-        observacion: 'Excelente desempeño y compromiso.',
-      },
-    });
-  }
-
-  // ─── Reportes ───────────────────────────────────────────────
-  await prisma.reporte.createMany({
     data: [
       {
-        directorId: director.id,
-        titulo: 'Seguimiento Prácticas Febrero 2025',
-        descripcion: 'Reporte mensual del avance de los estudiantes en práctica.',
+        empresaId: empresa1.id,
+        titulo: 'Desarrollador Frontend React',
+        descripcion: 'Apoyar el desarrollo de interfaces en React.',
+        area: 'Desarrollo Web',
+        modalidad: 'HIBRIDO',
+        habilidadesTecnicas: 'React, Tailwind, REST APIs',
+        habilidadesBlandas: 'Comunicación, trabajo en equipo, adaptabilidad',
+        estado: EstadoGeneral.APROBADA,
+        directorValidaId: director.id,
       },
       {
-        directorId: director.id,
-        titulo: 'Informe Convenios Activos',
-        descripcion: 'Listado actualizado de convenios vigentes con empresas asociadas.',
+        empresaId: empresa1.id,
+        titulo: 'Backend Developer Node.js',
+        descripcion: 'Implementar microservicios con Node.js y Express.',
+        area: 'Desarrollo Backend',
+        modalidad: 'REMOTO',
+        habilidadesTecnicas: 'Node.js, PostgreSQL, Prisma',
+        habilidadesBlandas: 'Pensamiento crítico, resolución de problemas',
+        estado: EstadoGeneral.APROBADA,
+        directorValidaId: director.id,
       },
     ],
   });
 
-  console.log('✅ Seed ejecutado correctamente.');
+  console.log('✅ Seed ejecutado correctamente con 2 nuevas empresas activas sin convenios.');
 }
 
 main()

@@ -22,12 +22,12 @@ model Usuario {
 }
 
 model Director {
-  id                Int             @id @default(autoincrement())
-  usuarioId         Int             @unique
-  programaId        Int?            @unique
+  id                Int        @id @default(autoincrement())
+  usuarioId         Int        @unique
+  programaId        Int?       @unique
   Facultad          String?
-  usuario           Usuario         @relation(fields: [usuarioId], references: [id])
-  programa          Programa?       @relation(fields: [programaId], references: [id])
+  usuario           Usuario    @relation(fields: [usuarioId], references: [id])
+  programa          Programa?  @relation(fields: [programaId], references: [id])
   convenios         Convenio[]
   reportes          Reporte[]
   vacantesValidadas Vacante[]
@@ -44,61 +44,125 @@ model Programa {
 }
 
 model Estudiante {
-  id          Int        @id @default(autoincrement())
-  usuarioId   Int        @unique
-  habilidades String?
-  perfil      String?
-  usuario     Usuario    @relation(fields: [usuarioId], references: [id])
-  practicas   Practica[]
+  id            Int           @id @default(autoincrement())
+  usuarioId     Int           @unique
+  habilidades   String?
+  perfil        String?
+  usuario       Usuario       @relation(fields: [usuarioId], references: [id])
+  practicas     Practica[]
+  postulaciones Postulacion[] // postulaciones del estudiante
 }
 
 model Empresa {
-  id                 Int                  @id @default(autoincrement())
-  usuarioId          Int                  @unique
-  usuario            Usuario              @relation(fields: [usuarioId], references: [id])
-  nit                String               @unique
-  telefono           String?
-  direccion          String?
-  sector             String?
-  descripcion        String?
-  estado             EstadoGeneral        @default(PENDIENTE)
-  directorId         Int?
-  director           Director?            @relation(fields: [directorId], references: [id])
-  createdAt          DateTime             @default(now())
-  convenios          Convenio[]
-  vacantes           Vacante[]
-  evaluaciones       Evaluacion[]
+  id           Int           @id @default(autoincrement())
+  usuarioId    Int           @unique
+  usuario      Usuario       @relation(fields: [usuarioId], references: [id])
+  nit          String        @unique
+  telefono     String?
+  direccion    String?
+  sector       String?
+  descripcion  String?
+  estado       EstadoEmpresa @default(PENDIENTE)
+  habilitada   Boolean       @default(false) // solo true si tiene convenio activo
+  directorId   Int?
+  director     Director?     @relation(fields: [directorId], references: [id])
+  createdAt    DateTime      @default(now())
+  convenios    Convenio[]
+  vacantes     Vacante[]
+  evaluaciones Evaluacion[]
   representanteLegal RepresentanteLegal?
   conversaciones     Conversacion[]
+}
+
+enum EstadoEmpresa {
+  PENDIENTE
+  APROBADA
+  HABILITADA
+  INHABILITADA
+  RECHAZADA
 }
 
 model Convenio {
   id            Int            @id @default(autoincrement())
   empresaId     Int
-  directorId    Int
+  directorId    Int?
   nombre        String
-  estado        EstadoConvenio
-  actualizadoEn DateTime       @updatedAt
+  descripcion   String?
+  tipo          TipoConvenio   @default(MACRO)
+  fechaInicio   DateTime?
+  fechaFin      DateTime?
+  estado        EstadoConvenio @default(EN_REVISION)
   archivoUrl    String?
-  director      Director       @relation(fields: [directorId], references: [id])
-  empresa       Empresa        @relation(fields: [empresaId], references: [id])
+  observaciones String?
+  version       Int            @default(1)
+  creadoEn      DateTime       @default(now())
+  actualizadoEn DateTime       @updatedAt
+
+  // Relaciones
+  empresa    Empresa            @relation(fields: [empresaId], references: [id])
+  director   Director?           @relation(fields: [directorId], references: [id])
+  revisiones RevisionConvenio[]
+  documentos Documento[]
+  vacantes   Vacante[]
+
+  // Auto-relación (marco ↔ específicos)
+  macroConvenioId Int?
+  macroConvenio   Convenio?  @relation("SubConvenios", fields: [macroConvenioId], references: [id])
+  subConvenios    Convenio[] @relation("SubConvenios")
+
+  @@index([macroConvenioId])
+}
+
+model RevisionConvenio {
+  id         Int          @id @default(autoincrement())
+  convenioId Int
+  autorId    Int? // usuario (empresa o director)
+  mensaje    String
+  fecha      DateTime     @default(now())
+  tipo       TipoRevision
+  convenio   Convenio     @relation(fields: [convenioId], references: [id])
+}
+
+enum TipoRevision {
+  EMPRESA
+  DIRECTOR
+  DECANATURA
+}
+
+enum TipoConvenio {
+  MACRO
+  ESPECIFICO
+}
+
+enum EstadoConvenio {
+  PENDIENTE_FIRMA
+  PENDIENTE_REVISION
+  EN_REVISION
+  APROBADO
+  RECHAZADO
+  VENCIDO
 }
 
 model Vacante {
-  id                  Int             @id @default(autoincrement())
+  id                  Int           @id @default(autoincrement())
   empresaId           Int
+  convenioId          Int? // convenio activo que la respalda
   directorValidaId    Int?
   titulo              String
   modalidad           Modalidad
   descripcion         String
   area                String
-  habilidadesBlandas  String?         
+  ciudad              String?
+  habilidadesBlandas  String?
   habilidadesTecnicas String?
-  estado              EstadoGeneral   @default(PENDIENTE)
-  creadaEn            DateTime        @default(now())
-  practicas           Practica[]
-  directorValida      Director?     @relation(fields: [directorValidaId], references: [id])
+  estado              EstadoGeneral @default(PENDIENTE)
+  creadaEn            DateTime      @default(now())
+  actualizadaEn       DateTime      @default(now()) @updatedAt
   empresa             Empresa       @relation(fields: [empresaId], references: [id])
+  convenio            Convenio?     @relation(fields: [convenioId], references: [id])
+  directorValida      Director?     @relation(fields: [directorValidaId], references: [id])
+  practicas           Practica[]
+  postulaciones       Postulacion[]
 }
 
 enum Modalidad {
@@ -114,6 +178,24 @@ enum EstadoGeneral {
   INACTIVA
 }
 
+model Postulacion {
+  id           Int               @id @default(autoincrement())
+  estudianteId Int
+  vacanteId    Int
+  estado       EstadoPostulacion @default(EN_REVISION)
+  fechaPostula DateTime          @default(now())
+  comentario   String?
+  estudiante   Estudiante        @relation(fields: [estudianteId], references: [id])
+  vacante      Vacante           @relation(fields: [vacanteId], references: [id])
+}
+
+enum EstadoPostulacion {
+  EN_REVISION
+  ACEPTADA
+  RECHAZADA
+  CANCELADA
+}
+
 model Practica {
   id           Int            @id @default(autoincrement())
   estudianteId Int
@@ -124,6 +206,12 @@ model Practica {
   evaluacion   Evaluacion?
   estudiante   Estudiante     @relation(fields: [estudianteId], references: [id])
   vacante      Vacante        @relation(fields: [vacanteId], references: [id])
+}
+
+enum EstadoPractica {
+  EN_PROCESO
+  FINALIZADA
+  CANCELADA
 }
 
 model Evaluacion {
@@ -147,18 +235,26 @@ model Reporte {
 }
 
 model Documento {
-  id             Int       @id @default(autoincrement())
-  titulo         String
-  descripcion    String?
-  archivoUrl     String
-  publicId       String?
-  originalName   String?
-  mimeType       String?
-  fileSize       Int?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  directorId     Int
-  director       Director  @relation(fields: [directorId], references: [id], onDelete: Cascade)
+  id           Int       @id @default(autoincrement())
+  titulo       String
+  descripcion  String?
+  categoria    TipoDocumento @default(GENERAL)
+  archivoUrl   String
+  publicId     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  directorId   Int
+  director     Director  @relation(fields: [directorId], references: [id], onDelete: Cascade)
+  convenioId   Int?
+  Convenio     Convenio? @relation(fields: [convenioId], references: [id])
+}
+
+enum TipoDocumento {
+  GENERAL
+  CONVENIO_PLANTILLA
+  CONVENIO_EMPRESA
+  ESTUDIANTE
+  EMPRESA
 }
 
 model RepresentanteLegal {
@@ -225,17 +321,3 @@ enum Rol {
   ESTUDIANTE
   EMPRESA
 }
-
-enum EstadoPractica {
-  EN_PROCESO
-  FINALIZADA
-  CANCELADA
-}
-
-enum EstadoConvenio {
-  ACTIVO
-  PENDIENTE
-  CANCELADO
-  RECHAZADO
-}
-

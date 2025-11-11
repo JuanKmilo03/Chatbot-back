@@ -1,217 +1,105 @@
-import { prisma } from "../config/db.js";
-import { NotFoundError, BadRequestError, ForbiddenError } from "../utils/errors.js";
+import { PrismaClient } from "@prisma/client";
+import cloudinary from "../config/cloudinary.config.js";
+import fs from "fs";
 
-/**
- * Datos para crear un documento
- */
-export interface CrearDocumentoDTO {
-  titulo: string;
-  descripcion?: string;
-  archivoUrl: string;
-  publicId?: string;
-  mimeType?: string;
-  fileSize?: number;
-}
+const prisma = new PrismaClient();
 
-/**
- * Parámetros de paginación
- */
-export interface ObtenerDocumentosParams {
-  page?: number;
-  pageSize?: number;
-}
+export const DocumentoService = {
+  async crearDocumento(data: any, archivo: Express.Multer.File, directorId: number) {
+    const result = await cloudinary.uploader.upload(archivo.path, {
+      folder: "DocumentosPracticas",
+      resource_type: "auto",
+    });
 
-/**
- * Valida que el usuario sea director y obtiene su ID
- */
-const obtenerDirectorId = async (usuarioId: number): Promise<number> => {
-  const director = await prisma.director.findFirst({
-    where: { usuarioId },
-    select: { id: true },
-  });
+    if (data.categoria === "CONVENIO_PLANTILLA") {
+      const existente = await prisma.documento.findFirst({
+        where: { categoria: "CONVENIO_PLANTILLA" },
+      });
 
-  if (!director) {
-    throw new ForbiddenError("Solo los directores pueden gestionar documentos");
-  }
+      if (existente) {
+        if (existente.publicId) await cloudinary.uploader.destroy(existente.publicId);
+        await prisma.documento.delete({ where: { id: existente.id } });
+      }
+    }
 
-  return director.id;
-};
-
-/**
- * Crea un documento
- */
-export const crearDocumento = async (
-  usuarioId: number,
-  data: CrearDocumentoDTO
-) => {
-  // Validar que sea director
-  const directorId = await obtenerDirectorId(usuarioId);
-
-  // Validaciones
-  if (!data.titulo?.trim()) {
-    throw new BadRequestError("El título es requerido");
-  }
-
-  if (!data.archivoUrl?.trim()) {
-    throw new BadRequestError("El archivo es requerido");
-  }
-
-  // Crear documento
-  const documento = await prisma.documento.create({
-    data: {
-      directorId,
-      titulo: data.titulo.trim(),
-      descripcion: data.descripcion?.trim() || null,
-      archivoUrl: data.archivoUrl,
-    },
-    include: {
-      director: {
-        include: {
-          usuario: {
-            select: { id: true, nombre: true, email: true },
-          },
-        },
+    const documento = await prisma.documento.create({
+      data: {
+        titulo: data.titulo,
+        descripcion: data.descripcion,
+        categoria: data.categoria,
+        archivoUrl: result.secure_url,
+        publicId: result.public_id,
+        directorId,
+        convenioId: data.convenioId ? Number(data.convenioId) : null,
       },
-    },
-  });
+    });
 
-  return documento;
-};
+    fs.unlinkSync(archivo.path);
 
-/**
- * Obtiene todos los documentos con paginación
- */
-export const listarDocumentos = async (params: ObtenerDocumentosParams = {}) => {
-  const { page = 1, pageSize = 20 } = params;
+    return documento;
+  },
 
-  const [documentos, total] = await Promise.all([
-    prisma.documento.findMany({
-      include: {
-        director: {
-          include: {
-            usuario: {
-              select: { id: true, nombre: true },
-            },
-          },
-        },
-      },
+  async listarDocumentos(where: Record<string, any> = {}) {
+    return prisma.documento.findMany({
+      where,
+      include: { director: true },
       orderBy: { createdAt: "desc" },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-    prisma.documento.count(),
-  ]);
+    });
+  },
 
-  return {
-    data: documentos,
-    total,
-    page,
-    pageSize,
-    totalPages: Math.ceil(total / pageSize),
-  };
-};
+  async obtenerPlantillaConvenio() {
+    return prisma.documento.findFirst({
+      where: { categoria: "CONVENIO_PLANTILLA" },
+      orderBy: { createdAt: "desc" },
+    });
+  },
 
-/**
- * Obtiene un documento por ID
- */
-export const obtenerPorId = async (id: number) => {
-  const documento = await prisma.documento.findUnique({
-    where: { id },
-    include: {
-      director: {
-        include: {
-          usuario: {
-            select: { id: true, nombre: true, email: true },
-          },
-        },
+  async obtenerPorId(id: number) {
+    return prisma.documento.findUnique({
+      where: { id },
+      include: { director: true },
+    });
+  },
+
+  async actualizarDocumento(id: number, data: any, archivo?: Express.Multer.File) {
+    const documento = await prisma.documento.findUnique({ where: { id } });
+    if (!documento) throw new Error("Documento no encontrado");
+
+    let archivoUrl = documento.archivoUrl;
+    let publicId = documento.publicId;
+
+    if (archivo) {
+      if (publicId) await cloudinary.uploader.destroy(publicId);
+
+      const result = await cloudinary.uploader.upload(archivo.path, {
+        folder: "DocumentosPracticas",
+        resource_type: "auto",
+      });
+      archivoUrl = result.secure_url;
+      publicId = result.public_id;
+      fs.unlinkSync(archivo.path);
+    }
+
+    return prisma.documento.update({
+      where: { id },
+      data: {
+        titulo: data.titulo ?? documento.titulo,
+        descripcion: data.descripcion ?? documento.descripcion,
+        categoria: data.categoria ?? documento.categoria,
+        archivoUrl,
+        publicId,
       },
-    },
-  });
+    });
+  },
 
-  if (!documento) {
-    throw new NotFoundError("Documento no encontrado");
-  }
+  async eliminarDocumento(id: number) {
+    const documento = await prisma.documento.findUnique({ where: { id } });
+    if (!documento) throw new Error("Documento no encontrado");
 
-  return documento;
-};
+    if (documento.publicId) {
+      await cloudinary.uploader.destroy(documento.publicId); // ✅ eliminar también de Cloudinary
+    }
 
-/**
- * Actualiza un documento
- */
-export const actualizarDocumento = async (
-  id: number,
-  usuarioId: number,
-  data: Partial<CrearDocumentoDTO>
-) => {
-  // Validar que sea director
-  const directorId = await obtenerDirectorId(usuarioId);
-
-  // Verificar que el documento existe
-  const documento = await prisma.documento.findUnique({
-    where: { id },
-  });
-
-  if (!documento) {
-    throw new NotFoundError("Documento no encontrado");
-  }
-
-  // Verificar que el documento pertenece al director
-  if (documento.directorId !== directorId) {
-    throw new ForbiddenError("No tienes permiso para actualizar este documento");
-  }
-
-  // Actualizar documento
-  const documentoActualizado = await prisma.documento.update({
-    where: { id },
-    data: {
-      ...(data.titulo && { titulo: data.titulo.trim() }),
-      ...(data.descripcion !== undefined && {
-        descripcion: data.descripcion?.trim() || null
-      }),
-      ...(data.archivoUrl && { archivoUrl: data.archivoUrl }),
-    },
-    include: {
-      director: {
-        include: {
-          usuario: {
-            select: { id: true, nombre: true, email: true },
-          },
-        },
-      },
-    },
-  });
-
-  return documentoActualizado;
-};
-
-/**
- * Elimina un documento
- */
-export const eliminarDocumento = async (id: number, usuarioId: number) => {
-  // Validar que sea director
-  const directorId = await obtenerDirectorId(usuarioId);
-
-  // Verificar que el documento existe
-  const documento = await prisma.documento.findUnique({
-    where: { id },
-  });
-
-  if (!documento) {
-    throw new NotFoundError("Documento no encontrado");
-  }
-
-  // Verificar que el documento pertenece al director
-  if (documento.directorId !== directorId) {
-    throw new ForbiddenError("No tienes permiso para eliminar este documento");
-  }
-
-  // Eliminar de Cloudinary si tiene publicId
-  // (Si guardaste el publicId previamente, puedes eliminar el archivo)
-
-  // Eliminar documento
-  await prisma.documento.delete({
-    where: { id },
-  });
-
-  return { message: "Documento eliminado exitosamente" };
+    await prisma.documento.delete({ where: { id } });
+  },
 };

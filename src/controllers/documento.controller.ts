@@ -1,81 +1,62 @@
-import { Response } from "express";
-import { AuthRequest } from "../middlewares/auth.middleware.js";
-import * as documentoService from "../services/documento.service.js";
-import cloudinary from "../config/cloudinary.config.js";
-import { AppError } from "../utils/errors.js";
+// src/controllers/documento.controller.ts
+import { Request, Response } from "express";
+import { AuthenticatedRequest } from "../middlewares/authFirebase.js";
+import { DocumentoService } from "../services/documento.service.js";
+import { TipoDocumento } from "@prisma/client";
 
-/**
- * Crea un documento
- */
-export const subirDocumento = async (req: AuthRequest, res: Response) => {
+export const subirDocumento = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { titulo, descripcion } = req.body;
     const usuarioId = req.user?.id;
     const archivo = req.file;
+    if (!archivo) return res.status(400).json({ message: "Debe subir un archivo" });
 
-    if (!usuarioId) {
-      return res.status(401).json({ message: "No autorizado" });
-    }
-
-    if (!titulo?.trim()) {
-      return res.status(400).json({ message: "El título es requerido" });
-    }
-
-    if (!archivo) {
-      return res.status(400).json({ message: "El archivo es requerido" });
-    }
-
-    // Subir archivo a Cloudinary
-    const b64 = Buffer.from(archivo.buffer).toString("base64");
-    const dataURI = `data:${archivo.mimetype};base64,${b64}`;
-
-    const result = await cloudinary.uploader.upload(dataURI, {
-      folder: "DocumentosPracticas",
-      resource_type: "auto",
-    });
-
-    // Crear documento
-    const documento = await documentoService.crearDocumento(usuarioId, {
-      titulo,
-      descripcion,
-      archivoUrl: result.secure_url,
-      publicId: result.public_id,
-      mimeType: archivo.mimetype,
-      fileSize: archivo.size,
-    });
-
-    res.status(201).json(documento);
+    const documento = await DocumentoService.crearDocumento(
+      {
+        ...req.body,
+        categoria: req.body.categoria || TipoDocumento.GENERAL,
+        convenioId: req.body.convenioId ? Number(req.body.convenioId) : null,
+      },
+      archivo,
+      usuario.id
+    );
+    res.status(201).json({ message: "Documento subido correctamente", documento });
   } catch (error: any) {
-    console.error("Error al subir documento:", error);
-    const statusCode = error instanceof AppError ? error.statusCode : 500;
-    res.status(statusCode).json({ message: error.message });
+    res.status(500).json({ message: error.message || "Error al subir documento" });
   }
 };
 
-/**
- * Obtiene todos los documentos
- */
-export const listarDocumentos = async (req: AuthRequest, res: Response) => {
+export const listarDocumentos = async (req: Request, res: Response) => {
   try {
-    const { page, pageSize } = req.query;
+    const filtros: Record<string, any> = {convenioId: null};
+    filtros.categoria = (req.query.categoria) ?req.query.categoria : {not: "CONVENIO_EMPRESA",};
+    if (req.query.titulo) filtros.titulo = req.query.titulo;
+    if (req.query.directorId) filtros.directorId = Number(req.query.directorId);
+    if (req.query.convenioId) filtros.convenioId = Number(req.query.convenioId);
 
-    const result = await documentoService.listarDocumentos({
-      page: page ? Number(page) : undefined,
-      pageSize: pageSize ? Number(pageSize) : undefined,
-    });
-
-    res.status(200).json(result);
-  } catch (error: any) {
-    console.error("Error al listar documentos:", error);
-    const statusCode = error instanceof AppError ? error.statusCode : 500;
-    res.status(statusCode).json({ message: error.message });
+    const documentos = await DocumentoService.listarDocumentos(filtros);
+    res.status(200).json(documentos);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error al listar documentos" });
   }
 };
 
-/**
- * Obtiene un documento por ID
- */
-export const obtenerDocumentoPorId = async (req: AuthRequest, res: Response) => {
+export const obtenerPlantillaConvenio = async (_req: Request, res: Response) => {
+  try {
+    const plantilla = await DocumentoService.obtenerPlantillaConvenio();
+    if (!plantilla) {
+      return res.status(404).json({ message: "No se encontró plantilla de convenio." });
+    }
+
+    res.status(200).json({ data: plantilla });
+  } catch (error) {
+    console.error("Error al obtener plantilla de convenio:", error);
+    res.status(500).json({ message: "Error al obtener plantilla de convenio." });
+  }
+};
+
+export const obtenerDocumentoPorId = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
