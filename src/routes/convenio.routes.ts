@@ -1,74 +1,22 @@
-import express, { Request, Response, NextFunction, RequestHandler } from "express";
-import { authFirebase } from "../middlewares/authFirebase.js";
+import express from "express";
 import multer from "multer";
-import fs from "fs";
-
 import {
-  solicitarConvenio,
   listarConveniosEmpresa,
   obtenerConvenioPorId,
-  actualizarConvenio,
-  eliminarConvenio,
-  listarConveniosPorDirector,
-  listarConveniosVigentes,
-  listarConveniosPendientes,
-  aceptarConvenio,
   rechazarConvenio,
-  marcarConvenioCancelado,
   iniciarConvenio,
   listarTodosLosConvenios,
   listarConveniosPorEmpresaId,
   enviarRevisionFinal,
   subirConvenioFirmado,
+  aprobarConvenio,
 } from "../controllers/convenio.controller.js";
-import cloudinary from "../config/cloudinary.config.js";
 import { authorizeRoles, verifyToken } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
 const upload = multer({ dest: "uploads/" });
 
-/**
- * @swagger
- * tags:
- *   name: Convenios
- *   description: Gestión de convenios entre empresas, directores y estudiantes
- */
-
-router.post("/solicitar", authFirebase, upload.single("archivo"), solicitarConvenio);
-router.put("/:id", authFirebase, upload.single("archivo"), actualizarConvenio);
-router.delete("/:id", authFirebase, eliminarConvenio);
-router.get("/director/:directorId", authFirebase, listarConveniosPorDirector);
-router.get("/vigentes/mios", authFirebase, listarConveniosVigentes);
-router.get("/:directorId/conveniospend", authFirebase, listarConveniosPendientes);
-router.put("/convenios/:convenioId/aceptar", authFirebase, aceptarConvenio);
-router.put("/convenios/:convenioId/rechazar", authFirebase, rechazarConvenio);
-router.put("/convenios/:convenioId/vencido", authFirebase, marcarConvenioCancelado);
-
-//pa probar sin auth
-router.post("/prueba/subida", upload.single("archivo"), async (req: Request, res: Response) => {
-  try {
-    const archivo = req.file;
-    if (!archivo) return res.status(400).json({ message: "Se debe subir un archivo" });
-
-    // Subida a Cloudinary (soporta PDF, Word e imágenes)
-    const result = await cloudinary.uploader.upload(archivo.path, {
-      folder: "ConveniosPracticas",
-      resource_type: "auto", // permite PDF, Word, imágenes
-    });
-
-    // Eliminar archivo temporal
-    fs.unlinkSync(archivo.path);
-
-    res.status(200).json({
-      message: "Archivo subido correctamente a Cloudinary",
-      url: result.secure_url,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error al subir archivo", error });
-  }
-});
 /**
  * @swagger
  * tags:
@@ -110,6 +58,89 @@ router.post('/iniciar', verifyToken, authorizeRoles('EMPRESA'), iniciarConvenio)
 router.post("/:id/subir-firmado", verifyToken, authorizeRoles("EMPRESA"), upload.single("file"), subirConvenioFirmado);
 
 router.post("/:id/enviar-revision", verifyToken, authorizeRoles("EMPRESA"), enviarRevisionFinal);
+
+/**
+ * @swagger
+ * /api/convenios/{id}/aprobar:
+ *   post:
+ *     summary: Aprobar un convenio
+ *     description: Permite a la directora aprobar un convenio subiendo el documento final firmado y completando la información correspondiente.
+ *     tags: [Convenios]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID del convenio a aprobar
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *               fechaInicio:
+ *                 type: string
+ *                 example: "2025-01-15"
+ *               fechaFin:
+ *                 type: string
+ *                 example: "2026-01-15"
+ *               observaciones:
+ *                 type: string
+ *                 example: "Convenio firmado por ambas partes"
+ *     responses:
+ *       200:
+ *         description: Convenio aprobado correctamente
+ *       400:
+ *         description: Error de validación o archivo faltante
+ *       401:
+ *         description: Token no proporcionado o inválido
+ *       403:
+ *         description: Solo puede aprobarlo un director
+ */
+router.post("/:id/aprobar", verifyToken, authorizeRoles("DIRECTOR"), upload.single("file"), aprobarConvenio);
+
+/**
+ * @swagger
+ * /api/convenios/{id}/rechazar:
+ *   post:
+ *     summary: Rechazar un convenio
+ *     description: Permite al director rechazar un convenio en revisión agregando una observación opcional.
+ *     tags: [Convenios]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID del convenio a rechazar
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               observaciones:
+ *                 type: string
+ *                 example: "El documento no cumple con los requisitos"
+ *     responses:
+ *       200:
+ *         description: Convenio rechazado correctamente
+ *       401:
+ *         description: Token no válido
+ *       403:
+ *         description: Solo puede rechazarlo un director
+ */
+router.post("/:id/rechazar", verifyToken, authorizeRoles("DIRECTOR"), rechazarConvenio);
 
 /**
  * @swagger
