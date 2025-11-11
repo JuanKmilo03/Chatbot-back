@@ -295,3 +295,26 @@ export const obtenerConvenioPorId = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Error al obtener convenio" });
   }
 };
+
+export const subirConvenioFirmado = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const archivo = req.file;
+    const convenio = await convenioService.subirFirmado(Number(id), archivo!);
+    res.status(200).json({ message: "Archivo firmado subido correctamente.", data: convenio });
+  } catch (error) {
+    console.error("Error al subir convenio firmado:", error);
+    res.status(500).json({ message: "Error al subir convenio firmado.", error: (error as Error).message });
+  }
+};
+
+export const enviarRevisionFinal = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const convenio = await convenioService.enviarRevisionFinal(Number(id));
+    res.status(200).json({ message: "Convenio enviado a revisión final.", data: convenio });
+  } catch (error) {
+    console.error("Error al enviar a revisión:", error);
+    res.status(500).json({ message: "Error al enviar a revisión final.", error: (error as Error).message });
+  }
+};

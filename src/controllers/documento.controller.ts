@@ -45,6 +45,20 @@ export const listarDocumentos = async (req: Request, res: Response) => {
   }
 };
 
+export const obtenerPlantillaConvenio = async (_req: Request, res: Response) => {
+  try {
+    const plantilla = await DocumentoService.obtenerPlantillaConvenio();
+    if (!plantilla) {
+      return res.status(404).json({ message: "No se encontró plantilla de convenio." });
+    }
+
+    res.status(200).json({ data: plantilla });
+  } catch (error) {
+    console.error("Error al obtener plantilla de convenio:", error);
+    res.status(500).json({ message: "Error al obtener plantilla de convenio." });
+  }
+};
+
 export const obtenerDocumentoPorId = async (req: Request, res: Response) => {
   try {
     const documento = await DocumentoService.obtenerPorId(Number(req.params.id));

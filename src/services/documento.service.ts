@@ -47,6 +47,13 @@ export const DocumentoService = {
     });
   },
 
+  async obtenerPlantillaConvenio() {
+    return prisma.documento.findFirst({
+      where: { categoria: "CONVENIO_PLANTILLA" },
+      orderBy: { createdAt: "desc" },
+    });
+  },
+
   async obtenerPorId(id: number) {
     return prisma.documento.findUnique({
       where: { id },

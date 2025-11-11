@@ -131,6 +131,8 @@ enum TipoConvenio {
 }
 
 enum EstadoConvenio {
+  PENDIENTE_FIRMA
+  PENDIENTE_REVISION
   EN_REVISION
   APROBADO
   RECHAZADO

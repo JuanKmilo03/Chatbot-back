@@ -1,5 +1,8 @@
+import fs from "fs";
 import { EstadoConvenio, PrismaClient, TipoConvenio, TipoDocumento } from "@prisma/client";
 import { AuthRequest } from "../middlewares/auth.middleware.js";
+import cloudinary from "../config/cloudinary.config.js";
+
 const prisma = new PrismaClient();
 
 export const convenioService = {
@@ -15,7 +18,7 @@ export const convenioService = {
         directorId: null,
         nombre: "Convenio inicial",
         tipo: TipoConvenio.MACRO,
-        estado: EstadoConvenio.EN_REVISION,
+        estado: EstadoConvenio.PENDIENTE_FIRMA,
         version: 1,
         archivoUrl: plantilla ? plantilla.archivoUrl : null,
       },
@@ -80,5 +83,43 @@ export const convenioService = {
     }
 
     return convenio;
+  },
+  async subirFirmado(id: number, archivo: Express.Multer.File) {
+    if (!archivo) throw new Error("Archivo no proporcionado");
+
+    const convenioExistente = await prisma.convenio.findUnique({ where: { id } });
+    if (!convenioExistente) throw new Error("Convenio no encontrado");
+
+    const result = await cloudinary.uploader.upload(archivo.path, {
+      folder: "ConveniosFirmados",
+      resource_type: "auto",
+    });
+
+    const convenio = await prisma.convenio.update({
+      where: { id },
+      data: {
+        archivoUrl: result.secure_url,
+        estado: EstadoConvenio.PENDIENTE_REVISION,
+      },
+    });
+
+    fs.unlinkSync(archivo.path);
+    return convenio;
+  },
+
+  async enviarRevisionFinal(id: number) {
+    const convenio = await prisma.convenio.findUnique({ where: { id } });
+    if (!convenio) throw new Error("Convenio no encontrado");
+
+    if (convenio.estado !== EstadoConvenio.PENDIENTE_REVISION) {
+      throw new Error("El convenio debe estar en estado 'PENDIENTE_REVISION' para enviarse a revisión.");
+    }
+
+    return await prisma.convenio.update({
+      where: { id },
+      data: { estado: EstadoConvenio.EN_REVISION },
+    });
+
+    // TODO: enviar notificación por correo o registrar evento en tabla de notificaciones
   },
 }

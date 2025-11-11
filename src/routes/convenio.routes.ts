@@ -18,6 +18,8 @@ import {
   iniciarConvenio,
   listarTodosLosConvenios,
   listarConveniosPorEmpresaId,
+  enviarRevisionFinal,
+  subirConvenioFirmado,
 } from "../controllers/convenio.controller.js";
 import cloudinary from "../config/cloudinary.config.js";
 import { authorizeRoles, verifyToken } from "../middlewares/auth.middleware.js";
@@ -104,6 +106,11 @@ router.post("/prueba/subida", upload.single("archivo"), async (req: Request, res
  *         description: Acceso denegado (solo empresas)
  */
 router.post('/iniciar', verifyToken, authorizeRoles('EMPRESA'), iniciarConvenio);
+
+router.post("/:id/subir-firmado", verifyToken, authorizeRoles("EMPRESA"), upload.single("file"), subirConvenioFirmado);
+
+router.post("/:id/enviar-revision", verifyToken, authorizeRoles("EMPRESA"), enviarRevisionFinal);
+
 /**
  * @swagger
  * /api/convenios/:

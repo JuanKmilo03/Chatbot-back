@@ -6,6 +6,7 @@ import {
   obtenerDocumentoPorId,
   actualizarDocumento,
   eliminarDocumento,
+  obtenerPlantillaConvenio,
 } from "../controllers/documento.controller.js";
 import { Rol } from "@prisma/client";
 import { authorizeRoles, verifyToken } from "../middlewares/auth.middleware.js";
@@ -22,6 +23,8 @@ router.post(
 );
 
 router.get("/", listarDocumentos);
+
+router.get("/convenio", verifyToken, authorizeRoles('EMPRESA', 'DIRECTOR'), obtenerPlantillaConvenio);
 
 router.get("/:id", obtenerDocumentoPorId);
 
