@@ -71,6 +71,7 @@ import documentoRoutes from "./routes/documento.routes.js";
 import estudianteRoutes from "./routes/estudiante.routes.js";
 import representanteRoutes from "./routes/representante.routes.js";
 import chatRoutes from "./routes/chat.routes.js";
+import postulacionRoutes from "./routes/postulacion.routes.js";
 
 // Middlewares
 import { verifyToken, authorizeRoles } from "./middlewares/auth.middleware.js";
@@ -97,6 +98,7 @@ app.use('/api/estudiantes', estudianteRoutes);
 // Rutas protegidas
 app.use("/api/representantes", representanteRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/postulaciones", postulacionRoutes);
 
 // Rutas por roles
 app.use("/api/convenios", convenioRoutes);
