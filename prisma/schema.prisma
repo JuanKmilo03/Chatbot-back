@@ -99,11 +99,12 @@ model Convenio {
   actualizadoEn DateTime       @updatedAt
 
   // Relaciones
-  empresa    Empresa            @relation(fields: [empresaId], references: [id])
-  director   Director?           @relation(fields: [directorId], references: [id])
-  revisiones RevisionConvenio[]
-  documentos Documento[]
-  vacantes   Vacante[]
+  empresa     Empresa              @relation(fields: [empresaId], references: [id])
+  director    Director?            @relation(fields: [directorId], references: [id])
+  revisiones  RevisionConvenio[]
+  documentos  Documento[]
+  vacantes    Vacante[]
+  comentarios ComentarioConvenio[]
 
   // Auto-relación (marco ↔ específicos)
   macroConvenioId Int?
@@ -127,6 +128,24 @@ enum TipoRevision {
   EMPRESA
   DIRECTOR
   DECANATURA
+}
+
+model ComentarioConvenio {
+  id              Int      @id @default(autoincrement())
+  convenioId      Int
+  autorId         Int      // ID del usuario (empresa o director)
+  autorRol        Rol      // Rol del autor (EMPRESA o DIRECTOR)
+  contenido       String
+  editado         Boolean  @default(false)
+  creadoEn        DateTime @default(now())
+  actualizadoEn   DateTime @updatedAt
+
+  // Relaciones
+  convenio        Convenio @relation(fields: [convenioId], references: [id], onDelete: Cascade)
+
+  @@index([convenioId])
+  @@index([autorId])
+  @@index([creadoEn])
 }
 
 enum TipoConvenio {
