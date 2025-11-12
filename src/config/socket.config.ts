@@ -13,6 +13,9 @@ export interface AuthenticatedSocket extends Socket {
   user?: SocketUser;
 }
 
+// Variable global para almacenar la instancia de Socket.IO
+let ioInstance: SocketIOServer | null = null;
+
 /**
  * Valida que el rol sea un valor válido del enum Rol
  */
@@ -71,8 +74,9 @@ export const initializeSocket = (httpServer: HTTPServer) => {
 
     console.log(`Usuario conectado: ${user.id} (${user.rol})`);
 
-    // El usuario se une a su sala personal
-    socket.join(`user-${user.id}`);
+    // El usuario se une a su sala personal para notificaciones
+    socket.join(`user:${user.id}`);
+    console.log(`Usuario ${user.id} unido a sala de notificaciones: user:${user.id}`);
 
     // Evento: Unirse a una conversación
     socket.on("join-conversation", (conversacionId: number) => {
@@ -110,11 +114,28 @@ export const initializeSocket = (httpServer: HTTPServer) => {
       });
     });
 
+    // Evento: Marcar notificación como leída
+    socket.on("mark-notification-read", (data: { notificacionId: number }) => {
+      console.log(`Notificación ${data.notificacionId} marcada como leída por usuario ${user.id}`);
+      // La lógica de marcado se maneja en el servicio, este evento es solo informativo
+    });
+
     // Evento de desconexión
     socket.on("disconnect", () => {
       console.log(`Usuario desconectado: ${user.id}`);
     });
   });
 
+  // Guardar la instancia de Socket.IO
+  ioInstance = io;
+
   return io;
+};
+
+/**
+ * Obtiene la instancia de Socket.IO
+ * Utilizada por los servicios para emitir notificaciones
+ */
+export const getSocketIO = (): SocketIOServer | null => {
+  return ioInstance;
 };

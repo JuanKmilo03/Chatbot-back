@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import {
   subirDocumento,
   listarDocumentos,
@@ -10,7 +11,7 @@ import {
 import { Rol } from "@prisma/client";
 import { authorizeRoles, verifyToken } from "../middlewares/auth.middleware.js";
 
-const router = express.Router();
+const router = Router();
 const upload = multer({ dest: "uploads/" });
 
 router.post(

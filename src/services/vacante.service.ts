@@ -1,4 +1,6 @@
 import { PrismaClient, EstadoGeneral, Vacante, Prisma } from '@prisma/client';
+import { notificarATodosLosDirectores, crearNotificacion } from './notificacion.service.js';
+import { TipoNotificacion, PrioridadNotificacion } from '../types/notificacion.types.js';
 
 const prisma = new PrismaClient();
 
@@ -26,6 +28,11 @@ export const crearVacante = async (data: {
   // Validar que la empresa exista
   const empresa = await prisma.empresa.findUnique({
     where: { id: empresaId },
+    include: {
+      usuario: {
+        select: { nombre: true, email: true },
+      },
+    },
   });
 
   if (!empresa) {
@@ -55,6 +62,35 @@ export const crearVacante = async (data: {
       },
     },
   });
+
+  // Notificar a todos los directores sobre la nueva solicitud de vacante
+  try {
+    await notificarATodosLosDirectores(
+      TipoNotificacion.NUEVA_SOLICITUD_VACANTE,
+      'Nueva solicitud de vacante',
+      `La empresa ${empresa.usuario.nombre} ha solicitado la publicación de una nueva vacante: "${titulo}" en el área de ${area}.`,
+      PrioridadNotificacion.MEDIA,
+      {
+        // Datos para la plantilla de correo
+        nombreEmpresa: empresa.usuario.nombre,
+        titulo: titulo,
+        modalidad: modalidad,
+        descripcion: descripcion,
+        area: area,
+        ciudad: nuevaVacante.ciudad || 'No especificada',
+        habilidadesBlandas: habilidadesBlandas || 'No especificadas',
+        habilidadesTecnicas: habilidadesTecnicas || 'No especificadas',
+        // Datos adicionales para el sistema
+        vacanteId: nuevaVacante.id,
+        empresaId: empresaId,
+      }
+    );
+
+    console.log(`📨 Notificación enviada a directores: Nueva vacante ${nuevaVacante.id}`);
+  } catch (error) {
+    // No fallar la creación de la vacante si falla la notificación
+    console.error('Error al enviar notificación de nueva vacante:', error);
+  }
 
   return nuevaVacante;
 };
@@ -215,7 +251,14 @@ export const listarVacantesAprobadas = async ({ page, limit, filters }: {
  * Aprueba una vacante pendiente por parte de un director.
  */
 export const aprobarVacante = async (vacanteId: number, usuarioId: number) => {
-  const vacante = await prisma.vacante.findUnique({ where: { id: vacanteId } });
+  const vacante = await prisma.vacante.findUnique({
+    where: { id: vacanteId },
+    include: {
+      empresa: {
+        select: { id: true, usuario: { select: { nombre: true, email: true } } },
+      },
+    },
+  });
   if (!vacante) throw new Error("Vacante no encontrada.");
   if (vacante.estado !== EstadoGeneral.PENDIENTE)
     throw new Error("Solo se pueden aprobar vacantes pendientes.");
@@ -223,11 +266,11 @@ export const aprobarVacante = async (vacanteId: number, usuarioId: number) => {
   const director = await prisma.director.findFirst({ where: { usuarioId } });
   if (!director) throw new Error("Director no encontrado.");
 
-  return await prisma.vacante.update({
+  const vacanteActualizada = await prisma.vacante.update({
     where: { id: vacanteId },
     data: {
       estado: EstadoGeneral.APROBADA,
-      directorValidaId: director.id, 
+      directorValidaId: director.id,
     },
     include: {
       empresa: {
@@ -238,11 +281,40 @@ export const aprobarVacante = async (vacanteId: number, usuarioId: number) => {
       },
     },
   });
+
+  // Notificar a la empresa sobre la aprobación
+  try {
+    await crearNotificacion({
+      tipo: TipoNotificacion.VACANTE_APROBADA,
+      titulo: 'Vacante aprobada',
+      mensaje: `Su vacante "${vacante.titulo}" ha sido aprobada y ya está visible para los estudiantes.`,
+      prioridad: PrioridadNotificacion.ALTA,
+      destinatarioId: vacante.empresaId,
+      destinatarioRol: 'EMPRESA',
+      data: {
+        vacanteId: vacante.id,
+        tituloVacante: vacante.titulo,
+      },
+    });
+
+    console.log(`📨 Notificación enviada a empresa: Vacante ${vacanteId} aprobada`);
+  } catch (error) {
+    console.error('Error al enviar notificación de aprobación de vacante:', error);
+  }
+
+  return vacanteActualizada;
 };
 
 
-export const rechazarVacante = async (vacanteId: number, usuarioId: number) => {
-  const vacante = await prisma.vacante.findUnique({ where: { id: vacanteId } });
+export const rechazarVacante = async (vacanteId: number, usuarioId: number, motivoRechazo?: string) => {
+  const vacante = await prisma.vacante.findUnique({
+    where: { id: vacanteId },
+    include: {
+      empresa: {
+        select: { id: true, usuario: { select: { nombre: true, email: true } } },
+      },
+    },
+  });
   if (!vacante) throw new Error("Vacante no encontrada.");
 
   if (vacante.estado !== EstadoGeneral.PENDIENTE) {
@@ -263,6 +335,31 @@ export const rechazarVacante = async (vacanteId: number, usuarioId: number) => {
       directorValida: { select: { id: true, usuario: { select: { nombre: true, email: true } } } },
     },
   });
+
+  // Notificar a la empresa sobre el rechazo
+  try {
+    const mensaje = motivoRechazo
+      ? `Su vacante "${vacante.titulo}" ha sido rechazada. Motivo: ${motivoRechazo}`
+      : `Su vacante "${vacante.titulo}" ha sido rechazada. Por favor, contacte con la dirección del programa para más detalles.`;
+
+    await crearNotificacion({
+      tipo: TipoNotificacion.VACANTE_RECHAZADA,
+      titulo: 'Vacante rechazada',
+      mensaje,
+      prioridad: PrioridadNotificacion.ALTA,
+      destinatarioId: vacante.empresaId,
+      destinatarioRol: 'EMPRESA',
+      data: {
+        vacanteId: vacante.id,
+        tituloVacante: vacante.titulo,
+        motivoRechazo,
+      },
+    });
+
+    console.log(`📨 Notificación enviada a empresa: Vacante ${vacanteId} rechazada`);
+  } catch (error) {
+    console.error('Error al enviar notificación de rechazo de vacante:', error);
+  }
 
   return vacanteActualizada;
 };
