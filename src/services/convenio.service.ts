@@ -327,6 +327,43 @@ export const convenioService = {
         observaciones,
       },
     });
-  }
+  },
+  async subirNuevaVersion(id: number, archivo: Express.Multer.File, directorId: number) {
+    const convenio = await prisma.convenio.findUnique({ where: { id } });
+    if (!convenio) throw new Error("Convenio no encontrado");
 
+    // Subir nuevo archivo a Cloudinary
+    const result = await cloudinary.uploader.upload(archivo.path, {
+      folder: `Convenios/${convenio.empresaId}`,
+      resource_type: "auto",
+      public_id: `Convenio_v${convenio.version + 1}_${Date.now()}`,
+    });
+
+    fs.unlinkSync(archivo.path); // eliminar temporal
+
+    // Actualizar convenio con nueva versión y URL
+    const convenioActualizado = await prisma.convenio.update({
+      where: { id },
+      data: {
+        archivoUrl: result.secure_url,
+        version: convenio.version + 1,
+        estado: EstadoConvenio.PENDIENTE_FIRMA,
+        actualizadoEn: new Date(),
+      },
+    });
+
+    // Registrar documento en la tabla documento
+    await prisma.documento.create({
+      data: {
+        titulo: convenio.nombre,
+        descripcion: `Versión ${convenio.version + 1} del convenio actualizada por director`,
+        categoria: TipoDocumento.CONVENIO_EMPRESA,
+        archivoUrl: result.secure_url,
+        directorId,
+        convenioId: convenio.id,
+      },
+    });
+
+    return convenioActualizado;
+  }
 }

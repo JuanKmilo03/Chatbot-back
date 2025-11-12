@@ -223,3 +223,27 @@ export const rechazarConvenio = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Error al rechazar el convenio." });
   }
 };
+
+export const subirNuevaVersionConvenio = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const archivo = req.file;
+    const usuarioId = req.user?.id;
+    if (!archivo) {
+      return res.status(400).json({ message: "Debe adjuntar un archivo" });
+    }
+
+    const convenio = await convenioService.subirNuevaVersion(Number(id), archivo, usuarioId!);
+
+    res.status(200).json({
+      message: "Nueva versión del convenio subida correctamente.",
+      data: convenio,
+    });
+  } catch (error) {
+    console.error("Error al subir nueva versión del convenio:", error);
+    res.status(500).json({
+      message: "Error al subir la nueva versión del convenio.",
+      error: (error as Error).message,
+    });
+  }
+};
