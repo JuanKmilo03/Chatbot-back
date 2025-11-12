@@ -1,252 +1,193 @@
 import { Request, Response } from 'express';
-import * as vacanteService from '../services/vacante.service.js';
 import * as empresaService from "../services/empresa.service.js";
 
 import { AuthRequest } from '../middlewares/auth.middleware.js';
 import { EstadoGeneral } from '@prisma/client';
+import { vacanteService } from '../services/vacante.service.js';
+import { prisma } from '../config/db.js';
 
 export const crearVacante = async (req: AuthRequest, res: Response) => {
   try {
-    const { titulo, descripcion, area, modalidad, habilidadesBlandas, habilidadesTecnicas } = req.body;
+    const { titulo, descripcion, area, modalidad, habilidadesBlandas, habilidadesTecnicas, convenioId } = req.body;
 
-    // Validar campos obligatorios
-    if (!titulo || !descripcion || !area || !modalidad) {
-      return res.status(400).json({
-        message: "Faltan campos obligatorios: titulo, descripcion, area o modalidad",
-      });
-    }
+    if (!titulo || !descripcion || !area || !modalidad)
+      return res.status(400).json({ message: "Faltan campos obligatorios: titulo, descripcion, area o modalidad" });
 
-    // Buscar empresa asociada al usuario autenticado
     const empresa = await empresaService.obtenerEmpresaPorUsuarioId(req.user!.id);
-    if (!empresa) {
-      return res.status(404).json({
-        message: "Empresa no encontrada para el usuario autenticado",
-      });
+    if (!empresa) return res.status(404).json({ message: "Empresa no encontrada" });
+
+    // Validar convenio si viene
+    let convenioConnect: any = undefined;
+    if (convenioId) {
+      const convenio = await prisma.convenio.findUnique({ where: { id: Number(convenioId) } });
+      if (!convenio) return res.status(404).json({ message: "Convenio no encontrado." });
+      convenioConnect = { connect: { id: Number(convenioId) } };
     }
 
-    // Crear la vacante
-    const vacante = await vacanteService.crearVacante({
-      empresaId: empresa.id,
+    const vacante = await vacanteService.create({
       titulo,
       descripcion,
       area,
       modalidad,
-      habilidadesBlandas,
-      habilidadesTecnicas,
+      habilidadesBlandas: Array.isArray(habilidadesBlandas) ? habilidadesBlandas : [],
+      habilidadesTecnicas: Array.isArray(habilidadesTecnicas) ? habilidadesTecnicas : [],
+      empresa: { connect: { id: empresa.id } },
+      ...(convenioConnect && { convenio: convenioConnect }),
     });
 
-    return res.status(201).json({
-      message: "Vacante creada correctamente",
-      data: vacante,
-    });
+    return res.status(201).json({ message: "Vacante creada correctamente", data: vacante });
   } catch (error: any) {
-    console.error("Error al crear vacante:", error);
-
-    return res.status(500).json({
-      message: "Error al crear la vacante",
-      error: error.message,
-    });
+    console.error(error);
+    return res.status(500).json({ message: "Error al crear la vacante", error: error.message });
   }
 };
 
 export const registrarVacante = async (req: AuthRequest, res: Response) => {
   try {
-    const { titulo, descripcion, area, modalidad, habilidadesBlandas, habilidadesTecnicas, empresaId } = req.body;
+    const { titulo, descripcion, area, modalidad, habilidadesBlandas, habilidadesTecnicas, empresaId, convenioId } = req.body;
 
-    if (!titulo || !descripcion || !area || !empresaId || !modalidad) {
-      return res.status(400).json({
-        message: "Faltan campos obligatorios: titulo, descripcion, area, empresaId o modalidad",
-      });
+    if (!titulo || !descripcion || !area || !empresaId || !modalidad)
+      return res.status(400).json({ message: "Faltan campos obligatorios: titulo, descripcion, area, empresaId o modalidad" });
+
+    const empresa = await empresaService.obtenerEmpresaPorUsuarioId(empresaId);
+    if (!empresa) return res.status(404).json({ message: "Empresa no encontrada." });
+
+    const directorId = req.user!.id;
+
+    let convenioConnect: any = undefined;
+    if (convenioId) {
+      const convenio = await prisma.convenio.findUnique({ where: { id: Number(convenioId) } });
+      if (!convenio) return res.status(404).json({ message: "Convenio no encontrado." });
+      convenioConnect = { connect: { id: Number(convenioId) } };
     }
 
-    const vacante = await vacanteService.crearVacanteAprobada({
+    const vacante = await vacanteService.create({
       titulo,
       descripcion,
       area,
       modalidad,
-      habilidadesBlandas,
-      habilidadesTecnicas,
-      empresaId,
-      directorId: req.user!.id,
+      habilidadesBlandas: Array.isArray(habilidadesBlandas) ? habilidadesBlandas : [],
+      habilidadesTecnicas: Array.isArray(habilidadesTecnicas) ? habilidadesTecnicas : [],
+      estado: EstadoGeneral.APROBADA,
+      empresa: { connect: { id: empresaId } },
+      directorValida: { connect: { id: directorId } },
+      ...(convenioConnect && { convenio: convenioConnect }),
     });
 
-    return res.status(201).json({
-      message: "Vacante creada y aprobada correctamente",
-      data: vacante
-    });
+    return res.status(201).json({ message: "Vacante creada y aprobada correctamente", data: vacante });
   } catch (error: any) {
-    console.error("Error al crear vacante aprobada:", error);
-    return res.status(500).json({ message: error.message });
+    console.error(error);
+    return res.status(500).json({ message: "Error al crear vacante aprobada", error: error.message });
   }
 };
 
 export const getVacanteById = async (req: Request, res: Response) => {
-  const { id } = req.params;
-
   try {
-    const vacante = await vacanteService.getVacanteByIdService(Number(id));
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "ID inválido" });
 
-    if (!vacante) {
-      return res.status(404).json({ message: "Vacante no encontrada" });
-    }
+    const vacante = await vacanteService.getAll({ id });
+    if (!vacante || vacante.length === 0) return res.status(404).json({ message: "Vacante no encontrada" });
 
-    return res.json({ data: vacante });
-  } catch (error) {
+    return res.json({ data: vacante[0] });
+  } catch (error: any) {
     console.error(error);
-    return res.status(500).json({ message: "Error al obtener la vacante" });
+    return res.status(500).json({ message: "Error al obtener la vacante", error: error.message });
   }
+};
+
+const construirFiltroVacantes = (query: any, estado: EstadoGeneral) => {
+  const where: any = { estado };
+  if (query.titulo) where.titulo = { contains: String(query.titulo) };
+  if (query.empresa) where.empresa = { nombre: { contains: String(query.empresa) } };
+  if (query.modalidad) where.modalidad = String(query.modalidad);
+  if (query.area) where.area = String(query.area);
+  if (query.estado) where.estado = String(query.estado).toUpperCase();
+  return where;
 };
 
 export const listarVacantesPendientes = async (req: Request, res: Response) => {
   try {
-    const { page = 1, limit = 10, titulo, empresa, estado, modalidad } = req.query;
-    const filters = {
-      titulo: req.query.titulo ? String(req.query.titulo) : undefined,
-      empresa: req.query.empresa ? String(req.query.empresa) : undefined,
-      modalidad: req.query.modalidad ? String(req.query.modalidad) : undefined,
-    };
+    const { page = 1, limit = 10 } = req.query;
+    const where = construirFiltroVacantes(req.query, EstadoGeneral.PENDIENTE);
 
-    const { data, total } = await vacanteService.listarVacantesPendientes({
-      page: Number(page),
-      limit: Number(limit),
-      filters
+    const { data, total, totalPages } = await vacanteService.getPaginate({
+      skip: (Number(page) - 1) * Number(limit),
+      take: Number(limit),
+      where,
     });
 
-    return res.status(200).json({
-      message: 'Vacantes pendientes obtenidas correctamente',
-      data,
-      total,
-      page: Number(page),
-      totalPages: Math.ceil(total / Number(limit))
-    });
+    return res.status(200).json({ message: "Vacantes pendientes obtenidas correctamente", data, total, page: Number(page), totalPages });
   } catch (error: any) {
-    console.error('Error al listar vacantes pendientes:', error);
-    return res.status(500).json({
-      message: 'Error al obtener las vacantes pendientes',
-      error: error.message
-    });
+    console.error(error);
+    return res.status(500).json({ message: "Error al listar vacantes pendientes", error: error.message });
   }
 };
 
 export const listarVacantesAprobadas = async (req: Request, res: Response) => {
   try {
-    const { page = 1, limit = 10, titulo, empresa, estado, modalidad } = req.query;
-    const filters = {
-      titulo: req.query.titulo ? String(req.query.titulo) : undefined,
-      empresa: req.query.empresa ? String(req.query.empresa) : undefined,
-      estado: req.query.estado
-        ? (req.query.estado.toString().toUpperCase() as EstadoGeneral)
-        : undefined,
-      area: req.query.area ? String(req.query.area) : undefined,
-    };
-    const { data, total } = await vacanteService.listarVacantesAprobadas({
-      page: Number(page),
-      limit: Number(limit),
-      filters
+    const { page = 1, limit = 10 } = req.query;
+    const where = construirFiltroVacantes(req.query, EstadoGeneral.APROBADA);
+
+    const { data, total, totalPages } = await vacanteService.getPaginate({
+      skip: (Number(page) - 1) * Number(limit),
+      take: Number(limit),
+      where,
     });
 
-    return res.status(200).json({
-      message: 'Vacantes aprobadas obtenidas correctamente',
-      data,
-      total,
-      page: Number(page),
-      totalPages: Math.ceil(total / Number(limit))
-    });
+    return res.status(200).json({ message: "Vacantes aprobadas obtenidas correctamente", data, total, page: Number(page), totalPages });
   } catch (error: any) {
-    console.error('Error al listar vacantes aprobadas:', error);
-    return res.status(500).json({
-      message: 'Error al obtener las vacantes aprobadas',
-      error: error.message
-    });
+    console.error(error);
+    return res.status(500).json({ message: "Error al listar vacantes aprobadas", error: error.message });
   }
+
 };
 
 export const aprobarVacante = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "ID inválido" });
 
-    // Validar que el ID de la vacante sea válido
-    if (!id || isNaN(Number(id))) {
-      return res.status(400).json({ message: 'ID de vacante inválido' });
-    }
-
-    const vacanteAprobada = await vacanteService.aprobarVacante(
-      Number(id),
-      req.user!.id
-    );
-
-    return res.status(200).json({
-      message: 'Vacante aprobada correctamente',
-      data: vacanteAprobada
-    });
+    const vacante = await vacanteService.update(id, { estado: EstadoGeneral.APROBADA });
+    return res.status(200).json({ message: "Vacante aprobada correctamente", data: vacante });
   } catch (error: any) {
-    console.error('Error al aprobar vacante:', error);
-
-    if (
-      error.message === 'Vacante no encontrada' ||
-      error.message === 'Director no encontrado'
-    ) {
-      return res.status(404).json({ message: error.message });
-    }
-
-    if (error.message.includes('Solo se pueden aprobar')) {
-      return res.status(400).json({ message: error.message });
-    }
-
-    return res.status(500).json({ message: 'Error al aprobar la vacante', error: error.message });
+    console.error(error);
+    return res.status(500).json({ message: "Error al aprobar la vacante", error: error.message });
   }
 };
 
 export const rechazarVacante = async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params;
+ try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "ID inválido" });
 
-    if (!id || isNaN(Number(id))) {
-      return res.status(400).json({ message: 'ID de vacante inválido' });
-    }
-
-    const vacanteRechazada = await vacanteService.rechazarVacante(
-      Number(id),
-      req.user!.id
-    );
-
-    return res.status(200).json({
-      message: 'Vacante rechazada correctamente',
-      data: vacanteRechazada
-    });
-
+    const vacante = await vacanteService.update(id, { estado: EstadoGeneral.RECHAZADA });
+    return res.status(200).json({ message: "Vacante rechazada correctamente", data: vacante });
   } catch (error: any) {
-    console.error('Error al rechazar vacante:', error);
-
-    if (
-      error.message === 'Vacante no encontrada' ||
-      error.message === 'Director no encontrado'
-    ) {
-      return res.status(404).json({ message: error.message });
-    }
-
-    if (error.message.includes('Solo se pueden rechazar')) {
-      return res.status(400).json({ message: error.message });
-    }
-
-    return res.status(500).json({ message: 'Error al rechazar la vacante', error: error.message });
+    console.error(error);
+    return res.status(500).json({ message: "Error al rechazar la vacante", error: error.message });
   }
 };
 
 
 export const solicitarEliminacionVacante = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const vacanteId = Number(req.params.id);
     const empresa = await empresaService.obtenerEmpresaPorUsuarioId(req.user!.id);
 
-    if (!empresa)
-      return res.status(404).json({ message: "Empresa no encontrada para el usuario autenticado." });
+    if (!empresa) return res.status(404).json({ message: "Empresa no encontrada." });
 
-    const resultado = await vacanteService.solicitarEliminacionVacante(Number(id), empresa.id);
+    const vacante = await vacanteService.getAll({ id: vacanteId, empresa: { id: empresa.id } });
+    if (!vacante || vacante.length === 0) return res.status(403).json({ message: "No tienes permiso para solicitar eliminación de esta vacante." });
+    if (vacante[0].estado === EstadoGeneral.INACTIVA) return res.status(400).json({ message: "La vacante ya está inactiva o eliminada." });
 
-    return res.status(200).json(resultado);
+    return res.status(200).json({
+      message: "Solicitud de eliminación enviada. Un director revisará la solicitud.",
+      vacanteId,
+      estadoActual: vacante[0].estado,
+    });
   } catch (error: any) {
-    console.error("Error al solicitar eliminación:", error);
+    console.error(error);
     return res.status(400).json({ message: error.message });
   }
 };
@@ -254,35 +195,24 @@ export const solicitarEliminacionVacante = async (req: AuthRequest, res: Respons
 
 export const eliminarVacanteDefinitiva = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = Number(req.params.id);
+    if (req.user!.rol !== "DIRECTOR" && req.user!.rol !== "ADMIN") return res.status(403).json({ message: "No tienes permisos para eliminar vacantes." });
 
-    if (req.user!.rol !== "DIRECTOR" && req.user!.rol !== "ADMIN") {
-      return res.status(403).json({ message: "No tienes permisos para eliminar vacantes." });
-    }
-
-    const resultado = await vacanteService.eliminarVacanteDefinitiva(Number(id));
-    return res.status(200).json(resultado);
+    await vacanteService.update(id, { estado: EstadoGeneral.INACTIVA });
+    return res.status(200).json({ message: "Vacante eliminada correctamente" });
   } catch (error: any) {
-    console.error("Error al eliminar vacante:", error);
+    console.error(error);
     return res.status(400).json({ message: error.message });
   }
 };
 
 export const inactivarVacante = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
-
-    const vacanteInactiva = await vacanteService.cambiarEstadoVacante(
-      Number(id),
-      EstadoGeneral.INACTIVA
-    );
-
-    return res.status(200).json({
-      message: "Vacante marcada como inactiva correctamente.",
-      data: vacanteInactiva,
-    });
+    const id = Number(req.params.id);
+    const vacante = await vacanteService.update(id, { estado: EstadoGeneral.INACTIVA });
+    return res.status(200).json({ message: "Vacante marcada como inactiva correctamente", data: vacante });
   } catch (error: any) {
-    console.error("Error al inactivar vacante:", error);
+    console.error(error);
     return res.status(400).json({ message: error.message });
   }
 };
@@ -292,19 +222,11 @@ export const inactivarVacante = async (req: AuthRequest, res: Response) => {
  */
 export const activarVacante = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
-
-    const vacanteActiva = await vacanteService.cambiarEstadoVacante(
-      Number(id),
-      EstadoGeneral.APROBADA
-    );
-
-    return res.status(200).json({
-      message: "Vacante reactivada correctamente.",
-      data: vacanteActiva,
-    });
+    const id = Number(req.params.id);
+    const vacante = await vacanteService.update(id, { estado: EstadoGeneral.APROBADA });
+    return res.status(200).json({ message: "Vacante reactivada correctamente", data: vacante });
   } catch (error: any) {
-    console.error("Error al activar vacante:", error);
+    console.error(error);
     return res.status(400).json({ message: error.message });
   }
 };
@@ -315,67 +237,45 @@ export const activarVacante = async (req: AuthRequest, res: Response) => {
 export const actualizarVacanteAdminDirector = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const {
-      titulo,
-      descripcion,
-      area,
-      modalidad,
-      habilidadesBlandas,
-      habilidadesTecnicas,
-      estado,
-      empresaId,
-      directorValidaId,
-    } = req.body;
+    if (!id) return res.status(400).json({ message: "El ID de la vacante es obligatorio." });
 
-    if (!id) {
-      return res.status(400).json({ message: "El ID de la vacante es obligatorio." });
-    }
+    const data = req.body;
+    if (data.habilidadesBlandas && !Array.isArray(data.habilidadesBlandas)) data.habilidadesBlandas = [];
+    if (data.habilidadesTecnicas && !Array.isArray(data.habilidadesTecnicas)) data.habilidadesTecnicas = [];
 
-    const vacanteActualizada = await vacanteService.actualizarVacante(Number(id), {
-      titulo,
-      descripcion,
-      area,
-      modalidad,
-      habilidadesBlandas,
-      habilidadesTecnicas,
-      estado,
-      empresaId,
-      directorValidaId,
-    });
+    // Conectar relaciones si vienen
+    if (data.empresaId) data.empresa = { connect: { id: data.empresaId } };
+    if (data.directorValidaId) data.directorValida = { connect: { id: data.directorValidaId } };
+    if (data.convenioId) data.convenio = { connect: { id: data.convenioId } };
 
-    return res.status(200).json({
-      message: "Vacante actualizada correctamente.",
-      data: vacanteActualizada,
-    });
+    const vacante = await vacanteService.update(Number(id), data);
+    return res.status(200).json({ message: "Vacante actualizada correctamente", data: vacante });
   } catch (error: any) {
-    console.error("Error al actualizar vacante:", error);
+    console.error(error);
     return res.status(400).json({ message: error.message });
   }
 };
 
-
 export const listarVacantesEmpresa = async (req: AuthRequest, res: Response) => {
   try {
     const companyId = req.user?.id;
-    const { page = 1, limit = 10, titulo, estado, requisitos, area } = req.query;
+    if (!companyId) return res.status(401).json({ message: "No autorizado" });
 
-    if (!companyId) {
-      return res.status(401).json({ message: "No autorizado" });
-    }
+    const { page = 1, limit = 10, titulo, estado, area } = req.query;
+    const where: any = { empresa: { id: companyId } };
+    if (titulo) where.titulo = { contains: String(titulo) };
+    if (estado) where.estado = String(estado).toUpperCase();
+    if (area) where.area = String(area);
 
-    const response = await vacanteService.listarVacantesEmpresaService({
-      companyId,
-      page: Number(page),
-      limit: Number(limit),
-      titulo: titulo as string,
-      estado: estado as EstadoGeneral,
-      requisitos: requisitos as string,
-      area: area as string,
+    const { data, total, totalPages } = await vacanteService.getPaginate({
+      skip: (Number(page) - 1) * Number(limit),
+      take: Number(limit),
+      where,
     });
 
-    return res.json(response);
-  } catch (error) {
+    return res.json({ data, total, page: Number(page), totalPages });
+  } catch (error: any) {
     console.error(error);
-    return res.status(500).json({ message: "Error al obtener vacantes de la empresa" });
+    return res.status(500).json({ message: "Error al obtener vacantes de la empresa", error: error.message });
   }
 };
