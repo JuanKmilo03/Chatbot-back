@@ -78,42 +78,6 @@ export const initializeSocket = (httpServer: HTTPServer) => {
     socket.join(`user:${user.id}`);
     console.log(`Usuario ${user.id} unido a sala de notificaciones: user:${user.id}`);
 
-    // Evento: Unirse a una conversación
-    socket.on("join-conversation", (conversacionId: number) => {
-      socket.join(`conversation-${conversacionId}`);
-      console.log(`Usuario ${user.id} se unió a conversación ${conversacionId}`);
-    });
-
-    // Evento: Salir de una conversación
-    socket.on("leave-conversation", (conversacionId: number) => {
-      socket.leave(`conversation-${conversacionId}`);
-      console.log(`Usuario ${user.id} salió de conversación ${conversacionId}`);
-    });
-
-    // Evento: Usuario está escribiendo
-    socket.on("typing", (data: { conversacionId: number }) => {
-      socket.to(`conversation-${data.conversacionId}`).emit("user-typing", {
-        userId: user.id,
-        rol: user.rol,
-      });
-    });
-
-    // Evento: Usuario dejó de escribir
-    socket.on("stop-typing", (data: { conversacionId: number }) => {
-      socket.to(`conversation-${data.conversacionId}`).emit("user-stop-typing", {
-        userId: user.id,
-        rol: user.rol,
-      });
-    });
-
-    // Evento: Marcar mensaje como leído
-    socket.on("mark-as-read", (data: { conversacionId: number; mensajeId: number }) => {
-      socket.to(`conversation-${data.conversacionId}`).emit("message-read", {
-        mensajeId: data.mensajeId,
-        userId: user.id,
-      });
-    });
-
     // Evento: Marcar notificación como leída
     socket.on("mark-notification-read", (data: { notificacionId: number }) => {
       console.log(`Notificación ${data.notificacionId} marcada como leída por usuario ${user.id}`);
