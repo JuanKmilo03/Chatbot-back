@@ -10,6 +10,7 @@ import {
   enviarRevisionFinal,
   subirConvenioFirmado,
   aprobarConvenio,
+  crearConvenioPorDirector,
 } from "../controllers/convenio.controller.js";
 import { authorizeRoles, verifyToken } from "../middlewares/auth.middleware.js";
 
@@ -23,6 +24,50 @@ const upload = multer({ dest: "uploads/" });
  *   name: Convenios
  *   description: Gestión de convenios empresariales
  */
+
+/**
+ * @swagger
+ * /api/convenios/crear:
+ *   post:
+ *     summary: Crear un convenio (solo DIRECTOR o ADMIN)
+ *     description: Permite a la directora o administradora registrar un nuevo convenio para una empresa.
+ *     tags: [Convenios]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               empresaId:
+ *                 type: integer
+ *                 example: 1
+ *               nombre:
+ *                 type: string
+ *                 example: "Convenio de Prácticas 2025"
+ *               descripcion:
+ *                 type: string
+ *                 example: "Convenio para prácticas empresariales con la empresa XYZ"
+ *               tipo:
+ *                 type: string
+ *                 enum: [MACRO, ESPECIFICO]
+ *                 example: "ESPECIFICO"
+ *               observaciones:
+ *                 type: string
+ *                 example: "Convenio creado directamente por la directora"
+ *     responses:
+ *       201:
+ *         description: Convenio creado correctamente
+ *       400:
+ *         description: Datos inválidos
+ *       401:
+ *         description: Token inválido
+ *       403:
+ *         description: Solo pueden hacerlo directores o administradores
+ */
+router.post("/crear", verifyToken, authorizeRoles("DIRECTOR", "ADMIN"), upload.single("file"), crearConvenioPorDirector);
 
 /**
  * @swagger
@@ -170,12 +215,7 @@ router.post("/:id/rechazar", verifyToken, authorizeRoles("DIRECTOR"), rechazarCo
  */
 router.get("/", verifyToken, authorizeRoles('DIRECTOR', 'ADMIN'), listarTodosLosConvenios);
 
-router.get(
-  "/empresa/:empresaId",
-  verifyToken,
-  authorizeRoles('DIRECTOR', 'ADMIN'),
-  listarConveniosPorEmpresaId
-);
+router.get("/empresa/:empresaId", verifyToken, authorizeRoles('DIRECTOR', 'ADMIN'), listarConveniosPorEmpresaId);
 
 /**
  * @swagger

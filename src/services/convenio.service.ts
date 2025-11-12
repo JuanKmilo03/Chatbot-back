@@ -6,6 +6,76 @@ import cloudinary from "../config/cloudinary.config.js";
 const prisma = new PrismaClient();
 
 export const convenioService = {
+  async crearConvenioPorDirector({
+    empresaId,
+    nombre,
+    descripcion,
+    tipo,
+    observaciones,
+    fechaInicio,
+    fechaFin,
+    directorId,
+    archivo,
+    estado
+  }: {
+    empresaId: number;
+    nombre: string;
+    descripcion?: string;
+    tipo: string;
+    observaciones?: string;
+    fechaInicio: string;
+    fechaFin: string;
+    directorId: number;
+    archivo?: Express.Multer.File;
+    estado?: EstadoConvenio;
+  }) {
+    const empresa = await prisma.empresa.findUnique({ where: { id: empresaId } });
+    if (!empresa) throw new Error("Empresa no encontrada");
+
+    let archivoUrl: string | null = null;
+
+    if (archivo) {
+      const result = await cloudinary.uploader.upload(archivo.path, {
+        folder: `Convenios/${empresaId}`,
+        resource_type: "auto",
+        public_id: `Convenio_${Date.now()}`,
+      });
+      archivoUrl = result.secure_url;
+
+      fs.unlinkSync(archivo.path);
+    }
+
+    const convenio = await prisma.convenio.create({
+      data: {
+        empresaId,
+        directorId,
+        nombre,
+        descripcion: descripcion || null,
+        tipo: tipo.toUpperCase() as any,
+        estado: estado || "EN_REVISION",
+        observaciones: observaciones || null,
+        archivoUrl,
+        fechaInicio: new Date(fechaInicio),
+        fechaFin: new Date(fechaFin),
+        version: 1,
+      },
+    });
+
+    if (archivoUrl) {
+      await prisma.documento.create({
+        data: {
+          titulo: nombre,
+          descripcion: descripcion || "Convenio creado por director",
+          categoria: "CONVENIO_EMPRESA",
+          archivoUrl,
+          directorId,
+          convenioId: convenio.id,
+        },
+      });
+    }
+
+    return convenio;
+  },
   crearConvenioInicial: async (empresaId: number) => {
     const plantilla = await prisma.documento.findFirst({
       where: { categoria: TipoDocumento.CONVENIO_PLANTILLA },
@@ -39,13 +109,35 @@ export const convenioService = {
 
     return convenio;
   },
-  listarConveniosPorEmpresa: async (empresaId: number) => {
+  listarConveniosPorEmpresa: async (
+    empresaId: number,
+    options?: { page?: number; pageSize?: number; filtros?: any }
+  ) => {
+    const page = options?.page || 1;
+    const pageSize = options?.pageSize || 10;
+    const filtros = options?.filtros || {};
+
+    const where = { empresaId, ...filtros };
+
+    const total = await prisma.convenio.count({ where });
+
     const convenios = await prisma.convenio.findMany({
-      where: { empresaId },
-      orderBy: { creadoEn: 'desc' }, // más recientes primero
+      where,
+      include: {
+        empresa: { select: { id: true, usuario: true, nit: true } },
+        director: { select: { id: true, usuario: { select: { nombre: true, email: true } } } },
+      },
+      orderBy: { creadoEn: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     });
 
-    return convenios;
+    return {
+      data: convenios,
+      total,
+      page,
+      pageSize,
+    };
   },
   listarTodosLosConvenios: async () => {
     return await prisma.convenio.findMany({
@@ -53,12 +145,35 @@ export const convenioService = {
       orderBy: { creadoEn: 'desc' },
     });
   },
-  listarConveniosPorEmpresaId: async (empresaId: number) => {
-    return await prisma.convenio.findMany({
-      where: { empresaId },
-      include: { empresa: true, director: true },
-      orderBy: { creadoEn: 'desc' },
+  listarConveniosPorEmpresaId: async (
+    empresaId: number,
+    options?: { page?: number; pageSize?: number; filtros?: any }
+  ) => {
+    const page = options?.page || 1;
+    const pageSize = options?.pageSize || 10;
+    const filtros = options?.filtros || {};
+
+    const where = { empresaId, ...filtros };
+
+    const total = await prisma.convenio.count({ where });
+
+    const convenios = await prisma.convenio.findMany({
+      where,
+      include: {
+        empresa: { select: { id: true, usuario: true, nit: true } },
+        director: { select: { id: true, usuario: { select: { nombre: true, email: true } } } },
+      },
+      orderBy: { creadoEn: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     });
+
+    return {
+      data: convenios,
+      total,
+      page,
+      pageSize,
+    };
   },
   obtenerConvenioPorId: async (convenioId: number, usuario: AuthRequest["user"]) => {
     const convenio = await prisma.convenio.findUnique({

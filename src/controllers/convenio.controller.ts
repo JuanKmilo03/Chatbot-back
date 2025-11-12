@@ -5,6 +5,39 @@ import { AuthRequest } from "../middlewares/auth.middleware.js";
 
 const prisma = new PrismaClient();
 
+export const crearConvenioPorDirector = async (req: AuthRequest, res: Response) => {
+  try {
+    const { empresaId, nombre, descripcion, tipo, observaciones, fechaInicio, fechaFin, estado } = req.body;
+    const directorId = req.user?.id;
+    const archivo = req.file;
+
+    if (!empresaId || !nombre || !tipo || !fechaInicio || !fechaFin) {
+      return res.status(400).json({ message: "empresaId, nombre, tipo, fechaInicio y fechaFin son obligatorios" });
+    }
+
+    const convenio = await convenioService.crearConvenioPorDirector({
+      empresaId: Number(empresaId),
+      nombre,
+      descripcion,
+      tipo,
+      observaciones,
+      fechaInicio,
+      fechaFin,
+      directorId: directorId!,
+      archivo,
+      estado
+    });
+
+    res.status(201).json({
+      message: "Convenio creado correctamente por directora o admin.",
+      data: convenio,
+    });
+  } catch (error) {
+    console.error("❌ Error al crear convenio por director:", error);
+    res.status(500).json({ message: "Error al crear convenio por director.", error: (error as Error).message });
+  }
+};
+
 export const iniciarConvenio = async (req: AuthRequest, res: Response) => {
   try {
     const usuarioId = req.user?.id;
@@ -40,14 +73,31 @@ export const listarConveniosEmpresa = async (req: AuthRequest, res: Response) =>
     });
 
     if (!empresa) {
-      throw new Error("Empresa no encontrada");
+      return res.status(404).json({ message: "Empresa no encontrada" });
     }
 
-    const convenios = await convenioService.listarConveniosPorEmpresa(empresa.id);
+    const page = Number(req.query.page) || 1;
+    const pageSize = Number(req.query.pageSize) || 10;
 
-    res.status(200).json({ data: convenios });
+    const filtros: any = {};
+
+    if (req.query.estado) filtros.estado = req.query.estado;
+    if (req.query.tipo) filtros.tipo = req.query.tipo;
+    if (req.query.nombre)
+      filtros.nombre = { contains: String(req.query.nombre), mode: "insensitive" };
+
+    const result = await convenioService.listarConveniosPorEmpresa(empresa.id, {
+      page,
+      pageSize,
+      filtros,
+    });
+
+    res.status(200).json({
+      message: "Convenios obtenidos correctamente",
+      ...result,
+    });
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error al listar convenios de la empresa:", error);
     res.status(500).json({ message: "Error al listar los convenios", error });
   }
 };
@@ -65,12 +115,33 @@ export const listarTodosLosConvenios = async (_req: AuthRequest, res: Response) 
 export const listarConveniosPorEmpresaId = async (req: AuthRequest, res: Response) => {
   try {
     const empresaId = Number(req.params.empresaId);
-    if (!empresaId) return res.status(400).json({ message: "ID de empresa inválido" });
+    if (!empresaId) {
+      return res.status(400).json({ message: "ID de empresa inválido" });
+    }
 
-    const convenios = await convenioService.listarConveniosPorEmpresaId(empresaId);
-    res.status(200).json({ data:convenios });
+    // 🔹 Paginación y filtros desde query
+    const page = Number(req.query.page) || 1;
+    const pageSize = Number(req.query.pageSize) || 10;
+
+    const filtros: any = {};
+
+    if (req.query.estado) filtros.estado = req.query.estado;
+    if (req.query.tipo) filtros.tipo = req.query.tipo;
+    if (req.query.nombre)
+      filtros.nombre = { contains: String(req.query.nombre), mode: "insensitive" };
+
+    const result = await convenioService.listarConveniosPorEmpresaId(empresaId, {
+      page,
+      pageSize,
+      filtros,
+    });
+
+    res.status(200).json({
+      message: "Convenios obtenidos correctamente",
+      ...result,
+    });
   } catch (error) {
-    console.error(error);
+    console.error("Error al listar convenios por empresa:", error);
     res.status(500).json({ message: "Error al listar convenios por empresa", error });
   }
 };

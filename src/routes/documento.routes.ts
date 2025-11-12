@@ -1,4 +1,5 @@
-import { Router } from "express";
+import express from "express";
+import multer from "multer";
 import {
   subirDocumento,
   listarDocumentos,
@@ -35,32 +36,6 @@ router.put(
   actualizarDocumento
 );
 
-/**
- * @swagger
- * /api/documentos/{id}:
- *   delete:
- *     summary: Elimina un documento
- *     description: Elimina permanentemente un documento (solo el director propietario)
- *     tags: [Documentos]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: ID del documento a eliminar
- *     responses:
- *       200:
- *         description: Documento eliminado correctamente
- *       401:
- *         description: No autorizado
- *       403:
- *         description: No tienes permiso para eliminar este documento
- *       404:
- *         description: Documento no encontrado
- */
 router.delete(
   "/:id",
   verifyToken,

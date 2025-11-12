@@ -1,4 +1,4 @@
-import { PrismaClient, Rol, EstadoConvenio, EstadoPractica, EstadoGeneral, TipoConvenio } from '@prisma/client';
+import { PrismaClient, Rol, EstadoConvenio, EstadoPractica, EstadoGeneral, TipoConvenio, TipoDocumento } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -83,6 +83,17 @@ async function main() {
       usuarioId: directorUser.id,
       programaId: programa.id,
       Facultad: 'Facultad de Ingenierías',
+    },
+  });
+
+  await prisma.documento.create({
+    data: {
+      titulo: 'Plantilla Inicial de Convenio',
+      descripcion: 'Documento base del convenio utilizado como plantilla para nuevos acuerdos empresariales.',
+      categoria: TipoDocumento.CONVENIO_PLANTILLA,
+      archivoUrl: 'https://res.cloudinary.com/dqwxyv3zc/image/upload/v1762804320/DocumentosPracticas/yxqto6t2io7djka0w5j6.pdf',
+      publicId: 'DocumentosPracticas/yxqto6t2io7djka0w5j6',
+      directorId: director.id,
     },
   });
 
