@@ -1,111 +1,107 @@
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt';
+import { Estudiante, Prisma, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export class EstudianteService {
-  // Crear estudiante
-  static async crear(data: {
-    nombre: string;
-    email: string;
-    password?: string;
-    habilidades?: string;
-    perfil?: string;
-  }) {
-    const { nombre, email, password, habilidades, perfil } = data;
-
-    const existe = await prisma.usuario.findUnique({ where: { email } });
-    if (existe) throw new Error('El correo ya está registrado');
-
-    const hashed = password ? await bcrypt.hash(password, 10) : null;
-
-    const usuario = await prisma.usuario.create({
-      data: {
-        nombre,
-        email,
-        password: hashed,
-        rol: 'ESTUDIANTE',
-      },
-    });
-
-    const estudiante = await prisma.estudiante.create({
-      data: {
-        usuarioId: usuario.id,
-        habilidades,
-        perfil,
-      },
-      include: { usuario: true },
-    });
-
-    return estudiante;
-  }
-
-  // Obtener todos
-  static async obtenerTodos() {
+export const estudianteService = {
+  /**
+   * Obtener estudiantes con paginación, filtros y ordenamiento.
+   * @param params - { skip, take, where, orderBy }
+   * @returns Lista de estudiantes activos
+   */
+  async getAll(params: {
+    skip?: number;
+    take?: number;
+    where?: Prisma.EstudianteWhereInput;
+    orderBy?: Prisma.EstudianteOrderByWithRelationInput;
+  }): Promise<Estudiante[]> {
+    const { skip = 0, take = 10, where = {}, orderBy = { id: "asc" } } = params;
     return prisma.estudiante.findMany({
-      include: { usuario: true },
-    });
-  }
-
-  // Obtener por ID
-  static async obtenerPorId(id: number) {
-    const estudiante = await prisma.estudiante.findUnique({
-      where: { id },
-      include: { usuario: true },
-    });
-
-    if (!estudiante) throw new Error('Estudiante no encontrado');
-    return estudiante;
-  }
-
-  // Obtener estudiante por ID de usuario
-  static async obtenerPorUsuarioId(usuarioId: number) {
-    const estudiante = await prisma.estudiante.findUnique({
-      where: { usuarioId },
-      include: { usuario: true },
-    });
-
-    if (!estudiante) throw new Error('Estudiante no encontrado');
-    return estudiante;
-  }
-
-  // Actualizar estudiante
-  static async actualizar(id: number, data: any) {
-    const { nombre, email, habilidades, perfil } = data;
-
-    const existe = await prisma.estudiante.findUnique({ where: { id } });
-    if (!existe) throw new Error('Estudiante no encontrado');
-
-    const actualizado = await prisma.estudiante.update({
-      where: { id },
-      data: {
-        habilidades,
-        perfil,
-        usuario: {
-          update: { nombre, email },
-        },
+      skip,
+      take,
+      where,
+      orderBy,
+      include: {
+        usuario: true,
+        postulaciones: true,
+        practicas: true,
       },
-      include: { usuario: true },
     });
-
-    return actualizado;
-  }
-
-  // Soft delete (marcar inactivo)
-  static async softDelete(id: number) {
-    const estudiante = await prisma.estudiante.findUnique({
+  },
+  /**
+ * Obtener estudiantes que cumplan con un filtro sin paginación
+ * @param where - Filtros dinámicos
+ * @param orderBy - Ordenamiento opcional
+ * @returns Lista de estudiantes que cumplen el filtro
+ */
+  async findMany(where: Prisma.EstudianteWhereInput = {}, orderBy?: Prisma.Enumerable<Prisma.EstudianteOrderByWithRelationInput>): Promise<Estudiante[]> {
+    return prisma.estudiante.findMany({
+      where: { ...where, activo: true },
+      orderBy: orderBy || [{ id: "asc" }],
+      include: {
+        usuario: true,
+        postulaciones: true,
+        practicas: true,
+      },
+    });
+  },
+  /**
+   * Obtener un estudiante por su ID.
+   * @param id - ID del estudiante
+   * @returns Estudiante o null si no existe
+   */
+  async getById(id: number): Promise<Estudiante | null> {
+    return prisma.estudiante.findUnique({
       where: { id },
-      include: { usuario: true },
+      include: {
+        usuario: true,
+        postulaciones: true,
+        practicas: true,
+      },
     });
-
-    if (!estudiante) throw new Error('Estudiante no encontrado');
-
-    // 👇 Aquí podrías usar un campo `activo` si lo agregas al modelo
-    await prisma.usuario.update({
-      where: { id: estudiante.usuarioId },
-      data: { rol: 'ESTUDIANTE', actualizadoEn: new Date() },
+  },
+  /**
+   * Crear un nuevo estudiante.
+   * @param data - Datos del estudiante
+   * @returns Estudiante creado
+   */
+  async create(data: Prisma.EstudianteCreateInput): Promise<Estudiante> {
+    return prisma.estudiante.create({ data });
+  },
+  /**
+   * Actualizar un estudiante existente.
+   * @param id - ID del estudiante
+   * @param data - Datos a actualizar
+   * @returns Estudiante actualizado
+   */
+  async update(
+    id: number,
+    data: Prisma.EstudianteUpdateInput
+  ): Promise<Estudiante> {
+    return prisma.estudiante.update({
+      where: { id },
+      data,
     });
-
-    return { message: 'Estudiante marcado como inactivo' };
-  }
+  },
+  /**
+   * Soft delete de estudiante (marcar como inactivo).
+   * @param id - ID del estudiante
+   * @returns Estudiante actualizado con activo = false
+   */
+  async softDelete(id: number): Promise<Estudiante> {
+    return prisma.estudiante.update({
+      where: { id },
+      data: { activo: false },
+    });
+  },
+  /**
+   * Reactivar un estudiante previamente inactivo.
+   * @param id - ID del estudiante
+   * @returns Estudiante actualizado con activo = true
+   */
+  async reactivate(id: number): Promise<Estudiante> {
+    return prisma.estudiante.update({
+      where: { id },
+      data: { activo: true },
+    });
+  },
 }

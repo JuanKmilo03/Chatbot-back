@@ -44,13 +44,18 @@ model Programa {
 }
 
 model Estudiante {
-  id            Int           @id @default(autoincrement())
-  usuarioId     Int           @unique
-  habilidades   String?
-  perfil        String?
-  usuario       Usuario       @relation(fields: [usuarioId], references: [id])
-  practicas     Practica[]
-  postulaciones Postulacion[] // postulaciones del estudiante
+  id                   Int           @id @default(autoincrement())
+  usuarioId            Int           @unique
+  descripcion          String?       // mini CV o presentación personal
+  area                 String?       // área de interés
+  habilidadesTecnicas  String[]    // array de habilidades técnicas
+  habilidadesBlandas   String[]     // array de habilidades blandas
+  experiencia          String?       // experiencia previa, proyectos, etc.
+  perfilCompleto       Boolean       @default(false) // si completó CV
+  activo               Boolean       @default(true)
+  usuario              Usuario       @relation(fields: [usuarioId], references: [id])
+  practicas            Practica[]
+  postulaciones        Postulacion[]
 }
 
 model Empresa {
@@ -146,15 +151,15 @@ enum EstadoConvenio {
 model Vacante {
   id                  Int           @id @default(autoincrement())
   empresaId           Int
-  convenioId          Int? // convenio activo que la respalda
+  convenioId          Int? 
   directorValidaId    Int?
   titulo              String
   modalidad           Modalidad
   descripcion         String
   area                String
   ciudad              String?
-  habilidadesBlandas  String?
-  habilidadesTecnicas String?
+  habilidadesTecnicas String[]
+  habilidadesBlandas  String[]
   estado              EstadoGeneral @default(PENDIENTE)
   creadaEn            DateTime      @default(now())
   actualizadaEn       DateTime      @default(now()) @updatedAt

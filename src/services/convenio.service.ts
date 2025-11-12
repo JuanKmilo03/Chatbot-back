@@ -61,6 +61,16 @@ export const convenioService = {
       },
     });
 
+    if(estado && estado === EstadoConvenio.APROBADO){
+      await prisma.empresa.update({
+        where: { id: convenio.empresaId },
+        data: {
+          habilitada: true,
+          estado: EstadoEmpresa.HABILITADA,
+        },
+      });
+    }
+
     if (archivoUrl) {
       await prisma.documento.create({
         data: {
