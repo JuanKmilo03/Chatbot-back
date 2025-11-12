@@ -71,9 +71,14 @@ import documentoRoutes from "./routes/documento.routes.js";
 import estudianteRoutes from "./routes/estudiante.routes.js";
 import representanteRoutes from "./routes/representante.routes.js";
 import chatRoutes from "./routes/chat.routes.js";
+import postulacionRoutes from "./routes/postulacion.routes.js";
+import notificacionRoutes from "./routes/notificacion.routes.js";
 
 // Middlewares
 import { verifyToken, authorizeRoles } from "./middlewares/auth.middleware.js";
+
+// Servicios de notificaciones
+import { iniciarSchedulerConvenios } from "./services/convenio-vencimiento.service.js";
 
 
 
@@ -97,6 +102,8 @@ app.use('/api/estudiantes', estudianteRoutes);
 // Rutas protegidas
 app.use("/api/representantes", representanteRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/postulaciones", postulacionRoutes);
+app.use("/api/notificaciones", notificacionRoutes);
 
 // Rutas por roles
 app.use("/api/convenios", convenioRoutes);
@@ -111,10 +118,16 @@ app.get("/", (_req, res) => res.send("🚀 Servidor del Chatbot funcionando corr
 const startServer = async () => {
   try {
     await connectDB();
+
+    // Iniciar scheduler de verificación de convenios
+    console.log('🔄 Iniciando scheduler de verificación de convenios...');
+    iniciarSchedulerConvenios();
+
     httpServer.listen(env.PORT, () => {
       console.log(`🚀 Servidor HTTP corriendo en http://localhost:${env.PORT}`);
       console.log(`⚡ Socket.IO listo para conexiones WebSocket`);
       console.log(`📚 Documentación disponible en http://localhost:${env.PORT}/docs`);
+      console.log(`🔔 Sistema de notificaciones activado`);
     });
   } catch (error) {
     console.error("Error al iniciar el servidor:", error);

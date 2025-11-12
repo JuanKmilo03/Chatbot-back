@@ -321,3 +321,36 @@ enum Rol {
   ESTUDIANTE
   EMPRESA
 }
+
+model Notificacion {
+  id              Int                   @id @default(autoincrement())
+  tipo            TipoNotificacion
+  titulo          String
+  mensaje         String
+  prioridad       PrioridadNotificacion @default(MEDIA)
+  destinatarioId  Int
+  destinatarioRol Rol
+  leida           Boolean               @default(false)
+  data            Json? // Información adicional específica del tipo de notificación
+  creadaEn        DateTime              @default(now())
+  actualizadaEn   DateTime              @updatedAt
+
+  @@index([destinatarioId, leida])
+  @@index([tipo])
+  @@index([creadaEn])
+}
+
+enum TipoNotificacion {
+  CONVENIO_PROXIMO_VENCER
+  CONVENIO_VENCIDO
+  NUEVA_SOLICITUD_VACANTE
+  VACANTE_APROBADA
+  VACANTE_RECHAZADA
+}
+
+enum PrioridadNotificacion {
+  BAJA
+  MEDIA
+  ALTA
+  URGENTE
+}

@@ -58,6 +58,17 @@ export class EstudianteService {
     return estudiante;
   }
 
+  // Obtener estudiante por ID de usuario
+  static async obtenerPorUsuarioId(usuarioId: number) {
+    const estudiante = await prisma.estudiante.findUnique({
+      where: { usuarioId },
+      include: { usuario: true },
+    });
+
+    if (!estudiante) throw new Error('Estudiante no encontrado');
+    return estudiante;
+  }
+
   // Actualizar estudiante
   static async actualizar(id: number, data: any) {
     const { nombre, email, habilidades, perfil } = data;
