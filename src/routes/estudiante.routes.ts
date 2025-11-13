@@ -107,6 +107,35 @@ router.get(
 
 /**
  * @swagger
+ * /api/estudiantes/me:
+ *   get:
+ *     summary: Obtener la información del estudiante autenticado
+ *     tags: [Estudiantes]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Información completa del estudiante
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Estudiante'
+ *       401:
+ *         description: Usuario no autenticado
+ *       404:
+ *         description: Estudiante no encontrado
+ *       500:
+ *         description: Error del servidor
+ */
+router.get(
+    '/me',
+    verifyToken,
+    authorizeRoles(Rol.ESTUDIANTE),
+    estudianteController.obtenerMiPerfil
+);
+
+/**
+ * @swagger
  * /api/estudiantes/{id}:
  *   get:
  *     summary: Obtener un estudiante por su ID
@@ -141,34 +170,6 @@ router.get(
     estudianteController.obtenerPorId
 );
 
-/**
- * @swagger
- * /api/estudiantes/me:
- *   get:
- *     summary: Obtener la información del estudiante autenticado
- *     tags: [Estudiantes]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Información completa del estudiante
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Estudiante'
- *       401:
- *         description: Usuario no autenticado
- *       404:
- *         description: Estudiante no encontrado
- *       500:
- *         description: Error del servidor
- */
-router.get(
-    '/me',
-    verifyToken,
-    authorizeRoles(Rol.ESTUDIANTE),
-    estudianteController.obtenerMiPerfil
-);
 
 /**
  * @swagger

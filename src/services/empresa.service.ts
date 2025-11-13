@@ -1,4 +1,4 @@
-import { EstadoGeneral, PrismaClient } from '@prisma/client';
+import { EstadoEmpresa, PrismaClient } from '@prisma/client';
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendMailWithTemplate } from '../utils/mailer.js';
@@ -85,7 +85,7 @@ export const aprobarEmpresa = async (id: number) => {
 
   const empresaActualizada = await prisma.empresa.update({
     where: { id },
-    data: { estado: EstadoGeneral.APROBADA },
+    data: { estado: EstadoEmpresa.APROBADA },
     include: { usuario: true },
   });
 
@@ -116,7 +116,7 @@ export const rechazarEmpresa = async (id: number) => {
   if (!empresa) throw new Error("Empresa no encontrada");
   const empresaActualizada = await prisma.empresa.update({
     where: { id },
-    data: { estado: EstadoGeneral.RECHAZADA },
+    data: { estado: EstadoEmpresa.RECHAZADA },
     include: { usuario: true },
   });
   return empresaActualizada;
@@ -126,11 +126,11 @@ export const toggleEstadoEmpresa = async (id: number) => {
   const empresa = await prisma.empresa.findUnique({ where: { id } });
   if (!empresa) throw new Error("Empresa no encontrada");
 
-  let nuevoEstado: EstadoGeneral;
-  if (empresa.estado === EstadoGeneral.APROBADA) {
-    nuevoEstado = EstadoGeneral.INACTIVA;
-  } else if (empresa.estado === EstadoGeneral.INACTIVA) {
-    nuevoEstado = EstadoGeneral.APROBADA;
+  let nuevoEstado: EstadoEmpresa;
+  if (empresa.estado === EstadoEmpresa.HABILITADA) {
+    nuevoEstado = EstadoEmpresa.INHABILITADA;
+  } else if (empresa.estado === EstadoEmpresa.INHABILITADA) {
+    nuevoEstado = EstadoEmpresa.HABILITADA;
   } else {
     throw new Error("Solo se pueden activar/desactivar empresas aprobadas");
   }
@@ -344,7 +344,7 @@ export const editarEmpresa = async (
 
 export const listarEmpresasSelector = async () => {
   const empresas = await prisma.empresa.findMany({
-    where: { estado: EstadoGeneral.APROBADA }, // opcional: solo activas/aprobadas
+    where: { estado: EstadoEmpresa.APROBADA }, // opcional: solo activas/aprobadas
     select: {
       id: true,
       usuario: { select: { nombre: true } }
@@ -417,7 +417,7 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
         direccion,
         sector,
         descripcion,
-        estado: EstadoGeneral.APROBADA,
+        estado: EstadoEmpresa.APROBADA,
         directorId,
       },
       include: {
