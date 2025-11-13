@@ -380,6 +380,7 @@ export class EstudianteService {
     return estudiante;
   }
 
+  // Actualizar estudiante
   static async actualizar(id: number, data: any) {
     const { nombre, email, habilidades, perfil } = data;
 
