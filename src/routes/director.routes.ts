@@ -5,7 +5,9 @@ import { fileURLToPath } from "url";
 import {
   crearDirector,
   listarDirectores,
+     
 } from "../controllers/director.controller.js";
+import { authFirebase } from '../middlewares/authFirebase.js';
 
 const router = Router();
 
@@ -30,6 +32,4 @@ const upload = multer({
 
 router.post("/", crearDirector);
 router.get("/", listarDirectores);
-
-
 export default router;

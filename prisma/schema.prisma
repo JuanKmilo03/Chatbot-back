@@ -47,8 +47,10 @@ model Programa {
 
 model Estudiante {
   id                Int          @id @default(autoincrement())
-  usuarioId         Int          @unique
-  habilidades       String?
+  usuarioId 
+  cedula              String?       @unique // Documento de identidad
+  Int          @unique
+  codigo              String?       @unique
   perfil            String?
   usuario           Usuario      @relation(fields: [usuarioId], references: [id])
   empresaId         Int?           
@@ -56,12 +58,18 @@ model Estudiante {
   empresaAsignada   String?      // ← MANTENER COMO OPCIONAL
   estadoProceso     EstadoPractica?
   activo            Boolean      @default(true)
-
-  codigoEstudiante  String?      @unique
+  experiencia         String? // experiencia previa, proyectos, etc.
+  habilidadesTecnicas String[] // array de habilidades técnicas
+  habilidadesBlandas  String[] // array de habilidades blandas
+ 
   telefono          String?
   programaAcademico String?
   semestre          Int?
-  
+  area                String? // área de interés
+  perfilCompleto      Boolean       @default(false) // si completó CV
+
+  hojaVidaArchivoUrl  String?
+
   practicas         Practica[]
   postulaciones     Postulacion[]
   
