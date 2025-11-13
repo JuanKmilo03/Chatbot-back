@@ -262,7 +262,7 @@ export const listarVacantesEmpresa = async (req: AuthRequest, res: Response) => 
     if (!companyId) return res.status(401).json({ message: "No autorizado" });
 
     const { page = 1, limit = 10, titulo, estado, area } = req.query;
-    const where: any = { empresa: { id: companyId } };
+    const where: any = { empresa: { usuarioId: companyId } };
     if (titulo) where.titulo = { contains: String(titulo) };
     if (estado) where.estado = String(estado).toUpperCase();
     if (area) where.area = String(area);
