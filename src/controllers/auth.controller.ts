@@ -3,36 +3,6 @@ import * as authService from '../services/auth.service.js';
 import { Rol } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware.js';
 
-export const registrarUsuario = async (req: Request, res: Response) => {
-  try {
-    const { nombre, email, password, rol, habilidades, perfil } = req.body;
-
-    if (!nombre || !email || !password || !rol) {
-      return res.status(400).json({ error: "Faltan campos obligatorios" });
-    }
-
-    if (![Rol.DIRECTOR, Rol.ESTUDIANTE].includes(rol)) {
-      return res.status(400).json({ error: "Rol no válido. Solo DIRECTOR o ESTUDIANTE" });
-    }
-
-    const usuario = await authService.register({
-      nombre,
-      email,
-      password,
-      rol,
-      habilidades,
-      perfil
-    });
-
-    return res.status(201).json({
-      message: "Usuario registrado correctamente",
-      usuario
-    });
-  } catch (error: any) {
-    console.error("Error al registrar usuario:", error);
-    return res.status(500).json({ error: error.message });
-  }
-};
 
 export const login = async (req: Request, res: Response) => {
   try {

@@ -8,10 +8,10 @@
     "build": "tsc",
     "start": "node dist/app.js",
     "prisma:generate": "npx prisma generate",
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "npx tsx prisma/seed.ts"
   },
   "prisma": {
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts"
   },
   "keywords": [],
   "author": "",
