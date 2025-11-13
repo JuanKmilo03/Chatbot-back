@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import * as postulacionService from '../services/postulacion.service.js';
-import { EstudianteService } from '../services/estudiante.service.js';
+import { estudianteService } from '../services/estudiante.service.js';
 import * as empresaService from '../services/empresa.service.js';
 import { AuthRequest } from '../middlewares/auth.middleware.js';
 import { EstadoPostulacion } from '@prisma/client';
@@ -97,7 +97,7 @@ const manejarError = (res: Response, error: any, mensajeGenerico: string) => {
  * Obtiene el estudiante asociado al usuario autenticado
  */
 const obtenerEstudianteAutenticado = async (usuarioId: number) => {
-  const estudiante = await EstudianteService.obtenerPorUsuarioId(usuarioId);
+  const estudiante = await estudianteService.getById(usuarioId);
 
   if (!estudiante) {
     throw new Error(ERROR_MESSAGES.ESTUDIANTE_NO_ENCONTRADO);
