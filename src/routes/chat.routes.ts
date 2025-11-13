@@ -1,13 +1,12 @@
 import { Router } from "express";
 import {
-  obtenerOCrearConversacionController,
-  enviarMensajeController,
-  obtenerMensajesController,
+ enviarMensajeController,
+  obtenerMensajesController, obtenerOCrearConversacionController,
   obtenerConversacionesController,
   obtenerConversacionPorIdController,
 } from "../controllers/chat.controller.js";
 import { verifyToken, authorizeRoles } from "../middlewares/auth.middleware.js";
-import { upload } from "../middlewares/upload.middleware.js";
+import { upload } from "../middlewares/upload.js";
 
 const router = Router();
 

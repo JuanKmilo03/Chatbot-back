@@ -5,7 +5,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model Usuario {
@@ -22,56 +21,74 @@ model Usuario {
 }
 
 model Director {
-  id                Int        @id @default(autoincrement())
-  usuarioId         Int        @unique
-  programaId        Int?       @unique
+  id                Int            @id @default(autoincrement())
+  usuarioId         Int            @unique
+  programaId        Int?           @unique
   Facultad          String?
-  usuario           Usuario    @relation(fields: [usuarioId], references: [id])
-  programa          Programa?  @relation(fields: [programaId], references: [id])
+  usuario           Usuario        @relation(fields: [usuarioId], references: [id])
+  programa          Programa?      @relation(fields: [programaId], references: [id])
   convenios         Convenio[]
   reportes          Reporte[]
   vacantesValidadas Vacante[]
   empresas          Empresa[]
   documentos        Documento[]
   conversaciones    Conversacion[]
+
+  cronogramas Cronograma[]
 }
 
 model Programa {
-  id         Int        @id @default(autoincrement())
-  nombre     String     @unique
+  id         Int          @id @default(autoincrement())
+  nombre     String       @unique
   facultad   String
   directores Director[]
+  Cronograma Cronograma[]
 }
 
 model Estudiante {
-  id            Int           @id @default(autoincrement())
-  usuarioId     Int           @unique
-  habilidades   String?
-  perfil        String?
-  usuario       Usuario       @relation(fields: [usuarioId], references: [id])
-  practicas     Practica[]
-  postulaciones Postulacion[] // postulaciones del estudiante
+  id                Int          @id @default(autoincrement())
+  usuarioId         Int          @unique
+  habilidades       String?
+  perfil            String?
+  usuario           Usuario      @relation(fields: [usuarioId], references: [id])
+  empresaId         Int?           
+  empresa           Empresa?     @relation(fields: [empresaId], references: [id])
+  empresaAsignada   String?      // ← MANTENER COMO OPCIONAL
+  estadoProceso     EstadoPractica?
+  
+  codigoEstudiante  String?      @unique
+  telefono          String?
+  programaAcademico String?
+  semestre          Int?
+  
+  practicas         Practica[]
+  postulaciones     Postulacion[]
+  
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 }
 
 model Empresa {
-  id           Int           @id @default(autoincrement())
-  usuarioId    Int           @unique
-  usuario      Usuario       @relation(fields: [usuarioId], references: [id])
-  nit          String        @unique
-  telefono     String?
-  direccion    String?
-  sector       String?
-  descripcion  String?
-  estado       EstadoEmpresa @default(PENDIENTE)
-  habilitada   Boolean       @default(false) // solo true si tiene convenio activo
-  directorId   Int?
-  director     Director?     @relation(fields: [directorId], references: [id])
-  createdAt    DateTime      @default(now())
-  convenios    Convenio[]
-  vacantes     Vacante[]
-  evaluaciones Evaluacion[]
+  id                 Int                 @id @default(autoincrement())
+  usuarioId          Int                 @unique
+  usuario            Usuario             @relation(fields: [usuarioId], references: [id])
+  nit                String              @unique
+  telefono           String?
+  direccion          String?
+  sector             String?
+  descripcion        String?
+  estado             EstadoEmpresa       @default(PENDIENTE)
+  habilitada         Boolean             @default(false) // solo true si tiene convenio activo
+  directorId         Int?
+  director           Director?           @relation(fields: [directorId], references: [id])
+  createdAt          DateTime            @default(now())
+  convenios          Convenio[]
+  vacantes           Vacante[]
+  evaluaciones       Evaluacion[]
   representanteLegal RepresentanteLegal?
   conversaciones     Conversacion[]
+  estudiantes Estudiante[]
+
 }
 
 enum EstadoEmpresa {
@@ -100,7 +117,7 @@ model Convenio {
 
   // Relaciones
   empresa    Empresa            @relation(fields: [empresaId], references: [id])
-  director   Director?           @relation(fields: [directorId], references: [id])
+  director   Director?          @relation(fields: [directorId], references: [id])
   revisiones RevisionConvenio[]
   documentos Documento[]
   vacantes   Vacante[]
@@ -199,13 +216,15 @@ enum EstadoPostulacion {
 model Practica {
   id           Int            @id @default(autoincrement())
   estudianteId Int
-  vacanteId    Int
+  vacanteId    Int?
   estado       EstadoPractica @default(EN_PROCESO)
   inicio       DateTime?
   fin          DateTime?
   evaluacion   Evaluacion?
   estudiante   Estudiante     @relation(fields: [estudianteId], references: [id])
-  vacante      Vacante        @relation(fields: [vacanteId], references: [id])
+  vacante      Vacante?       @relation(fields: [vacanteId], references: [id])
+
+  @@unique([estudianteId, vacanteId])
 }
 
 enum EstadoPractica {
@@ -235,18 +254,18 @@ model Reporte {
 }
 
 model Documento {
-  id           Int       @id @default(autoincrement())
-  titulo       String
-  descripcion  String?
-  categoria    TipoDocumento @default(GENERAL)
-  archivoUrl   String
-  publicId     String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  directorId   Int
-  director     Director  @relation(fields: [directorId], references: [id], onDelete: Cascade)
-  convenioId   Int?
-  Convenio     Convenio? @relation(fields: [convenioId], references: [id])
+  id          Int           @id @default(autoincrement())
+  titulo      String
+  descripcion String?
+  categoria   TipoDocumento @default(GENERAL)
+  archivoUrl  String
+  publicId    String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  directorId  Int
+  director    Director      @relation(fields: [directorId], references: [id], onDelete: Cascade)
+  convenioId  Int?
+  Convenio    Convenio?     @relation(fields: [convenioId], references: [id])
 }
 
 enum TipoDocumento {
@@ -288,29 +307,29 @@ model Conversacion {
 }
 
 model Mensaje {
-  id              Int              @id @default(autoincrement())
-  conversacionId  Int
-  remitenteId     Int
-  remitenteRol    Rol
-  contenido       String?
-  createdAt       DateTime         @default(now())
-  conversacion    Conversacion     @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
-  archivos        ArchivoMensaje[]
+  id             Int              @id @default(autoincrement())
+  conversacionId Int
+  remitenteId    Int
+  remitenteRol   Rol
+  contenido      String?
+  createdAt      DateTime         @default(now())
+  conversacion   Conversacion     @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
+  archivos       ArchivoMensaje[]
 
   @@index([conversacionId])
   @@index([createdAt])
 }
 
 model ArchivoMensaje {
-  id           Int      @id @default(autoincrement())
-  mensajeId    Int
+  id            Int      @id @default(autoincrement())
+  mensajeId     Int
   nombreArchivo String
-  archivoUrl   String
-  publicId     String?
-  mimeType     String?
-  fileSize     Int?
-  createdAt    DateTime @default(now())
-  mensaje      Mensaje  @relation(fields: [mensajeId], references: [id], onDelete: Cascade)
+  archivoUrl    String
+  publicId      String?
+  mimeType      String?
+  fileSize      Int?
+  createdAt     DateTime @default(now())
+  mensaje       Mensaje  @relation(fields: [mensajeId], references: [id], onDelete: Cascade)
 
   @@index([mensajeId])
 }
@@ -353,4 +372,48 @@ enum PrioridadNotificacion {
   MEDIA
   ALTA
   URGENTE
+}
+
+model Cronograma {
+  id            Int      @id @default(autoincrement())
+  programaId    Int
+  directorId    Int
+  titulo        String
+  descripcion   String?
+  semestre      String
+  archivoUrl    String?
+  activo        Boolean  @default(false)
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  programa    Programa              @relation(fields: [programaId], references: [id])
+  director    Director              @relation(fields: [directorId], references: [id])
+  actividades ActividadCronograma[]
+
+  @@unique([programaId, semestre])
+  @@index([programaId])
+  @@index([directorId])
+  @@index([activo])
+}
+
+model ActividadCronograma {
+  id           Int           @id @default(autoincrement())
+  cronogramaId Int
+  nombre       String
+  descripcion  String?
+  fechaInicio  DateTime
+  fechaFin     DateTime
+  tipo         TipoActividad
+
+  cronograma Cronograma @relation(fields: [cronogramaId], references: [id], onDelete: Cascade)
+
+  @@index([cronogramaId])
+}
+
+enum TipoActividad {
+  POSTULACION
+  ASIGNACIÓN
+  DESARROLLO_PRACTICA
+  REVISIÓN
+  SUSTENTACIÓN
 }

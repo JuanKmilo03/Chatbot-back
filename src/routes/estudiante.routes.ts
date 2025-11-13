@@ -1,7 +1,9 @@
 import { Router } from 'express';
-import { EstudianteController } from "../controllers/estudiante.controller.js";
+import { EstudianteController, cargarEstudiantesExcel, listarEstudiantesIndependiente, listarEstudiantesPractica } from "../controllers/estudiante.controller.js";
+import { upload } from '../middlewares/upload.js';
 
 const router = Router();
+router.get('/listar-independiente', listarEstudiantesIndependiente);
 
 /**
  * @swagger
@@ -133,6 +135,9 @@ router.put('/:id', EstudianteController.actualizar);
  *         description: Estudiante no encontrado
  */
 router.patch('/:id/soft-delete', EstudianteController.softDelete);
+
+router.post('/cargar-excel', upload.single('archivo'), cargarEstudiantesExcel);
+router.get('/estudiantes-practica', listarEstudiantesPractica);
 
 export default router;
 
