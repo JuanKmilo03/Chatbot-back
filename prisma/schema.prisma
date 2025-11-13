@@ -146,6 +146,24 @@ enum TipoRevision {
   DECANATURA
 }
 
+model ComentarioConvenio {
+  id            Int      @id @default(autoincrement())
+  convenioId    Int
+  autorId       Int // ID del usuario (empresa o director)
+  autorRol      Rol // Rol del autor (EMPRESA o DIRECTOR)
+  contenido     String
+  editado       Boolean  @default(false)
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  // Relaciones
+  convenio Convenio @relation(fields: [convenioId], references: [id], onDelete: Cascade)
+
+  @@index([convenioId])
+  @@index([autorId])
+  @@index([creadoEn])
+}
+
 enum TipoConvenio {
   MACRO
   ESPECIFICO
@@ -163,15 +181,15 @@ enum EstadoConvenio {
 model Vacante {
   id                  Int           @id @default(autoincrement())
   empresaId           Int
-  convenioId          Int? // convenio activo que la respalda
+  convenioId          Int?
   directorValidaId    Int?
   titulo              String
   modalidad           Modalidad
   descripcion         String
   area                String
   ciudad              String?
-  habilidadesBlandas  String?
-  habilidadesTecnicas String?
+  habilidadesTecnicas String[]
+  habilidadesBlandas  String[]
   estado              EstadoGeneral @default(PENDIENTE)
   creadaEn            DateTime      @default(now())
   actualizadaEn       DateTime      @default(now()) @updatedAt
@@ -290,6 +308,7 @@ model RepresentanteLegal {
   empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 }
 
+<<<<<<< HEAD
 model Conversacion {
   id         Int       @id @default(autoincrement())
   empresaId  Int
@@ -334,6 +353,8 @@ model ArchivoMensaje {
   @@index([mensajeId])
 }
 
+=======
+>>>>>>> 92d5981f97540103597e4b9df15bc2c436e763a1
 enum Rol {
   ADMIN
   DIRECTOR

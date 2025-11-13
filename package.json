@@ -7,7 +7,11 @@
     "dev": "npx prisma generate && tsx watch src/app.ts",
     "build": "tsc",
     "start": "node dist/app.js",
-    "prisma:generate": "npx prisma generate"
+    "prisma:generate": "npx prisma generate",
+    "seed": "ts-node prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   },
   "keywords": [],
   "author": "",

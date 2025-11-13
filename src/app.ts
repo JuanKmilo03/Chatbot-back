@@ -70,7 +70,6 @@ import vacanteRoutes from "./routes/vacante.routes.js";
 import documentoRoutes from "./routes/documento.routes.js";
 import estudianteRoutes from "./routes/estudiante.routes.js";
 import representanteRoutes from "./routes/representante.routes.js";
-import chatRoutes from "./routes/chat.routes.js";
 import postulacionRoutes from "./routes/postulacion.routes.js";
 import notificacionRoutes from "./routes/notificacion.routes.js";
 
@@ -101,7 +100,6 @@ app.use('/api/estudiantes', estudianteRoutes);
 
 // Rutas protegidas
 app.use("/api/representantes", representanteRoutes);
-app.use("/api/chat", chatRoutes);
 app.use("/api/postulaciones", postulacionRoutes);
 app.use("/api/notificaciones", notificacionRoutes);
 

@@ -1,4 +1,4 @@
-import { PrismaClient, Rol, EstadoConvenio, EstadoPractica, EstadoGeneral, TipoConvenio } from '@prisma/client';
+import { PrismaClient, Rol, EstadoConvenio, EstadoPractica, EstadoGeneral, TipoConvenio, TipoDocumento } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -86,6 +86,18 @@ async function main() {
     },
   });
 
+  // ─── Documento ───────────────────────────────────────────────
+  await prisma.documento.create({
+    data: {
+      titulo: 'Plantilla Inicial de Convenio',
+      descripcion: 'Documento base del convenio utilizado como plantilla para nuevos acuerdos empresariales.',
+      categoria: TipoDocumento.CONVENIO_PLANTILLA,
+      archivoUrl: 'https://res.cloudinary.com/dqwxyv3zc/image/upload/v1762804320/DocumentosPracticas/yxqto6t2io7djka0w5j6.pdf',
+      publicId: 'DocumentosPracticas/yxqto6t2io7djka0w5j6',
+      directorId: director.id,
+    },
+  });
+
   // ─── Empresas ────────────────────────────────────────────────
   const empresa1 = await prisma.empresa.create({
     data: {
@@ -109,7 +121,7 @@ async function main() {
       direccion: 'Cra. 10 #45-23, Bucaramanga',
       sector: 'Consultoría TI',
       descripcion: 'Consultora en transformación digital y soluciones empresariales.',
-      estado: EstadoGeneral.APROBADA, // 🔹 Antes estaba PENDIENTE
+      estado: EstadoGeneral.APROBADA,
       directorId: director.id,
       habilitada: true,
     },
@@ -143,69 +155,86 @@ async function main() {
     },
   });
 
+  // ─── Estudiante ───────────────────────────────────────────────
+  const estudiante = await prisma.estudiante.create({
+    data: {
+      usuarioId: estudianteUser.id,
+      descripcion: 'Estudiante de Ingeniería de Sistemas con interés en desarrollo web.',
+      area: 'Desarrollo Web',
+      habilidadesTecnicas: ['JavaScript', 'React', 'Node.js'],
+      habilidadesBlandas: ['Trabajo en equipo', 'Comunicación', 'Aprendizaje rápido'],
+      perfilCompleto: true,
+    },
+  });
+
   // ─── Convenios ───────────────────────────────────────────────
-  await prisma.convenio.createMany({
-    data: [
-      {
-        nombre: 'Convenio Prácticas UFPS 2025',
-        empresaId: empresa1.id,
-        directorId: director.id,
-        estado: EstadoConvenio.APROBADO,
-        tipo: TipoConvenio.MACRO,
-        fechaInicio: new Date('2025-02-01'),
-        fechaFin: new Date('2026-02-28'),
-        archivoUrl: 'https://ufps.edu.co/docs/convenio2025.pdf',
-      },
-      {
-        nombre: 'Convenio Desarrollo Web',
-        empresaId: empresa1.id,
-        directorId: director.id,
-        estado: EstadoConvenio.APROBADO,
-        tipo: TipoConvenio.ESPECIFICO,
-        fechaInicio: new Date('2025-02-01'),
-        fechaFin: new Date('2026-02-28'),
-        archivoUrl: 'https://ufps.edu.co/docs/convenio_web.pdf',
-      },
-      {
-        nombre: 'Convenio Innovación 2025',
-        empresaId: empresa2.id,
-        directorId: director.id,
-        estado: EstadoConvenio.EN_REVISION,
-        tipo: TipoConvenio.MACRO,
-        archivoUrl: 'https://ufps.edu.co/docs/convenio_innova.pdf',
-      },
-    ],
+  const convenio1 = await prisma.convenio.create({
+    data: {
+      nombre: 'Convenio Prácticas UFPS 2025',
+      empresaId: empresa1.id,
+      directorId: director.id,
+      estado: EstadoConvenio.APROBADO,
+      tipo: TipoConvenio.MACRO,
+      fechaInicio: new Date('2025-02-01'),
+      fechaFin: new Date('2026-02-28'),
+      archivoUrl: 'https://ufps.edu.co/docs/convenio2025.pdf',
+    },
+  });
+
+  const convenio2 = await prisma.convenio.create({
+    data: {
+      nombre: 'Convenio Desarrollo Web',
+      empresaId: empresa1.id,
+      directorId: director.id,
+      estado: EstadoConvenio.APROBADO,
+      tipo: TipoConvenio.ESPECIFICO,
+      fechaInicio: new Date('2025-02-01'),
+      fechaFin: new Date('2026-02-28'),
+      archivoUrl: 'https://ufps.edu.co/docs/convenio_web.pdf',
+    },
+  });
+
+  const convenio3 = await prisma.convenio.create({
+    data: {
+      nombre: 'Convenio Innovación 2025',
+      empresaId: empresa2.id,
+      directorId: director.id,
+      estado: EstadoConvenio.EN_REVISION,
+      tipo: TipoConvenio.MACRO,
+      archivoUrl: 'https://ufps.edu.co/docs/convenio_innova.pdf',
+    },
   });
 
   // ─── Vacantes ───────────────────────────────────────────────
-  await prisma.vacante.createMany({
-    data: [
-      {
-        empresaId: empresa1.id,
-        titulo: 'Desarrollador Frontend React',
-        descripcion: 'Apoyar el desarrollo de interfaces en React.',
-        area: 'Desarrollo Web',
-        modalidad: 'HIBRIDO',
-        habilidadesTecnicas: 'React, Tailwind, REST APIs',
-        habilidadesBlandas: 'Comunicación, trabajo en equipo, adaptabilidad',
-        estado: EstadoGeneral.APROBADA,
-        directorValidaId: director.id,
-      },
-      {
-        empresaId: empresa1.id,
-        titulo: 'Backend Developer Node.js',
-        descripcion: 'Implementar microservicios con Node.js y Express.',
-        area: 'Desarrollo Backend',
-        modalidad: 'REMOTO',
-        habilidadesTecnicas: 'Node.js, PostgreSQL, Prisma',
-        habilidadesBlandas: 'Pensamiento crítico, resolución de problemas',
-        estado: EstadoGeneral.APROBADA,
-        directorValidaId: director.id,
-      },
-    ],
+  await prisma.vacante.create({
+    data: {
+      empresaId: empresa1.id,
+      titulo: 'Desarrollador Frontend React',
+      descripcion: 'Apoyar el desarrollo de interfaces en React.',
+      area: 'Desarrollo Web',
+      modalidad: 'HIBRIDO',
+      habilidadesTecnicas: ['React', 'Tailwind', 'REST APIs'],
+      habilidadesBlandas: ['Comunicación', 'Trabajo en equipo', 'Adaptabilidad'],
+      estado: EstadoGeneral.APROBADA,
+      directorValidaId: director.id,
+    },
   });
 
-  console.log('✅ Seed ejecutado correctamente con 2 nuevas empresas activas sin convenios.');
+  await prisma.vacante.create({
+    data: {
+      empresaId: empresa1.id,
+      titulo: 'Backend Developer Node.js',
+      descripcion: 'Implementar microservicios con Node.js y Express.',
+      area: 'Desarrollo Backend',
+      modalidad: 'REMOTO',
+      habilidadesTecnicas: ['Node.js', 'PostgreSQL', 'Prisma'],
+      habilidadesBlandas: ['Pensamiento crítico', 'Resolución de problemas'],
+      estado: EstadoGeneral.APROBADA,
+      directorValidaId: director.id,
+    },
+  });
+
+  console.log('✅ Seed ejecutado correctamente.');
 }
 
 main()

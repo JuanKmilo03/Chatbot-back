@@ -1,5 +1,7 @@
 import { Router } from 'express';
-import { EstudianteController, cargarEstudiantesExcel, listarEstudiantesIndependiente, listarEstudiantesPractica } from "../controllers/estudiante.controller.js";
+import { authorizeRoles, verifyToken } from '../middlewares/auth.middleware.js';
+import { Rol } from '@prisma/client';
+import { cargarEstudiantesExcel, estudianteController, listarEstudiantesIndependiente, listarEstudiantesPractica } from '../controllers/estudiante.controller.js';
 import { upload } from '../middlewares/upload.js';
 
 const router = Router();
@@ -16,56 +18,132 @@ router.get('/listar-independiente', listarEstudiantesIndependiente);
  * @swagger
  * /api/estudiantes:
  *   post:
- *     summary: Crea un nuevo estudiante
+ *     summary: Crear un estudiante (solo DIRECTOR o ADMIN)
  *     tags: [Estudiantes]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - nombre
+ *               - email
  *             properties:
  *               nombre:
  *                 type: string
- *                 example: "Juan Pérez"
+ *                 example: Juan Pérez
  *               email:
  *                 type: string
- *                 example: "juan@ufps.edu.co"
- *               password:
- *                 type: string
- *                 example: "123456"
- *               habilidades:
- *                 type: string
- *                 example: "JavaScript, Node.js"
- *               perfil:
- *                 type: string
- *                 example: "Estudiante de ingeniería de sistemas"
+ *                 example: juan.perez@universidad.edu
  *     responses:
  *       201:
  *         description: Estudiante creado exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Estudiante creado exitosamente
+ *                 estudiante:
+ *                   $ref: '#/components/schemas/Estudiante'
  *       400:
- *         description: Error de validación
+ *         description: Campos obligatorios faltantes
+ *       409:
+ *         description: Correo institucional ya registrado
+ *       500:
+ *         description: Error del servidor
  */
-router.post('/', EstudianteController.crear);
+router.post(
+    '/',
+    verifyToken,
+    authorizeRoles(Rol.DIRECTOR, Rol.ADMIN),
+    estudianteController.crear
+);
 
 /**
  * @swagger
  * /api/estudiantes:
  *   get:
- *     summary: Obtiene todos los estudiantes
+ *     summary: Obtener todos los estudiantes con paginación (solo DIRECTOR o ADMIN)
  *     tags: [Estudiantes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: skip
+ *         schema:
+ *           type: integer
+ *           example: 0
+ *         description: Número de registros a saltar (paginación)
+ *       - in: query
+ *         name: take
+ *         schema:
+ *           type: integer
+ *           example: 10
+ *         description: Número máximo de registros a traer
  *     responses:
  *       200:
- *         description: Lista de estudiantes
+ *         description: Lista de estudiantes activos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Estudiante'
+ *       403:
+ *         description: Acceso denegado
+ *       500:
+ *         description: Error del servidor
  */
-router.get('/', EstudianteController.obtenerTodos);
+router.get(
+    '/',
+    verifyToken,
+    authorizeRoles(Rol.DIRECTOR, Rol.ADMIN),
+    estudianteController.obtenerTodos
+);
+
+/**
+ * @swagger
+ * /api/estudiantes/me:
+ *   get:
+ *     summary: Obtener la información del estudiante autenticado
+ *     tags: [Estudiantes]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Información completa del estudiante
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Estudiante'
+ *       401:
+ *         description: Usuario no autenticado
+ *       404:
+ *         description: Estudiante no encontrado
+ *       500:
+ *         description: Error del servidor
+ */
+router.get(
+    '/me',
+    verifyToken,
+    authorizeRoles(Rol.ESTUDIANTE),
+    estudianteController.obtenerMiPerfil
+);
 
 /**
  * @swagger
  * /api/estudiantes/{id}:
  *   get:
- *     summary: Obtiene un estudiante por ID
+ *     summary: Obtener un estudiante por su ID
  *     tags: [Estudiantes]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -76,23 +154,120 @@ router.get('/', EstudianteController.obtenerTodos);
  *     responses:
  *       200:
  *         description: Estudiante encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Estudiante'
+ *       403:
+ *         description: Acceso denegado
  *       404:
- *         description: No encontrado
+ *         description: Estudiante no encontrado
+ *       500:
+ *         description: Error del servidor
  */
-router.get('/:id', EstudianteController.obtenerPorId);
+router.get(
+    '/:id',
+    verifyToken,
+    authorizeRoles(Rol.DIRECTOR, Rol.ADMIN, Rol.ESTUDIANTE),
+    estudianteController.obtenerPorId
+);
+
 
 /**
  * @swagger
- * /api/estudiantes/{id}:
- *   put:
- *     summary: Actualiza los datos de un estudiante
+ * /api/estudiantes/{id}/desactivar:
+ *   patch:
+ *     summary: Desactivar un estudiante (soft delete)
  *     tags: [Estudiantes]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
+ *         description: ID del estudiante a desactivar
+ *     responses:
+ *       200:
+ *         description: Estudiante desactivado correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Estudiante desactivado correctamente
+ *                 data:
+ *                   $ref: '#/components/schemas/Estudiante'
+ *       403:
+ *         description: Acceso denegado
+ *       500:
+ *         description: Error del servidor
+ */
+router.patch(
+    '/:id/desactivar',
+    verifyToken,
+    authorizeRoles(Rol.DIRECTOR, Rol.ADMIN),
+    estudianteController.desactivar
+);
+
+/**
+ * @swagger
+ * /api/estudiantes/{id}/activar:
+ *   patch:
+ *     summary: Reactivar un estudiante previamente inactivo
+ *     tags: [Estudiantes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del estudiante a reactivar
+ *     responses:
+ *       200:
+ *         description: Estudiante reactivado correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Estudiante reactivado correctamente
+ *                 data:
+ *                   $ref: '#/components/schemas/Estudiante'
+ *       403:
+ *         description: Acceso denegado
+ *       500:
+ *         description: Error del servidor
+ */
+router.patch(
+    '/:id/activar',
+    verifyToken,
+    authorizeRoles(Rol.DIRECTOR, Rol.ADMIN),
+    estudianteController.reactivar
+);
+
+/**
+ * @swagger
+ * /api/estudiantes/{id}:
+ *   put:
+ *     summary: Actualizar datos de un estudiante
+ *     tags: [Estudiantes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del estudiante a actualizar
  *     requestBody:
  *       required: true
  *       content:
@@ -100,44 +275,107 @@ router.get('/:id', EstudianteController.obtenerPorId);
  *           schema:
  *             type: object
  *             properties:
- *               nombre:
+ *               descripcion:
  *                 type: string
- *               email:
+ *               area:
  *                 type: string
- *               habilidades:
- *                 type: string
- *               perfil:
+ *               habilidadesTecnicas:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               habilidadesBlandas:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               experiencia:
  *                 type: string
  *     responses:
  *       200:
- *         description: Estudiante actualizado
- *       404:
- *         description: Estudiante no encontrado
+ *         description: Estudiante actualizado correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Estudiante actualizado correctamente
+ *                 data:
+ *                   $ref: '#/components/schemas/Estudiante'
+ *       403:
+ *         description: No autorizado
+ *       500:
+ *         description: Error del servidor
  */
-router.put('/:id', EstudianteController.actualizar);
+router.put(
+    '/:id',
+    verifyToken,
+    authorizeRoles(Rol.DIRECTOR, Rol.ADMIN, Rol.ESTUDIANTE),
+    estudianteController.actualizar
+);
 
 /**
  * @swagger
- * /api/estudiantes/{id}/soft-delete:
+ * /api/estudiantes/:id/completar-perfil:
  *   patch:
- *     summary: Marca un estudiante como inactivo (soft delete)
+ *     summary: Completar perfil del estudiante (solo propio)
  *     tags: [Estudiantes]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
+ *         description: ID del estudiante que completa su perfil
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               descripcion:
+ *                 type: string
+ *               area:
+ *                 type: string
+ *               habilidadesTecnicas:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               habilidadesBlandas:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               experiencia:
+ *                 type: string
  *     responses:
  *       200:
- *         description: Estudiante inactivado
- *       404:
- *         description: Estudiante no encontrado
+ *         description: Perfil completado correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   $ref: '#/components/schemas/Estudiante'
+ *       403:
+ *         description: No autorizado
+ *       500:
+ *         description: Error del servidor
  */
-router.patch('/:id/soft-delete', EstudianteController.softDelete);
+router.patch(
+  '/:id/completar-perfil',
+  verifyToken,
+  authorizeRoles(Rol.ESTUDIANTE),
+  estudianteController.completarPerfil
+);
+
 
 router.post('/cargar-excel', upload.single('archivo'), cargarEstudiantesExcel);
 router.get('/estudiantes-practica', listarEstudiantesPractica);
 
 export default router;
-

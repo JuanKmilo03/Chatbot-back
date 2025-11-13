@@ -10,7 +10,15 @@ import {
   enviarRevisionFinal,
   subirConvenioFirmado,
   aprobarConvenio,
+  crearConvenioPorDirector,
+  subirNuevaVersionConvenio,
 } from "../controllers/convenio.controller.js";
+import {
+  crearComentarioController,
+  obtenerComentariosController,
+  actualizarComentarioController,
+  eliminarComentarioController,
+} from "../controllers/comentario-convenio.controller.js";
 import { authorizeRoles, verifyToken } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
@@ -23,6 +31,50 @@ const upload = multer({ dest: "uploads/" });
  *   name: Convenios
  *   description: Gestión de convenios empresariales
  */
+
+/**
+ * @swagger
+ * /api/convenios/crear:
+ *   post:
+ *     summary: Crear un convenio (solo DIRECTOR o ADMIN)
+ *     description: Permite a la directora o administradora registrar un nuevo convenio para una empresa.
+ *     tags: [Convenios]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               empresaId:
+ *                 type: integer
+ *                 example: 1
+ *               nombre:
+ *                 type: string
+ *                 example: "Convenio de Prácticas 2025"
+ *               descripcion:
+ *                 type: string
+ *                 example: "Convenio para prácticas empresariales con la empresa XYZ"
+ *               tipo:
+ *                 type: string
+ *                 enum: [MACRO, ESPECIFICO]
+ *                 example: "ESPECIFICO"
+ *               observaciones:
+ *                 type: string
+ *                 example: "Convenio creado directamente por la directora"
+ *     responses:
+ *       201:
+ *         description: Convenio creado correctamente
+ *       400:
+ *         description: Datos inválidos
+ *       401:
+ *         description: Token inválido
+ *       403:
+ *         description: Solo pueden hacerlo directores o administradores
+ */
+router.post("/crear", verifyToken, authorizeRoles("DIRECTOR", "ADMIN"), upload.single("file"), crearConvenioPorDirector);
 
 /**
  * @swagger
@@ -54,6 +106,8 @@ const upload = multer({ dest: "uploads/" });
  *         description: Acceso denegado (solo empresas)
  */
 router.post('/iniciar', verifyToken, authorizeRoles('EMPRESA'), iniciarConvenio);
+
+router.post("/:id/nueva-version", verifyToken, authorizeRoles("DIRECTOR", "ADMIN"), upload.single("file"), subirNuevaVersionConvenio);
 
 router.post("/:id/subir-firmado", verifyToken, authorizeRoles("EMPRESA"), upload.single("file"), subirConvenioFirmado);
 
@@ -170,12 +224,7 @@ router.post("/:id/rechazar", verifyToken, authorizeRoles("DIRECTOR"), rechazarCo
  */
 router.get("/", verifyToken, authorizeRoles('DIRECTOR', 'ADMIN'), listarTodosLosConvenios);
 
-router.get(
-  "/empresa/:empresaId",
-  verifyToken,
-  authorizeRoles('DIRECTOR', 'ADMIN'),
-  listarConveniosPorEmpresaId
-);
+router.get("/empresa/:empresaId", verifyToken, authorizeRoles('DIRECTOR', 'ADMIN'), listarConveniosPorEmpresaId);
 
 /**
  * @swagger
@@ -206,6 +255,170 @@ router.get(
  *         description: Acceso denegado (solo empresas)
  */
 router.get("/me", verifyToken, authorizeRoles('EMPRESA'), listarConveniosEmpresa);
+
+// ============ RUTAS DE COMENTARIOS EN CONVENIOS ============
+
+/**
+ * @swagger
+ * /api/convenios/{convenioId}/comentarios:
+ *   post:
+ *     summary: Crear un nuevo comentario en un convenio
+ *     description: Permite a empresas y directores comentar sobre un convenio (tipo foro/issues)
+ *     tags: [Convenios]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: convenioId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - contenido
+ *             properties:
+ *               contenido:
+ *                 type: string
+ *                 example: "Este convenio necesita revisión en la cláusula 3"
+ *     responses:
+ *       201:
+ *         description: Comentario creado exitosamente
+ *       400:
+ *         description: Contenido del comentario es requerido
+ *       403:
+ *         description: No tienes permiso para comentar
+ */
+router.post(
+  "/:convenioId/comentarios",
+  verifyToken,
+  authorizeRoles('EMPRESA', 'DIRECTOR'),
+  crearComentarioController
+);
+
+/**
+ * @swagger
+ * /api/convenios/{convenioId}/comentarios:
+ *   get:
+ *     summary: Obtener todos los comentarios de un convenio
+ *     description: Lista paginada de comentarios ordenados por fecha
+ *     tags: [Convenios]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: convenioId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *       - in: query
+ *         name: ordenar
+ *         schema:
+ *           type: string
+ *           enum: [ASC, DESC]
+ *           default: ASC
+ *     responses:
+ *       200:
+ *         description: Lista de comentarios
+ */
+router.get(
+  "/:convenioId/comentarios",
+  verifyToken,
+  authorizeRoles('EMPRESA', 'DIRECTOR', 'ADMIN'),
+  obtenerComentariosController
+);
+
+/**
+ * @swagger
+ * /api/convenios/{convenioId}/comentarios/{comentarioId}:
+ *   patch:
+ *     summary: Actualizar un comentario
+ *     description: Solo el autor puede editar su comentario
+ *     tags: [Convenios]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: convenioId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: comentarioId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - contenido
+ *             properties:
+ *               contenido:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Comentario actualizado
+ *       403:
+ *         description: No tienes permiso para editar este comentario
+ */
+router.patch(
+  "/:convenioId/comentarios/:comentarioId",
+  verifyToken,
+  authorizeRoles('EMPRESA', 'DIRECTOR'),
+  actualizarComentarioController
+);
+
+/**
+ * @swagger
+ * /api/convenios/{convenioId}/comentarios/{comentarioId}:
+ *   delete:
+ *     summary: Eliminar un comentario
+ *     description: Solo el autor puede eliminar su comentario
+ *     tags: [Convenios]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: convenioId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: comentarioId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Comentario eliminado
+ *       403:
+ *         description: No tienes permiso para eliminar este comentario
+ */
+router.delete(
+  "/:convenioId/comentarios/:comentarioId",
+  verifyToken,
+  authorizeRoles('EMPRESA', 'DIRECTOR'),
+  eliminarComentarioController
+);
+
 /**
  * @swagger
  * /api/convenios/{id}:
