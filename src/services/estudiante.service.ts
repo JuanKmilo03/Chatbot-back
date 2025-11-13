@@ -65,7 +65,7 @@ export const estudianteService = {
    * @returns Estudiante creado
    */
   async create(data: Prisma.EstudianteCreateInput): Promise<Estudiante> {
-    return prisma.estudiante.create({ data });
+    return prisma.estudiante.create({ data, include: { usuario: true } });
   },
   /**
    * Actualizar un estudiante existente.
@@ -80,6 +80,7 @@ export const estudianteService = {
     return prisma.estudiante.update({
       where: { id },
       data,
+      include: {usuario: true}
     });
   },
   /**
@@ -91,6 +92,7 @@ export const estudianteService = {
     return prisma.estudiante.update({
       where: { id },
       data: { activo: false },
+      include: { usuario: true },
     });
   },
   /**
@@ -102,6 +104,7 @@ export const estudianteService = {
     return prisma.estudiante.update({
       where: { id },
       data: { activo: true },
+      include: { usuario: true },
     });
   },
 }

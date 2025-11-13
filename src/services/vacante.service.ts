@@ -37,7 +37,7 @@ export const vacanteService = {
         skip,
         take,
         orderBy,
-        include: { empresa: true, directorValida: true, practicas: true },
+        include: { empresa: { select: {usuario: true} }, directorValida: true, practicas: true },
       }),
       prisma.vacante.count({ where }),
     ]);

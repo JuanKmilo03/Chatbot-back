@@ -6,19 +6,27 @@ import { estudianteService } from "../services/estudiante.service.js";
 export const estudianteController = {
   crear: async (req: Request, res: Response) => {
     try {
-      const { nombre, email } = req.body;
+      const { nombre, email, codigo, cedula } = req.body;
 
-      if (!nombre || !email) {
-        return res.status(400).json({ message: "Nombre y email son obligatorios" });
+      if (!nombre || !email || !codigo || !cedula) {
+        return res.status(400).json({ message: "Nombre, correo, código y cédula son obligatorios" });
       }
 
-      const estudiantesExistentes = await estudianteService.findMany({ usuario: { email } });
+      const estudiantesExistentes = await estudianteService.findMany({
+        OR: [
+          { usuario: { email } },
+          { codigo },
+          { cedula },
+        ],
+      });
       if (estudiantesExistentes.length > 0) {
         return res.status(409).json({ message: "Correo institucional ya registrado" });
       }
 
       const estudiante = await estudianteService.create({
         usuario: { create: { nombre, email, rol: "ESTUDIANTE" } },
+        codigo, 
+        cedula,
         perfilCompleto: false,
         activo: true,
       });
@@ -89,12 +97,10 @@ export const estudianteController = {
   obtenerMiPerfil: async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user?.id;
-
       if (!userId) {
         return res.status(401).json({ message: "Usuario no autenticado" });
       }
 
-      // Usamos findMany para buscar por usuarioId
       const estudiantes = await estudianteService.findMany({
         usuarioId: userId
       });
@@ -103,7 +109,6 @@ export const estudianteController = {
         return res.status(404).json({ message: "Estudiante no encontrado", data: null });
       }
 
-      // Devolvemos el primer resultado (debería ser único)
       return res.status(200).json({ message: "Perfil obtenido correctamente", data: estudiantes[0] });
     } catch (error: any) {
       console.error(error);
