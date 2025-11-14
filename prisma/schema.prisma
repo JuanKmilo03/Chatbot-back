@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider          = "postgresql"
-  url               = env("DATABASE_URL")
-  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Usuario {
@@ -22,42 +21,60 @@ model Usuario {
 }
 
 model Director {
-  id                Int         @id @default(autoincrement())
-  usuarioId         Int         @unique
-  programaId        Int?        @unique
+  id                Int            @id @default(autoincrement())
+  usuarioId         Int            @unique
+  programaId        Int?           @unique
   Facultad          String?
-  usuario           Usuario     @relation(fields: [usuarioId], references: [id])
-  programa          Programa?   @relation(fields: [programaId], references: [id])
+  usuario           Usuario        @relation(fields: [usuarioId], references: [id])
+  programa          Programa?      @relation(fields: [programaId], references: [id])
   convenios         Convenio[]
   reportes          Reporte[]
   vacantesValidadas Vacante[]
   empresas          Empresa[]
   documentos        Documento[]
+  conversaciones    Conversacion[]
+
+  cronogramas Cronograma[]
 }
 
 model Programa {
-  id         Int        @id @default(autoincrement())
-  nombre     String     @unique
+  id         Int          @id @default(autoincrement())
+  nombre     String       @unique
   facultad   String
   directores Director[]
+  Cronograma Cronograma[]
 }
 
 model Estudiante {
-  id                  Int           @id @default(autoincrement())
-  usuarioId           Int           @unique
-  codigo              String?       @unique
+  id                Int          @id @default(autoincrement())
+  usuarioId 
   cedula              String?       @unique // Documento de identidad
-  telefono            String?
-  descripcion         String? // mini CV o presentación personal
-  area                String? // área de interés
+  Int          @unique
+  codigo              String?       @unique
+  perfil            String?
+  usuario           Usuario      @relation(fields: [usuarioId], references: [id])
+  empresaId         Int?           
+  empresa           Empresa?     @relation(fields: [empresaId], references: [id])
+  empresaAsignada   String?      // ← MANTENER COMO OPCIONAL
+  estadoProceso     EstadoPractica?
+  activo            Boolean      @default(true)
+  experiencia         String? // experiencia previa, proyectos, etc.
   habilidadesTecnicas String[] // array de habilidades técnicas
   habilidadesBlandas  String[] // array de habilidades blandas
-  experiencia         String? // experiencia previa, proyectos, etc.
+ 
+  telefono          String?
+  programaAcademico String?
+  semestre          Int?
+  area                String? // área de interés
   perfilCompleto      Boolean       @default(false) // si completó CV
-  activo              Boolean       @default(true)
-  usuario             Usuario       @relation(fields: [usuarioId], references: [id])
-  practicas           Practica[]
-  postulaciones       Postulacion[]
+
+  hojaVidaArchivoUrl  String?
+
+  practicas         Practica[]
+  postulaciones     Postulacion[]
+  
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 }
 
 model Empresa {
@@ -78,6 +95,9 @@ model Empresa {
   vacantes           Vacante[]
   evaluaciones       Evaluacion[]
   representanteLegal RepresentanteLegal?
+  conversaciones     Conversacion[]
+  estudiantes Estudiante[]
+
 }
 
 enum EstadoEmpresa {
@@ -105,12 +125,11 @@ model Convenio {
   actualizadoEn DateTime       @updatedAt
 
   // Relaciones
-  empresa     Empresa              @relation(fields: [empresaId], references: [id])
-  director    Director?            @relation(fields: [directorId], references: [id])
-  revisiones  RevisionConvenio[]
-  documentos  Documento[]
-  vacantes    Vacante[]
-  comentarios ComentarioConvenio[]
+  empresa    Empresa            @relation(fields: [empresaId], references: [id])
+  director   Director?          @relation(fields: [directorId], references: [id])
+  revisiones RevisionConvenio[]
+  documentos Documento[]
+  vacantes   Vacante[]
 
   // Auto-relación (marco ↔ específicos)
   macroConvenioId Int?
@@ -136,23 +155,6 @@ enum TipoRevision {
   DECANATURA
 }
 
-model ComentarioConvenio {
-  id            Int      @id @default(autoincrement())
-  convenioId    Int
-  autorId       Int // ID del usuario (empresa o director)
-  autorRol      Rol // Rol del autor (EMPRESA o DIRECTOR)
-  contenido     String
-  editado       Boolean  @default(false)
-  creadoEn      DateTime @default(now())
-  actualizadoEn DateTime @updatedAt
-
-  // Relaciones
-  convenio Convenio @relation(fields: [convenioId], references: [id], onDelete: Cascade)
-
-  @@index([convenioId])
-  @@index([autorId])
-  @@index([creadoEn])
-}
 
 enum TipoConvenio {
   MACRO
@@ -224,13 +226,15 @@ enum EstadoPostulacion {
 model Practica {
   id           Int            @id @default(autoincrement())
   estudianteId Int
-  vacanteId    Int
+  vacanteId    Int?
   estado       EstadoPractica @default(EN_PROCESO)
   inicio       DateTime?
   fin          DateTime?
   evaluacion   Evaluacion?
   estudiante   Estudiante     @relation(fields: [estudianteId], references: [id])
-  vacante      Vacante        @relation(fields: [vacanteId], references: [id])
+  vacante      Vacante?       @relation(fields: [vacanteId], references: [id])
+
+  @@unique([estudianteId, vacanteId])
 }
 
 enum EstadoPractica {
@@ -296,6 +300,50 @@ model RepresentanteLegal {
   empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 }
 
+model Conversacion {
+  id         Int       @id @default(autoincrement())
+  empresaId  Int
+  directorId Int
+  titulo     String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  empresa    Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  director   Director  @relation(fields: [directorId], references: [id], onDelete: Cascade)
+  mensajes   Mensaje[]
+
+  @@unique([empresaId, directorId])
+  @@index([empresaId])
+  @@index([directorId])
+}
+
+model Mensaje {
+  id             Int              @id @default(autoincrement())
+  conversacionId Int
+  remitenteId    Int
+  remitenteRol   Rol
+  contenido      String?
+  createdAt      DateTime         @default(now())
+  conversacion   Conversacion     @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
+  archivos       ArchivoMensaje[]
+
+  @@index([conversacionId])
+  @@index([createdAt])
+}
+
+model ArchivoMensaje {
+  id            Int      @id @default(autoincrement())
+  mensajeId     Int
+  nombreArchivo String
+  archivoUrl    String
+  publicId      String?
+  mimeType      String?
+  fileSize      Int?
+  createdAt     DateTime @default(now())
+  mensaje       Mensaje  @relation(fields: [mensajeId], references: [id], onDelete: Cascade)
+
+  @@index([mensajeId])
+}
+
 enum Rol {
   ADMIN
   DIRECTOR
@@ -334,4 +382,48 @@ enum PrioridadNotificacion {
   MEDIA
   ALTA
   URGENTE
+}
+
+model Cronograma {
+  id            Int      @id @default(autoincrement())
+  programaId    Int
+  directorId    Int
+  titulo        String
+  descripcion   String?
+  semestre      String
+  archivoUrl    String?
+  activo        Boolean  @default(false)
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  programa    Programa              @relation(fields: [programaId], references: [id])
+  director    Director              @relation(fields: [directorId], references: [id])
+  actividades ActividadCronograma[]
+
+  @@unique([programaId, semestre])
+  @@index([programaId])
+  @@index([directorId])
+  @@index([activo])
+}
+
+model ActividadCronograma {
+  id           Int           @id @default(autoincrement())
+  cronogramaId Int
+  nombre       String
+  descripcion  String?
+  fechaInicio  DateTime
+  fechaFin     DateTime
+  tipo         TipoActividad
+
+  cronograma Cronograma @relation(fields: [cronogramaId], references: [id], onDelete: Cascade)
+
+  @@index([cronogramaId])
+}
+
+enum TipoActividad {
+  POSTULACION
+  ASIGNACIÓN
+  DESARROLLO_PRACTICA
+  REVISIÓN
+  SUSTENTACIÓN
 }

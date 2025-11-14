@@ -78,7 +78,7 @@ import { verifyToken, authorizeRoles } from "./middlewares/auth.middleware.js";
 
 // Servicios de notificaciones
 import { iniciarSchedulerConvenios } from "./services/convenio-vencimiento.service.js";
-
+import cronogramaRoutes from "./routes/cronograma.routes.js";
 
 
 // Middlewares base
@@ -97,6 +97,8 @@ app.use("/api/vacantes", vacanteRoutes);
 app.use("/api/documentos", documentoRoutes);
 app.use("/api/empresas", empresaRoutes);
 app.use('/api/estudiantes', estudianteRoutes);
+app.use('/api/cronogramas', cronogramaRoutes);
+
 
 // Rutas protegidas
 app.use("/api/representantes", representanteRoutes);
