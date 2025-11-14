@@ -7,204 +7,204 @@ import { deleteFromCloudinary, uploadToCloudinary } from '../config/cloudinary.c
 const estudianteExcelService = new EstudianteExcelService();
 const prisma = new PrismaClient();
 
-export const uploadHojaVida = async (req: Request, res: Response) => {
-  try {
-    // Usar el email del token de Firebase
-    const userEmail = (req as any).user.email;
+// export const uploadHojaVida = async (req: Request, res: Response) => {
+//   try {
+//     // Usar el email del token de Firebase
+//     const userEmail = (req as any).user.email;
     
-    if (!userEmail) {
-      return res.status(400).json({
-        error: 'Email no disponible en el token'
-      });
-    }
+//     if (!userEmail) {
+//       return res.status(400).json({
+//         error: 'Email no disponible en el token'
+//       });
+//     }
 
-    const usuario = await prisma.usuario.findFirst({
-      where: { email: userEmail },
-      include: { estudiante: true }
-    });
+//     const usuario = await prisma.usuario.findFirst({
+//       where: { email: userEmail },
+//       include: { estudiante: true }
+//     });
 
-    if (!usuario || !usuario.estudiante) {
-      return res.status(403).json({
-        error: 'No autorizado',
-        details: 'Solo los estudiantes pueden subir hojas de vida'
-      });
-    }
+//     if (!usuario || !usuario.estudiante) {
+//       return res.status(403).json({
+//         error: 'No autorizado',
+//         details: 'Solo los estudiantes pueden subir hojas de vida'
+//       });
+//     }
 
-    // Verificar que se haya subido un archivo
-    if (!req.file) {
-      return res.status(400).json({
-        error: 'Archivo requerido',
-        details: 'Debe subir un archivo PDF o Word'
-      });
-    }
+//     // Verificar que se haya subido un archivo
+//     if (!req.file) {
+//       return res.status(400).json({
+//         error: 'Archivo requerido',
+//         details: 'Debe subir un archivo PDF o Word'
+//       });
+//     }
 
-    // Validar tipo de archivo
-    const allowedMimeTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ];
+//     // Validar tipo de archivo
+//     const allowedMimeTypes = [
+//       'application/pdf',
+//       'application/msword',
+//       'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+//     ];
 
-    if (!allowedMimeTypes.includes(req.file.mimetype)) {
-      return res.status(400).json({
-        error: 'Formato no válido',
-        details: 'Solo se permiten archivos PDF o Word (DOC, DOCX)'
-      });
-    }
+//     if (!allowedMimeTypes.includes(req.file.mimetype)) {
+//       return res.status(400).json({
+//         error: 'Formato no válido',
+//         details: 'Solo se permiten archivos PDF o Word (DOC, DOCX)'
+//       });
+//     }
 
-    // Validar tamaño del archivo (max 5MB)
-    const maxSize = 5 * 1024 * 1024;
-    if (req.file.size > maxSize) {
-      return res.status(400).json({
-        error: 'Archivo muy grande',
-        details: 'El tamaño máximo permitido es 5MB'
-      });
-    }
+//     // Validar tamaño del archivo (max 5MB)
+//     const maxSize = 5 * 1024 * 1024;
+//     if (req.file.size > maxSize) {
+//       return res.status(400).json({
+//         error: 'Archivo muy grande',
+//         details: 'El tamaño máximo permitido es 5MB'
+//       });
+//     }
 
-    // Subir a Cloudinary
-    const uploadResult = await uploadToCloudinary(req.file.buffer, {
-      folder: 'hojas_vida',
-      resource_type: 'auto',
-      public_id: `hoja_vida_${usuario.estudiante.id}`
-    });
+//     // Subir a Cloudinary
+//     const uploadResult = await uploadToCloudinary(req.file.buffer, {
+//       folder: 'hojas_vida',
+//       resource_type: 'auto',
+//       public_id: `hoja_vida_${usuario.estudiante.id}`
+//     });
 
-    // Eliminar hoja de vida anterior si existe
-    if (usuario.estudiante.hojaVidaArchivoUrl) {
-      try {
-        await deleteFromCloudinary(usuario.estudiante.hojaVidaArchivoUrl);
-      } catch (error) {
-        console.warn('No se pudo eliminar la hoja de vida anterior:', error);
-      }
-    }
+//     // Eliminar hoja de vida anterior si existe
+//     if (usuario.estudiante.hojaVidaArchivoUrl) {
+//       try {
+//         await deleteFromCloudinary(usuario.estudiante.hojaVidaArchivoUrl);
+//       } catch (error) {
+//         console.warn('No se pudo eliminar la hoja de vida anterior:', error);
+//       }
+//     }
 
-    // Actualizar la URL en la base de datos
-    const estudianteActualizado = await prisma.estudiante.update({
-      where: { id: usuario.estudiante.id },
-      data: {
-        hojaVidaArchivoUrl: uploadResult.secure_url
-      },
-      include: {
-        usuario: {
-          select: {
-            nombre: true,
-            email: true
-          }
-        }
-      }
-    });
+//     // Actualizar la URL en la base de datos
+//     const estudianteActualizado = await prisma.estudiante.update({
+//       where: { id: usuario.estudiante.id },
+//       data: {
+//         hojaVidaArchivoUrl: uploadResult.secure_url
+//       },
+//       include: {
+//         usuario: {
+//           select: {
+//             nombre: true,
+//             email: true
+//           }
+//         }
+//       }
+//     });
 
-    res.status(200).json({
-      message: 'Hoja de vida subida exitosamente',
-      data: {
-        hojaVidaUrl: estudianteActualizado.hojaVidaArchivoUrl,
-        estudiante: {
-          id: estudianteActualizado.id,
-          nombres: estudianteActualizado.usuario.nombre,
-          programaAcademico: estudianteActualizado.programaAcademico,
-          semestre: estudianteActualizado.semestre
-        },
-        uploadedAt: new Date().toISOString()
-      }
-    });
+//     res.status(200).json({
+//       message: 'Hoja de vida subida exitosamente',
+//       data: {
+//         hojaVidaUrl: estudianteActualizado.hojaVidaArchivoUrl,
+//         estudiante: {
+//           id: estudianteActualizado.id,
+//           nombres: estudianteActualizado.usuario.nombre,
+//           programaAcademico: estudianteActualizado.programaAcademico,
+//           semestre: estudianteActualizado.semestre
+//         },
+//         uploadedAt: new Date().toISOString()
+//       }
+//     });
 
-  } catch (error: any) {
-    console.error('Error al subir hoja de vida:', error);
-    res.status(500).json({
-      error: 'Error interno del servidor',
-      details: error.message
-    });
-  }
-};
+//   } catch (error: any) {
+//     console.error('Error al subir hoja de vida:', error);
+//     res.status(500).json({
+//       error: 'Error interno del servidor',
+//       details: error.message
+//     });
+//   }
+// };
 
-export const listarEstudiantesIndependiente = async (req: Request, res: Response) => {
-  try {
-    console.log('📋 Listando estudiantes con método independiente...');
+// export const listarEstudiantesIndependiente = async (req: Request, res: Response) => {
+//   try {
+//     console.log('📋 Listando estudiantes con método independiente...');
     
-    const estudiantes = await prisma.estudiante.findMany({
-      include: {
-        usuario: {
-          select: {
-            id: true,
-            nombre: true,
-            email: true,
-            creadoEn: true
-          }
-        },
-        empresa: {
-          include: {
-            usuario: {
-              select: {
-                nombre: true,
-                email: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        usuario: {
-          nombre: 'asc'
-        }
-      }
-    });
+//     const estudiantes = await prisma.estudiante.findMany({
+//       include: {
+//         usuario: {
+//           select: {
+//             id: true,
+//             nombre: true,
+//             email: true,
+//             creadoEn: true
+//           }
+//         },
+//         empresa: {
+//           include: {
+//             usuario: {
+//               select: {
+//                 nombre: true,
+//                 email: true
+//               }
+//             }
+//           }
+//         }
+//       },
+//       orderBy: {
+//         usuario: {
+//           nombre: 'asc'
+//         }
+//       }
+//     });
 
-    // Formatear respuesta
-    const estudiantesFormateados = estudiantes.map(est => ({
-      id: est.id,
-      nombre: est.usuario.nombre,
-      email: est.usuario.email,
-      codigoEstudiante: est.codigoEstudiante,
-      telefono: est.telefono,
-      programaAcademico: est.programaAcademico,
-      semestre: est.semestre,
-      empresa: est.empresa ? est.empresa.usuario.nombre : est.empresaAsignada,
-      estadoProceso: est.estadoProceso,
-      empresaId: est.empresa?.id,
-      fechaRegistro: est.usuario.creadoEn
-    }));
+//     // Formatear respuesta
+//     const estudiantesFormateados = estudiantes.map(est => ({
+//       id: est.id,
+//       nombre: est.usuario.nombre,
+//       email: est.usuario.email,
+//       codigoEstudiante: est.codigoEstudiante,
+//       telefono: est.telefono,
+//       programaAcademico: est.programaAcademico,
+//       semestre: est.semestre,
+//       empresa: est.empresa ? est.empresa.usuario.nombre : est.empresaAsignada,
+//       estadoProceso: est.estadoProceso,
+//       empresaId: est.empresa?.id,
+//       fechaRegistro: est.usuario.creadoEn
+//     }));
 
-    console.log(`✅ Encontrados ${estudiantesFormateados.length} estudiantes`);
-    res.json(estudiantesFormateados);
+//     console.log(`✅ Encontrados ${estudiantesFormateados.length} estudiantes`);
+//     res.json(estudiantesFormateados);
 
-  } catch (error: any) {
-    console.error('❌ Error en listado independiente:', error);
-    res.status(500).json({ 
-      error: 'Error listando estudiantes',
-      detalles: error.message 
-    });
-  }
-};
+//   } catch (error: any) {
+//     console.error('❌ Error en listado independiente:', error);
+//     res.status(500).json({ 
+//       error: 'Error listando estudiantes',
+//       detalles: error.message 
+//     });
+//   }
+// };
 
-export const cargarEstudiantesExcel = async (req: Request, res: Response) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No se envió ningún archivo' });
-    }
+// export const cargarEstudiantesExcel = async (req: Request, res: Response) => {
+//   try {
+//     if (!req.file) {
+//       return res.status(400).json({ error: 'No se envió ningún archivo' });
+//     }
 
-    console.log('Archivo recibido:', {
-      nombre: req.file.originalname,
-      tamaño: req.file.size,
-      mimetype: req.file.mimetype
-    });
+//     console.log('Archivo recibido:', {
+//       nombre: req.file.originalname,
+//       tamaño: req.file.size,
+//       mimetype: req.file.mimetype
+//     });
 
-    const resultado = await estudianteExcelService.procesarArchivoEstudiantes(
-      req.file.buffer,
-      req.file.originalname  // Pasar el nombre completo
-    );
+//     const resultado = await estudianteExcelService.procesarArchivoEstudiantes(
+//       req.file.buffer,
+//       req.file.originalname  // Pasar el nombre completo
+//     );
 
-    res.json({
-      mensaje: 'Archivo procesado correctamente',
-      ...resultado
-    });
+//     res.json({
+//       mensaje: 'Archivo procesado correctamente',
+//       ...resultado
+//     });
 
-  } catch (error: any) {
-    console.error('Error en controlador:', error);
-    res.status(500).json({ 
-      error: 'Error procesando archivo',
-      detalles: error.message 
-    });
-  }
-};
+//   } catch (error: any) {
+//     console.error('Error en controlador:', error);
+//     res.status(500).json({ 
+//       error: 'Error procesando archivo',
+//       detalles: error.message 
+//     });
+//   }
+// };
 
 export const listarEstudiantesPractica = async (req: Request, res: Response) => {
   try {

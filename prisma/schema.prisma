@@ -47,9 +47,9 @@ model Programa {
 
 model Estudiante {
   id                Int          @id @default(autoincrement())
-  usuarioId 
-  cedula              String?       @unique // Documento de identidad
-  Int          @unique
+  usuarioId  Int  @unique
+  cedula              String?       @unique // 
+  Documento           Int          @unique
   codigo              String?       @unique
   perfil            String?
   usuario           Usuario      @relation(fields: [usuarioId], references: [id])
