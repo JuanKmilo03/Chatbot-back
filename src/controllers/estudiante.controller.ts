@@ -153,7 +153,7 @@ export const listarEstudiantesIndependiente = async (req: Request, res: Response
       id: est.id,
       nombre: est.usuario.nombre,
       email: est.usuario.email,
-      codigoEstudiante: est.codigoEstudiante,
+      codigoEstudiante: est.codigo,
       telefono: est.telefono,
       programaAcademico: est.programaAcademico,
       semestre: est.semestre,
@@ -215,7 +215,7 @@ export const listarEstudiantesPractica = async (req: Request, res: Response) => 
       id: est.id,
       nombre: est.usuario.nombre,
       email: est.usuario.email,
-      codigoEstudiante: est.codigoEstudiante,
+      codigoEstudiante: est.codigo,
       telefono: est.telefono,
       programaAcademico: est.programaAcademico,
       semestre: est.semestre,
@@ -240,7 +240,7 @@ export const listarEstudiantesPractica = async (req: Request, res: Response) => 
 export const estudianteController = {
   crear: async (req: Request, res: Response) => {
     try {
-      const { nombre, email, password, habilidades, perfil } = req.body;
+      const { nombre, email, password, habilidadesTecnicas, habilidadesBlandas, perfil } = req.body;
 
       if (!nombre || !email) {
         return res.status(400).json({ message: "Nombre y correo son obligatorios" });
@@ -251,7 +251,8 @@ export const estudianteController = {
         nombre,
         email,
         password,
-        habilidades,
+        habilidadesTecnicas,
+        habilidadesBlandas,
         perfil
       });
 
@@ -264,10 +265,10 @@ export const estudianteController = {
       if (error.message.includes('ya está registrado')) {
         return res.status(409).json({ message: "Correo institucional ya registrado" });
       }
-      return res.status(500).json({ 
-        message: "Error creando estudiante", 
-        error: error.message, 
-        data: null 
+      return res.status(500).json({
+        message: "Error creando estudiante",
+        error: error.message,
+        data: null
       });
     }
   },

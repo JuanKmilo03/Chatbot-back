@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 interface EstudianteExcel {
   nombre: string;
   email: string;
-  codigoEstudiante?: string;
+  codigo?: string;
   telefono?: string;
   programaAcademico?: string;
   semestre?: number;
@@ -128,7 +128,7 @@ export class EstudianteExcelService {
   return {
     nombre,
     email,
-    codigoEstudiante: codigo,
+    codigo: codigo,
     telefono: telefono,
     programaAcademico: programa,
     semestre: semestre,
@@ -175,7 +175,7 @@ export class EstudianteExcelService {
         });
 
         // CONVERTIR números a strings - CORRECCIÓN CLAVE
-        const codigoEstudianteStr = datosEst.codigoEstudiante ? datosEst.codigoEstudiante.toString() : null;
+        const codigoStr = datosEst.codigo ? datosEst.codigo.toString() : null;
         const telefonoStr = datosEst.telefono ? datosEst.telefono.toString() : null;
 
         if (usuarioExistente) {
@@ -186,8 +186,8 @@ export class EstudianteExcelService {
               empresaId,
               empresaAsignada,
               estadoProceso: datosEst.estadoProceso,
-              codigoEstudiante: codigoEstudianteStr, // Ahora es string
-              telefono: telefonoStr, // Ahora es string
+              codigo: codigoStr, // Campo correcto: codigo
+              telefono: telefonoStr,
               programaAcademico: datosEst.programaAcademico,
               semestre: datosEst.semestre
             }
@@ -208,8 +208,8 @@ export class EstudianteExcelService {
               empresaId,
               empresaAsignada,
               estadoProceso: datosEst.estadoProceso,
-              codigoEstudiante: codigoEstudianteStr, // Ahora es string
-              telefono: telefonoStr, // Ahora es string
+              codigo: codigoStr,
+              telefono: telefonoStr,
               programaAcademico: datosEst.programaAcademico,
               semestre: datosEst.semestre
             }
@@ -301,9 +301,19 @@ export class EstudianteService {
   static getAll(arg0: { skip: number; take: number; }) {
     throw new Error('Method not implemented.');
   }
-  static findMany(arg0: { OR: ({ usuario: { email: any; }; } | { codigo: any; } | { cedula: any; })[]; }) {
-    throw new Error('Method not implemented.');
+
+  // Método findMany para buscar estudiantes con filtros
+  static async findMany(filtros: Prisma.EstudianteWhereInput) {
+    return prisma.estudiante.findMany({
+      where: filtros,
+      include: {
+        usuario: true,
+        postulaciones: true,
+        practicas: true,
+      },
+    });
   }
+
   static create(arg0: { usuario: { create: { nombre: any; email: any; rol: string; }; }; codigo: any; cedula: any; perfilCompleto: boolean; activo: boolean; }) {
     throw new Error('Method not implemented.');
   }
@@ -311,10 +321,11 @@ export class EstudianteService {
     nombre: string;
     email: string;
     password?: string;
-    habilidades?: string;
+    habilidadesTecnicas?: string[];
+    habilidadesBlandas?: string[];
     perfil?: string;
   }) {
-    const { nombre, email, password, habilidades, perfil } = data;
+    const { nombre, email, password, habilidadesTecnicas, habilidadesBlandas, perfil } = data;
 
     const existe = await prisma.usuario.findUnique({ where: { email } });
     if (existe) throw new Error('El correo ya está registrado');
@@ -333,7 +344,8 @@ export class EstudianteService {
     const estudiante = await prisma.estudiante.create({
       data: {
         usuarioId: usuario.id,
-        habilidades,
+        habilidadesTecnicas: habilidadesTecnicas || [],
+        habilidadesBlandas: habilidadesBlandas || [],
         perfil,
       },
       include: { usuario: true },
@@ -415,7 +427,7 @@ export class EstudianteService {
   }
 
   static async actualizar(id: number, data: any) {
-    const { nombre, email, habilidades, perfil } = data;
+    const { nombre, email, habilidadesTecnicas, habilidadesBlandas, perfil } = data;
 
     const existe = await prisma.estudiante.findUnique({ where: { id } });
     if (!existe) throw new Error('Estudiante no encontrado');
@@ -427,7 +439,7 @@ export class EstudianteService {
           id: { not: existe.usuarioId }
         }
       });
-      
+
       if (usuarioConEmail) {
         throw new Error('El email ya está en uso por otro usuario');
       }
@@ -436,10 +448,11 @@ export class EstudianteService {
     const estudianteActualizado = await prisma.estudiante.update({
       where: { id },
       data: {
-        habilidades,
-        perfil,
+        ...(habilidadesTecnicas && { habilidadesTecnicas }),
+        ...(habilidadesBlandas && { habilidadesBlandas }),
+        ...(perfil && { perfil }),
         usuario: {
-          update: { 
+          update: {
             ...(nombre && { nombre }),
             ...(email && { email })
           },
