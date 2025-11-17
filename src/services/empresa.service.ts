@@ -1,4 +1,4 @@
-import { EstadoGeneral, PrismaClient } from '@prisma/client';
+import { EstadoEmpresa, PrismaClient } from '@prisma/client';
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendMailWithTemplate } from '../utils/mailer.js';
@@ -14,8 +14,6 @@ export const registrarEmpresa = async (data: any) => {
     direccion,
     sector,
     descripcion,
-    // Datos del representante legal
-    representante
   } = data;
 
   const existeEmail = await prisma.usuario.findUnique({ where: { email } });
@@ -24,22 +22,7 @@ export const registrarEmpresa = async (data: any) => {
   const existeNit = await prisma.empresa.findUnique({ where: { nit } });
   if (existeNit) throw new Error("Ya existe una empresa registrada con este NIT");
 
-  // Validar datos del representante legal
-  if (!representante?.nombreCompleto || !representante?.tipoDocumento ||
-      !representante?.numeroDocumento || !representante?.cargo || !representante?.email) {
-    throw new Error("Los datos del representante legal son obligatorios");
-  }
-
-  // Verificar que el número de documento del representante no esté duplicado
-  const documentoDuplicado = await prisma.representanteLegal.findUnique({
-    where: { numeroDocumento: representante.numeroDocumento },
-  });
-
-  if (documentoDuplicado) {
-    throw new Error("El número de documento del representante legal ya está registrado");
-  }
-
-  // Crear todo en una transacción
+  // Crear usuario + empresa en una transacción
   const result = await prisma.$transaction(async (tx) => {
     const usuario = await tx.usuario.create({
       data: {
@@ -60,24 +43,12 @@ export const registrarEmpresa = async (data: any) => {
       },
     });
 
-    // Crear representante legal
-    const representanteLegal = await tx.representanteLegal.create({
-      data: {
-        empresaId: empresa.id,
-        nombreCompleto: representante.nombreCompleto,
-        tipoDocumento: representante.tipoDocumento,
-        numeroDocumento: representante.numeroDocumento,
-        cargo: representante.cargo,
-        telefono: representante.telefono,
-        email: representante.email,
-      },
-    });
-
-    return { empresa, representanteLegal };
+    return { empresa };
   });
 
   return result;
 };
+
 
 export const aprobarEmpresa = async (id: number) => {
   const empresa = await prisma.empresa.findUnique({ where: { id } });
@@ -85,7 +56,7 @@ export const aprobarEmpresa = async (id: number) => {
 
   const empresaActualizada = await prisma.empresa.update({
     where: { id },
-    data: { estado: EstadoGeneral.APROBADA },
+    data: { estado: EstadoEmpresa.APROBADA },
     include: { usuario: true },
   });
 
@@ -116,7 +87,7 @@ export const rechazarEmpresa = async (id: number) => {
   if (!empresa) throw new Error("Empresa no encontrada");
   const empresaActualizada = await prisma.empresa.update({
     where: { id },
-    data: { estado: EstadoGeneral.RECHAZADA },
+    data: { estado: EstadoEmpresa.RECHAZADA },
     include: { usuario: true },
   });
   return empresaActualizada;
@@ -126,11 +97,11 @@ export const toggleEstadoEmpresa = async (id: number) => {
   const empresa = await prisma.empresa.findUnique({ where: { id } });
   if (!empresa) throw new Error("Empresa no encontrada");
 
-  let nuevoEstado: EstadoGeneral;
-  if (empresa.estado === EstadoGeneral.APROBADA) {
-    nuevoEstado = EstadoGeneral.INACTIVA;
-  } else if (empresa.estado === EstadoGeneral.INACTIVA) {
-    nuevoEstado = EstadoGeneral.APROBADA;
+  let nuevoEstado: EstadoEmpresa;
+  if (empresa.estado === EstadoEmpresa.HABILITADA) {
+    nuevoEstado = EstadoEmpresa.INHABILITADA;
+  } else if (empresa.estado === EstadoEmpresa.INHABILITADA) {
+    nuevoEstado = EstadoEmpresa.HABILITADA;
   } else {
     throw new Error("Solo se pueden activar/desactivar empresas aprobadas");
   }
@@ -344,7 +315,7 @@ export const editarEmpresa = async (
 
 export const listarEmpresasSelector = async () => {
   const empresas = await prisma.empresa.findMany({
-    where: { estado: EstadoGeneral.APROBADA }, // opcional: solo activas/aprobadas
+    where: { estado: EstadoEmpresa.APROBADA }, // opcional: solo activas/aprobadas
     select: {
       id: true,
       usuario: { select: { nombre: true } }
@@ -366,39 +337,20 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
     direccion,
     sector,
     descripcion,
-    // Datos del representante legal
-    representante
   } = data;
 
-  // Validar que el correo y el NIT sean únicos
+  // Validar datos únicos
   const existeEmail = await prisma.usuario.findUnique({ where: { email } });
   if (existeEmail) throw new Error("Ya existe un usuario registrado con este correo");
 
   const existeNit = await prisma.empresa.findUnique({ where: { nit } });
   if (existeNit) throw new Error("Ya existe una empresa registrada con este NIT");
 
-  // Validar datos del representante legal
-  if (!representante?.nombreCompleto || !representante?.tipoDocumento ||
-      !representante?.numeroDocumento || !representante?.cargo || !representante?.email) {
-    throw new Error("Los datos del representante legal son obligatorios");
-  }
-
-  // Verificar que el número de documento del representante no esté duplicado
-  const documentoDuplicado = await prisma.representanteLegal.findUnique({
-    where: { numeroDocumento: representante.numeroDocumento },
-  });
-
-  if (documentoDuplicado) {
-    throw new Error("El número de documento del representante legal ya está registrado");
-  }
-
-  // 🔐 Generar contraseña automática
+  // Generar contraseña automática
   const passwordGenerada = Math.random().toString(36).slice(-10);
   const hashedPassword = await bcrypt.hash(passwordGenerada, 10);
 
-  // Crear todo en una transacción
   const result = await prisma.$transaction(async (tx) => {
-    // Crear el usuario con rol EMPRESA
     const usuario = await tx.usuario.create({
       data: {
         nombre,
@@ -408,7 +360,6 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
       },
     });
 
-    // Crear la empresa con estado APROBADA y asociar al director
     const empresa = await tx.empresa.create({
       data: {
         usuarioId: usuario.id,
@@ -417,7 +368,7 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
         direccion,
         sector,
         descripcion,
-        estado: EstadoGeneral.APROBADA,
+        estado: EstadoEmpresa.APROBADA,
         directorId,
       },
       include: {
@@ -425,23 +376,10 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
       },
     });
 
-    // Crear representante legal
-    const representanteLegal = await tx.representanteLegal.create({
-      data: {
-        empresaId: empresa.id,
-        nombreCompleto: representante.nombreCompleto,
-        tipoDocumento: representante.tipoDocumento,
-        numeroDocumento: representante.numeroDocumento,
-        cargo: representante.cargo,
-        telefono: representante.telefono,
-        email: representante.email,
-      },
-    });
-
-    return { empresa, representanteLegal };
+    return { empresa };
   });
 
-  // Enviar correo con plantilla de SendGrid
+  // Enviar correo con contraseña
   await sendMailWithTemplate(
     email,
     process.env.SENDGRID_TEMPLATE_EMPRESA_APROBADA || 'd-default-template-id',
@@ -454,6 +392,7 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
 
   return result.empresa;
 };
+
 
 //Funciones para recuperar contraseña
 export const solicitarRecuperacionContrasenia = async (identificador: string) => {

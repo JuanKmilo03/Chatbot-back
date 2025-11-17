@@ -4,7 +4,7 @@ import fs from "fs";
 
 const prisma = new PrismaClient();
 
-export const DocumentoService = {
+export const documentoService = {
   async crearDocumento(data: any, archivo: Express.Multer.File, directorId: number) {
     const result = await cloudinary.uploader.upload(archivo.path, {
       folder: "DocumentosPracticas",
