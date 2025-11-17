@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { EstadoConvenio, Prisma, PrismaClient, TipoConvenio } from "@prisma/client";
 import { convenioService } from "../services/convenio.service.js";
 import { AuthRequest } from "../middlewares/auth.middleware.js";
 
@@ -100,6 +100,160 @@ export const listarConveniosEmpresa = async (req: AuthRequest, res: Response) =>
     console.error("❌ Error al listar convenios de la empresa:", error);
     res.status(500).json({ message: "Error al listar los convenios", error });
   }
+};
+export const listarConvenios = async (req: Request, res: Response) => {
+  try {
+
+    const q = req.query;
+
+    const page = Number(q.page || 1);
+    const take = Number(q.pageSize || 10);
+
+    const CAMPOS_ORDEN: Array<keyof Prisma.ConvenioOrderByWithRelationInput> = [
+      "creadoEn",
+      "fechaInicio",
+      "fechaFin"
+    ];
+
+    const ordenCampo = CAMPOS_ORDEN.includes(q.ordenCampo as any)
+      ? (q.ordenCampo as keyof Prisma.ConvenioOrderByWithRelationInput)
+      : "creadoEn";
+
+    const ordenDireccion =
+      q.orden === "asc" || q.orden === "desc" ? q.orden : "desc";
+
+    const orderBy: Prisma.ConvenioOrderByWithRelationInput = {
+      [ordenCampo]: ordenDireccion,
+    };
+    const where: Prisma.ConvenioWhereInput = {
+      nombre: q.nombre
+        ? { contains: String(q.nombre), mode: "insensitive" }
+        : undefined,
+
+      empresa: q.empresa
+        ? {
+          usuario: {
+            nombre: {
+              contains: String(q.empresa),
+              mode: "insensitive",
+            }
+          },
+        }
+        : undefined,
+      tipo: q.tipo ? { equals: q.tipo as TipoConvenio } : undefined,
+      fechaInicio: q.fechaInicio
+        ? normalizeDateRange(q.fechaInicio as string)
+        : undefined,
+
+      fechaFin: q.fechaFin
+        ? normalizeDateRange(q.fechaFin as string)
+        : undefined,
+
+      estado: {
+        in: q.estado
+          ? [q.estado as EstadoConvenio]
+          : ["APROBADO", "RECHAZADO", "VENCIDO"]
+      },
+    };
+
+    const result = await convenioService.listarConvenios({
+      where,
+      page,
+      take,
+      orderBy
+    });
+
+    res.status(200).json({
+      message: "Convenios obtenidos correctamente",
+      ...result,
+    });
+  } catch (error) {
+    console.error("❌ Error al listar convenios de la empresa:", error);
+    res.status(500).json({ message: "Error al listar los convenios", error });
+  }
+};
+export const listarConveniosPendientes = async (req: Request, res: Response) => {
+  try {
+    const q = req.query;
+
+    const page = Number(q.page || 1);
+    const take = Number(q.pageSize || 10);
+
+    const CAMPOS_ORDEN: Array<keyof Prisma.ConvenioOrderByWithRelationInput> = [
+      "creadoEn",
+      "fechaInicio",
+      "fechaFin"
+    ];
+
+    const ordenCampo = CAMPOS_ORDEN.includes(q.ordenCampo as any)
+      ? (q.ordenCampo as keyof Prisma.ConvenioOrderByWithRelationInput)
+      : "creadoEn";
+
+    const ordenDireccion =
+      q.orden === "asc" || q.orden === "desc" ? q.orden : "desc";
+
+    const orderBy: Prisma.ConvenioOrderByWithRelationInput = {
+      [ordenCampo]: ordenDireccion,
+    };
+    const where: Prisma.ConvenioWhereInput = {
+      nombre: q.nombre
+        ? { contains: String(q.nombre), mode: "insensitive" }
+        : undefined,
+
+      empresa: q.empresa
+        ? {
+          usuario: {
+            nombre: {
+              contains: String(q.empresa),
+              mode: "insensitive",
+            }
+          },
+        }
+        : undefined,
+      tipo: q.tipo ? { equals: q.tipo as TipoConvenio } : undefined,
+      fechaInicio: q.fechaInicio
+        ? normalizeDateRange(q.fechaInicio as string)
+        : undefined,
+
+      fechaFin: q.fechaFin
+        ? normalizeDateRange(q.fechaFin as string)
+        : undefined,
+
+      estado: {
+        notIn: q.estado
+          ? [q.estado as EstadoConvenio]
+          : ["APROBADO", "RECHAZADO", "VENCIDO"]
+      },
+    };
+
+    const result = await convenioService.listarConvenios({
+      where,
+      page,
+      take,
+      orderBy
+    });
+
+    res.status(200).json({
+      message: "Convenios obtenidos correctamente",
+      ...result,
+    });
+  } catch (error) {
+    console.error("❌ Error al listar convenios de la empresa:", error);
+    res.status(500).json({ message: "Error al listar los convenios", error });
+  }
+};
+
+const normalizeDateRange = (value?: string) => {
+  if (!value) return undefined;
+
+  const day = new Date(value);
+  const start = new Date(day);
+  const end = new Date(day);
+
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+
+  return { gte: start, lte: end };
 };
 
 export const listarTodosLosConvenios = async (_req: AuthRequest, res: Response) => {
