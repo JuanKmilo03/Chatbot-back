@@ -1,4 +1,4 @@
-import { EstadoEmpresa, PrismaClient } from '@prisma/client';
+import { EstadoEmpresa, PrismaClient, Rol } from '@prisma/client';
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendMailWithTemplate } from '../utils/mailer.js';
@@ -14,7 +14,10 @@ export const registrarEmpresa = async (data: any) => {
     direccion,
     sector,
     descripcion,
+    representanteLegal,
   } = data;
+
+  const { nombreCompleto, tipoDocumento, numeroDocumento, cargo, telefono: telRep, email: emailRep } = representanteLegal || {};
 
   const existeEmail = await prisma.usuario.findUnique({ where: { email } });
   if (existeEmail) throw new Error("Ya existe un usuario registrado con este correo");
@@ -22,13 +25,19 @@ export const registrarEmpresa = async (data: any) => {
   const existeNit = await prisma.empresa.findUnique({ where: { nit } });
   if (existeNit) throw new Error("Ya existe una empresa registrada con este NIT");
 
+  const existeDoc = await prisma.representanteLegal.findUnique({
+    where: { numeroDocumento },
+  });
+
+  if (existeDoc) throw new Error("Ya existe un representante legal con este número de documento");
+
   // Crear usuario + empresa en una transacción
   const result = await prisma.$transaction(async (tx) => {
     const usuario = await tx.usuario.create({
       data: {
         nombre,
         email,
-        rol: "EMPRESA",
+        rol: Rol.EMPRESA,
       },
     });
 
@@ -43,7 +52,19 @@ export const registrarEmpresa = async (data: any) => {
       },
     });
 
-    return { empresa };
+    const representante = await tx.representanteLegal.create({
+      data: {
+        empresaId: empresa.id,
+        nombreCompleto,
+        tipoDocumento,
+        numeroDocumento,
+        cargo,
+        telefono: telRep,
+        email: emailRep,
+      },
+    });
+
+    return { ...empresa, usuario, representanteLegal: representante };
   });
 
   return result;
@@ -238,7 +259,7 @@ export const obtenerEmpresaPorUsuarioId = async (usuarioId: number) => {
     },
   });
 
-  return empresa;
+  return empresa;
 };
 
 export const editarEmpresa = async (
