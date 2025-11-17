@@ -304,11 +304,8 @@ model RepresentanteLegal {
   id              Int      @id @default(autoincrement())
   empresaId       Int      @unique
   nombreCompleto  String
-  tipoDocumento   String
-  numeroDocumento String   @unique
-  cargo           String
-  telefono        String?
   email           String
+  telefono        String
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
