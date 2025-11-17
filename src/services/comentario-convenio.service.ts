@@ -63,7 +63,7 @@ export const crearComentario = async (
       autorRol: nuevoComentario.autorRol as 'EMPRESA' | 'DIRECTOR',
       autorNombre,
       contenido: nuevoComentario.contenido,
-      editado: nuevoComentario.editado,
+      editado: false, // Un comentario recién creado no ha sido editado
       creadoEn: nuevoComentario.creadoEn,
       actualizadoEn: nuevoComentario.actualizadoEn,
     };
@@ -133,7 +133,7 @@ export const obtenerComentariosPorConvenio = async (
           autorRol: comentario.autorRol as 'EMPRESA' | 'DIRECTOR',
           autorNombre,
           contenido: comentario.contenido,
-          editado: comentario.editado,
+          editado: comentario.creadoEn.getTime() !== comentario.actualizadoEn.getTime(), // Editado si las fechas difieren
           creadoEn: comentario.creadoEn,
           actualizadoEn: comentario.actualizadoEn,
         };
@@ -185,7 +185,6 @@ export const actualizarComentario = async (
       where: { id: comentarioId },
       data: {
         contenido: dto.contenido,
-        editado: true,
       },
     });
 
@@ -202,7 +201,7 @@ export const actualizarComentario = async (
       autorRol: comentarioActualizado.autorRol as 'EMPRESA' | 'DIRECTOR',
       autorNombre,
       contenido: comentarioActualizado.contenido,
-      editado: comentarioActualizado.editado,
+      editado: true, // Siempre es true después de actualizar
       creadoEn: comentarioActualizado.creadoEn,
       actualizadoEn: comentarioActualizado.actualizadoEn,
     };

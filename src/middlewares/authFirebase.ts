@@ -52,7 +52,9 @@ export const authFirebase = async (req: AuthenticatedRequest, res: Response, nex
 
       if (rol === Rol.ESTUDIANTE) {
         await prisma.estudiante.create({
-          data: { usuarioId: usuario.id },
+          data: {
+            usuarioId: usuario.id,
+          },
         });
       }
     } else if (usuario.rol !== rol) {

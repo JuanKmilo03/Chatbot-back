@@ -52,7 +52,9 @@ export const loginWithGoogle = async (req: Request, res: Response) => {
 
       if (rol === Rol.ESTUDIANTE) {
         await prisma.estudiante.create({
-          data: { usuarioId: usuario.id },
+          data: {
+            usuarioId: usuario.id,
+          },
         });
       }
     } else if (usuario.rol !== rol) {
