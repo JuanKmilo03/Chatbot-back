@@ -17,7 +17,7 @@ export const registrarEmpresa = async (data: any) => {
     representanteLegal,
   } = data;
 
-  const { nombreCompleto, tipoDocumento, numeroDocumento, cargo, telefono: telRep, email: emailRep } = representanteLegal || {};
+  const { nombreCompleto, tipoDocumento, numeroDocumento, telefono: telRep, email: emailRep } = representanteLegal || {};
 
   const existeEmail = await prisma.usuario.findUnique({ where: { email } });
   if (existeEmail) throw new Error("Ya existe un usuario registrado con este correo");
@@ -58,7 +58,6 @@ export const registrarEmpresa = async (data: any) => {
         nombreCompleto,
         tipoDocumento,
         numeroDocumento,
-        cargo,
         telefono: telRep,
         email: emailRep,
       },
@@ -358,7 +357,9 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
     direccion,
     sector,
     descripcion,
+    representanteLegal
   } = data;
+    const { nombreCompleto, tipoDocumento, numeroDocumento, telefono: telRep, email: emailRep } = representanteLegal || {};
 
   // Validar datos únicos
   const existeEmail = await prisma.usuario.findUnique({ where: { email } });
@@ -366,6 +367,12 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
 
   const existeNit = await prisma.empresa.findUnique({ where: { nit } });
   if (existeNit) throw new Error("Ya existe una empresa registrada con este NIT");
+
+  const existeDoc = await prisma.representanteLegal.findUnique({
+    where: { numeroDocumento },
+  });
+
+  if (existeDoc) throw new Error("Ya existe un representante legal con este número de documento");
 
   // Generar contraseña automática
   const passwordGenerada = Math.random().toString(36).slice(-10);
@@ -396,8 +403,18 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
         usuario: { select: { id: true, nombre: true, email: true } },
       },
     });
+    const representante = await tx.representanteLegal.create({
+      data: {
+        empresaId: empresa.id,
+        nombreCompleto,
+        tipoDocumento,
+        numeroDocumento,
+        telefono: telRep,
+        email: emailRep,
+      },
+    });
 
-    return { empresa };
+    return { ...empresa, usuario, representanteLegal: representante };
   });
 
   // Enviar correo con contraseña
@@ -411,7 +428,7 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
     }
   );
 
-  return result.empresa;
+  return result;
 };
 
 

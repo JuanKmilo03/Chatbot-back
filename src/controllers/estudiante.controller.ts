@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { EstudianteExcelService, EstudianteService, estudianteService } from "../services/estudiante.service.js";
+import { EstudianteExcelService, EstudianteService } from "../services/estudiante.service.js";
 import { PrismaClient } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware.js';
 import { deleteFromCloudinary, uploadToCloudinary } from '../config/cloudinary.config.js';
