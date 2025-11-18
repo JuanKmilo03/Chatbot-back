@@ -46,35 +46,33 @@ model Programa {
 }
 
 model Estudiante {
-  id                Int          @id @default(autoincrement())
-  usuarioId  Int  @unique
-  cedula              String?       @unique // 
-  Documento           Int          @unique
-  codigo              String?       @unique
-  perfil            String?
-  usuario           Usuario      @relation(fields: [usuarioId], references: [id])
-  empresaId         Int?           
-  empresa           Empresa?     @relation(fields: [empresaId], references: [id])
-  empresaAsignada   String?      // ← MANTENER COMO OPCIONAL
-  estadoProceso     EstadoPractica?
-  activo            Boolean      @default(true)
-  experiencia         String? // experiencia previa, proyectos, etc.
-  habilidadesTecnicas String[] // array de habilidades técnicas
-  habilidadesBlandas  String[] // array de habilidades blandas
- 
-  telefono          String?
-  programaAcademico String?
-  semestre          Int?
-  area                String? // área de interés
-  perfilCompleto      Boolean       @default(false) // si completó CV
-
+  id                  Int                @id @default(autoincrement())
+  usuarioId           Int                @unique
+  cedula              String?            @unique
+  documento           Int?               @unique // Documento de identidad (opcional, se completa después del registro)
+  codigo              String?            @unique
+  perfil              String?
+  usuario             Usuario            @relation(fields: [usuarioId], references: [id])
+  empresaId           Int?
+  empresa             Empresa?           @relation(fields: [empresaId], references: [id])
+  empresaAsignada     String?            // Nombre de empresa cuando aún no está registrada
+  estadoProceso       EstadoPractica?
+  activo              Boolean            @default(true)
+  experiencia         String?            // experiencia previa, proyectos, etc.
+  habilidadesTecnicas String[]           @default([]) // array de habilidades técnicas
+  habilidadesBlandas  String[]           @default([]) // array de habilidades blandas
+  telefono            String?
+  programaAcademico   String?
+  semestre            Int?
+  area                String?            // área de interés
+  perfilCompleto      Boolean            @default(false) // si completó CV
   hojaVidaArchivoUrl  String?
 
   practicas         Practica[]
   postulaciones     Postulacion[]
-  
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @default(now()) @updatedAt
 }
 
 model Empresa {
@@ -130,6 +128,7 @@ model Convenio {
   revisiones RevisionConvenio[]
   documentos Documento[]
   vacantes   Vacante[]
+  comentarios ComentarioConvenio[]
 
   // Auto-relación (marco ↔ específicos)
   macroConvenioId Int?
@@ -147,6 +146,21 @@ model RevisionConvenio {
   fecha      DateTime     @default(now())
   tipo       TipoRevision
   convenio   Convenio     @relation(fields: [convenioId], references: [id])
+}
+
+model ComentarioConvenio {
+  id         Int      @id @default(autoincrement())
+  convenioId Int
+  autorId    Int
+  autorRol   Rol
+  contenido  String
+  creadoEn   DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  convenio   Convenio @relation(fields: [convenioId], references: [id], onDelete: Cascade)
+
+  @@index([convenioId])
+  @@index([autorId])
 }
 
 enum TipoRevision {
@@ -290,11 +304,8 @@ model RepresentanteLegal {
   id              Int      @id @default(autoincrement())
   empresaId       Int      @unique
   nombreCompleto  String
-  tipoDocumento   String
-  numeroDocumento String   @unique
-  cargo           String
-  telefono        String?
   email           String
+  telefono        String
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)

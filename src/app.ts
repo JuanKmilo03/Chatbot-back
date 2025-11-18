@@ -101,7 +101,7 @@ app.use('/api/cronogramas', cronogramaRoutes);
 
 
 // Rutas protegidas
-app.use("/api/representantes", representanteRoutes);
+app.use("/api/representante", representanteRoutes);
 app.use("/api/postulaciones", postulacionRoutes);
 app.use("/api/notificaciones", notificacionRoutes);
 
