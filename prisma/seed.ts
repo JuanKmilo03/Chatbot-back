@@ -1,4 +1,4 @@
-import { PrismaClient, Rol, Modalidad, EstadoGeneral, TipoConvenio, EstadoEmpresa, EstadoConvenio } from '@prisma/client';
+import { PrismaClient, Rol, Modalidad, EstadoGeneral, TipoConvenio, EstadoEmpresa, EstadoConvenio, TipoDocumento } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -6,230 +6,96 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Iniciando seed de base de datos...');
 
-  // 1️⃣ Crear programa
   const programa = await prisma.programa.upsert({
     where: { nombre: 'Ingeniería de Sistemas' },
     update: {},
-    create: {
-      nombre: 'Ingeniería de Sistemas',
-      facultad: 'Facultad de Ingeniería',
-    },
+    create: { nombre: 'Ingeniería de Sistemas', facultad: 'Facultad de Ingeniería' },
   });
 
-  const programa2 = await prisma.programa.upsert({
-    where: { nombre: 'Ingeniería de Sistemas' },
-    update: {},
-    create: {
-      nombre: 'Ingeniería de Sistemas',
-      facultad: 'Facultad de Ingeniería',
-    },
-  });
-
-  const programa3 = await prisma.programa.upsert({
-    where: { nombre: 'Ingeniería de Sistemas' },
-    update: {},
-    create: {
-      nombre: 'Ingeniería de Sistemas',
-      facultad: 'Facultad de Ingeniería',
-    },
-  });
-
-  // 2️⃣ Crear usuario administrador
-  const adminPassword = await bcrypt.hash('admin1234', 10);
-  const adminUsuario = await prisma.usuario.upsert({
-    where: { email: 'admin@ejemplo.com' },
-    update: {},
-    create: {
-      nombre: 'Administrador Principal',
-      email: 'admin@ejemplo.com',
-      password: adminPassword,
-      rol: Rol.ADMIN,
-    },
-  });
-
-  // 3️⃣ Crear usuario director
   const directorUsuario = await prisma.usuario.upsert({
-    where: { email: 'juancamilobame@ufps.edu.co' },
+    where: { email: 'wilhenferneygp2@ufps.edu.co' },
     update: {},
-    create: {
-      nombre: 'Juan Camilo Bame',
-      email: 'juancamilobame@ufps.edu.co',
-      password: null, // sin contraseña
-      rol: Rol.DIRECTOR,
-    },
+    create: { nombre: 'Wilhen Ferney Gutiérrez Pabón', email: 'wilhenferneygp@ufps.edu.co', password: null, rol: Rol.DIRECTOR },
   });
 
-  // 4️⃣ Crear director (un director por programa)
   const director = await prisma.director.upsert({
     where: { programaId: programa.id },
-    update: {
-      usuarioId: directorUsuario.id,
-      Facultad: programa.facultad,
-    },
-    create: {
-      usuarioId: directorUsuario.id,
-      programaId: programa.id,
-      Facultad: programa.facultad,
-    },
+    update: { usuarioId: directorUsuario.id },
+    create: { usuarioId: directorUsuario.id, programaId: programa.id, Facultad: programa.facultad },
   });
 
-  const directorUsuario2 = await prisma.usuario.upsert({
-    where: { email: 'ejemplo1@ufps.edu.co' },
-    update: {},
-    create: {
-      nombre: 'ejemplo1',
-      email: 'ejemplo1@ufps.edu.co',
-      password: null, // sin contraseña
-      rol: Rol.DIRECTOR,
-    },
-  });
-
-  // 4️⃣ Crear director (un director por programa)
-  const director2 = await prisma.director.upsert({
-    where: { programaId: programa2.id },
-    update: {
-      usuarioId: directorUsuario2.id,
-      Facultad: programa2.facultad,
-    },
-    create: {
-      usuarioId: directorUsuario2.id,
-      programaId: programa2.id,
-      Facultad: programa2.facultad,
-    },
-  });
-
-  const directorUsuario3 = await prisma.usuario.upsert({
-    where: { email: 'ejemplo2@ufps.edu.co' },
-    update: {},
-    create: {
-      nombre: 'ejemplo2',
-      email: 'ejemplo2@ufps.edu.co',
-      password: null, // sin contraseña
-      rol: Rol.DIRECTOR,
-    },
-  });
-
-  // 4️⃣ Crear director (un director por programa)
-  const director3 = await prisma.director.upsert({
-    where: { programaId: programa3.id },
-    update: {
-      usuarioId: directorUsuario3.id,
-      Facultad: programa3.facultad,
-    },
-    create: {
-      usuarioId: directorUsuario3.id,
-      programaId: programa3.id,
-      Facultad: programa3.facultad,
-    },
-  });
-
-  // 5️⃣ Crear empresa
-  const empresaPassword = await bcrypt.hash('empresa1234', 10);
-  const empresaUsuario = await prisma.usuario.upsert({
-    where: { email: 'empresa@ejemplo.com' },
-    update: {},
-    create: {
-      nombre: 'Empresa Demo S.A.',
-      email: 'empresa@ejemplo.com',
-      password: empresaPassword,
-      rol: Rol.EMPRESA,
-    },
-  });
-
-  const empresa = await prisma.empresa.upsert({
-    where: { nit: '9001234567' },
-    update: {
-      usuarioId: empresaUsuario.id,
-      estado: EstadoEmpresa.APROBADA,
-      habilitada: true,
-      directorId: director.id,
-    },
-    create: {
-      usuarioId: empresaUsuario.id,
-      nit: '9001234567',
-      telefono: '555-1234',
-      direccion: 'Calle Falsa 123',
-      sector: 'Tecnología',
-      descripcion: 'Empresa demostrativa para pruebas',
-      estado: EstadoEmpresa.APROBADA,
-      habilitada: true,
+  await prisma.documento.create({
+    data: {
+      titulo: "Plantilla Inicial de Convenio",
+      descripcion: "Documento base del convenio utilizado como plantilla para nuevos acuerdos empresariales.",
+      categoria: TipoDocumento.CONVENIO_PLANTILLA,
+      archivoUrl: "https://res.cloudinary.com/dqwxyv3zc/image/upload/v1762804320/DocumentosPracticas/yxqto6t2io7djka0w5j6.pdf",
+      publicId: "DocumentosPracticas/yxqto6t2io7djka0w5j6",
       directorId: director.id,
     },
   });
 
-  // 6️⃣ Crear usuario estudiante
-  const estudianteUsuario = await prisma.usuario.upsert({
-    where: { email: 'adrianamilenaal@ufps.edu.co' },
-    update: {},
-    create: {
-      nombre: 'Adriana Milena Al',
-      email: 'adrianamilenaal@ufps.edu.co',
-      password: null,
-      rol: Rol.ESTUDIANTE,
-    },
+  const empresasData = [
+    { nombre: 'Empresa Habilitada S.A.', email: 'habilitada@ejemplo.com', nit: '9000000001', habilitada: true, estado: EstadoEmpresa.APROBADA },
+    { nombre: 'Empresa Activa 1', email: 'activa1@ejemplo.com', nit: '9000000002', habilitada: false, estado: EstadoEmpresa.APROBADA },
+    { nombre: 'Empresa Activa 2', email: 'activa2@ejemplo.com', nit: '9000000003', habilitada: false, estado: EstadoEmpresa.APROBADA },
+    { nombre: 'Empresa Pendiente 1', email: 'pendiente1@ejemplo.com', nit: '9000000004', habilitada: false, estado: EstadoEmpresa.PENDIENTE },
+    { nombre: 'Empresa Pendiente 2', email: 'pendiente2@ejemplo.com', nit: '9000000005', habilitada: false, estado: EstadoEmpresa.PENDIENTE },
+  ];
+
+  const empresas = [];
+  for (const e of empresasData) {
+    const password = await bcrypt.hash('empresa1234', 10);
+    const usuario = await prisma.usuario.upsert({
+      where: { email: e.email },
+      update: {},
+      create: { nombre: e.nombre, email: e.email, password, rol: Rol.EMPRESA },
+    });
+
+    const empresa = await prisma.empresa.upsert({
+      where: { nit: e.nit },
+      update: { usuarioId: usuario.id, habilitada: e.habilitada, estado: e.estado, directorId: director.id },
+      create: { usuarioId: usuario.id, nit: e.nit, telefono: '555-1234', direccion: 'Calle Falsa 123', sector: 'Tecnología', descripcion: `Empresa ${e.nombre} para pruebas`, estado: e.estado, habilitada: e.habilitada, directorId: director.id },
+    });
+
+    await prisma.representanteLegal.upsert({
+      where: { empresaId: empresa.id },
+      update: {},
+      create: { empresaId: empresa.id, nombreCompleto: 'Juan Representante', tipoDocumento: 'CC', numeroDocumento: `${empresa.nit}RL`, email: `legal-${empresa.nit}@ejemplo.com`, telefono: '3200000000' },
+    });
+
+    empresas.push(empresa);
+  }
+
+  const convenio = await prisma.convenio.create({
+    data: { empresaId: empresas[0].id, directorId: director.id, nombre: "Convenio Habilitada 2025", descripcion: "Convenio aprobado para pruebas", tipo: TipoConvenio.MACRO, fechaInicio: new Date("2025-01-01"), fechaFin: new Date("2025-12-31"), estado: EstadoConvenio.APROBADO, version: 1, archivoUrl: "https://res.cloudinary.com/dqwxyv3zc/image/upload/v1762804320/DocumentosPracticas/yxqto6t2io7djka0w5j6.pdf" },
   });
 
-  // 7️⃣ Crear estudiante
-  const estudiante = await prisma.estudiante.upsert({
-    where: { usuarioId: estudianteUsuario.id },
-    update: {},
-    create: {
-      usuarioId: estudianteUsuario.id,
-      codigo: '2025001',
-      cedula: '123456789',
-      telefono: '3001234567',
-      area: 'Desarrollo Web',
-      habilidadesTecnicas: ['TypeScript', 'Node.js', 'React'],
-      habilidadesBlandas: ['Trabajo en equipo', 'Comunicación'],
-      experiencia: 'Proyectos universitarios y prácticas',
-      perfilCompleto: true,
-      activo: true,
-    },
-  });
+  const vacantesData = [
+    { titulo: 'Practicante Backend', area: 'Desarrollo Backend', habilidadesTecnicas: ['Node.js', 'TypeScript'], habilidadesBlandas: ['Proactividad'] },
+    { titulo: 'Practicante Frontend', area: 'Desarrollo Frontend', habilidadesTecnicas: ['React', 'CSS'], habilidadesBlandas: ['Trabajo en equipo'] },
+    { titulo: 'Practicante QA', area: 'Calidad de Software', habilidadesTecnicas: ['Testing', 'Jest'], habilidadesBlandas: ['Detallista'] },
+  ];
 
-  // 8️⃣ Crear convenio
-  const convenio = await prisma.convenio.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      empresaId: empresa.id,
-      directorId: director.id,
-      nombre: 'Convenio de Prácticas 2025',
-      descripcion: 'Convenio marco para estudiantes 2025',
-      tipo: TipoConvenio.MACRO,
-      fechaInicio: new Date('2025-01-01'),
-      fechaFin: new Date('2025-12-31'),
-      estado: EstadoConvenio.EN_REVISION,
-      version: 1,
-    },
-  });
+  for (const v of vacantesData) {
+    await prisma.vacante.create({
+      data: { empresaId: empresas[0].id, convenioId: convenio.id, directorValidaId: director.id, titulo: v.titulo, modalidad: Modalidad.HIBRIDO, descripcion: `Vacante para ${v.titulo}`, area: v.area, ciudad: 'Cúcuta', habilidadesTecnicas: v.habilidadesTecnicas, habilidadesBlandas: v.habilidadesBlandas, estado: EstadoGeneral.PENDIENTE },
+    });
+  }
 
-  // 9️⃣ Crear vacante
-  await prisma.vacante.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      empresaId: empresa.id,
-      convenioId: convenio.id,
-      directorValidaId: director.id,
-      titulo: 'Practicante de Desarrollo Backend',
-      modalidad: Modalidad.HIBRIDO,
-      descripcion: 'Vacante para desarrollo con Node.js y bases de datos',
-      area: 'Desarrollo de Software',
-      ciudad: 'Cúcuta',
-      habilidadesTecnicas: ['Node.js', 'TypeScript', 'PostgreSQL'],
-      habilidadesBlandas: ['Responsabilidad', 'Proactividad'],
-      estado: EstadoGeneral.PENDIENTE,
-    },
-  });
+  const estudiantesData = [
+    { nombre: 'Wilhen Ferney Gutierrez Pabon', email: 'wilhenferneygp2@ufps.edu.co', codigo: '1151667', documento: '1193288582', telefono: '+573022976372', area: 'Desarrollo Web', habilidadesTecnicas: ['TypeScript', 'React'], habilidadesBlandas: ['Comunicación', 'Trabajo en equipo'], experiencia: 'Proyectos universitarios', perfilCompleto: true, activo: true },
+    { nombre: 'Estudiante Incompleto', email: 'estudiante2@ufps.edu.co', codigo: '2025002', documento: '987654321', telefono: '3019876543', area: 'QA', habilidadesTecnicas: [], habilidadesBlandas: [], perfilCompleto: false, activo: true },
+  ];
+
+  for (const s of estudiantesData) {
+    const usuario = await prisma.usuario.upsert({ where: { email: s.email }, update: {}, create: { nombre: s.nombre, email: s.email, password: null, rol: Rol.ESTUDIANTE } });
+    await prisma.estudiante.upsert({ where: { usuarioId: usuario.id }, update: {}, create: { usuarioId: usuario.id, documento: s.documento, codigo: s.codigo, telefono: s.telefono, area: s.area, habilidadesTecnicas: s.habilidadesTecnicas, habilidadesBlandas: s.habilidadesBlandas, experiencia: s.experiencia ?? '', perfilCompleto: s.perfilCompleto, activo: s.activo } });
+  }
 
   console.log('✅ Seed ejecutado correctamente');
 }
 
 main()
-  .catch((e) => {
-    console.error('❌ Error en el seed:', e);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .catch((e) => console.error('❌ Error en el seed:', e))
+  .finally(async () => await prisma.$disconnect());
