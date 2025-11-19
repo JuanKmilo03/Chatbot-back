@@ -43,7 +43,7 @@ const programas = await Promise.all([
       update: {},
       create: {
         nombre: "Directora Sistemas",
-        email: "director1@ufps.edu.co",
+        email: "adrianamilenaal@ufps.edu.co",
         password: directorPassword,
         rol: Rol.DIRECTOR,
       },
