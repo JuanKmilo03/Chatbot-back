@@ -39,7 +39,7 @@ const programas = await Promise.all([
 
   const directorUsuarios = await Promise.all([
     prisma.usuario.upsert({
-      where: { email: "director1@ufps.edu.co" },
+      where: { email: "adrianamilenaal@ufps.edu.co" },
       update: {},
       create: {
         nombre: "Directora Sistemas",
