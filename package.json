@@ -10,9 +10,6 @@
     "prisma:generate": "npx prisma generate",
     "seed": "npx tsx prisma/seed.ts"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "keywords": [],
   "author": "",
   "license": "ISC",
