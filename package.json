@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "npx prisma generate && tsx watch src/app.ts",
-    "build": "tsc",
+    "build": "npx prisma generate && tsc",
     "start": "node dist/app.js",
     "prisma:generate": "npx prisma generate",
     "seed": "npx tsx prisma/seed.ts"
