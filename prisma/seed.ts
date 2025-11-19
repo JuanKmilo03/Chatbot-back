@@ -1,229 +1,392 @@
-import { PrismaClient, Rol, Modalidad, EstadoGeneral, TipoConvenio, EstadoEmpresa, EstadoConvenio } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
+import { PrismaClient, Rol, Modalidad, EstadoGeneral, EstadoEmpresa, EstadoConvenio, EstadoPractica, TipoConvenio, TipoActividad, PrioridadNotificacion, TipoNotificacion } from "@prisma/client";
+import * as bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Iniciando seed de base de datos...');
+  console.log("🌱 Iniciando seed...");
 
-  // 1️⃣ Crear programa
-  const programa = await prisma.programa.upsert({
-    where: { nombre: 'Ingeniería de Sistemas' },
+const programas = await Promise.all([
+    prisma.programa.upsert({
+      where: { nombre: "Ingeniería de Sistemas" },
+      update: {},
+      create: {
+        nombre: "Ingeniería de Sistemas",
+        facultad: "Facultad de Ingeniería",
+      },
+    }),
+    prisma.programa.upsert({
+      where: { nombre: "Ingeniería Industrial" },
+      update: {},
+      create: {
+        nombre: "Ingeniería Industrial",
+        facultad: "Facultad de Ingeniería",
+      },
+    }),
+    prisma.programa.upsert({
+      where: { nombre: "Ingeniería Civil" },
+      update: {},
+      create: {
+        nombre: "Ingeniería Civil",
+        facultad: "Facultad de Ingeniería",
+      },
+    }),
+  ]);
+
+  const [progSis, progInd, progCiv] = programas;
+
+ const directorPassword = await bcrypt.hash("director1234", 10);
+
+  const directorUsuarios = await Promise.all([
+    prisma.usuario.upsert({
+      where: { email: "director1@ufps.edu.co" },
+      update: {},
+      create: {
+        nombre: "Directora Sistemas",
+        email: "director1@ufps.edu.co",
+        password: directorPassword,
+        rol: Rol.DIRECTOR,
+      },
+    }),
+    prisma.usuario.upsert({
+      where: { email: "director2@ufps.edu.co" },
+      update: {},
+      create: {
+        nombre: "Director Industrial",
+        email: "director2@ufps.edu.co",
+        password: directorPassword,
+        rol: Rol.DIRECTOR,
+      },
+    }),
+    prisma.usuario.upsert({
+      where: { email: "director3@ufps.edu.co" },
+      update: {},
+      create: {
+        nombre: "Director Civil",
+        email: "director3@ufps.edu.co",
+        password: directorPassword,
+        rol: Rol.DIRECTOR,
+      },
+    }),
+  ]);
+
+  const [uDir1, uDir2, uDir3] = directorUsuarios;
+
+  const directores = await Promise.all([
+    prisma.director.upsert({
+      where: { usuarioId: uDir1.id },
+      update: {},
+      create: {
+        usuarioId: uDir1.id,
+        programaId: progSis.id,
+        Facultad: progSis.facultad,
+      },
+    }),
+    prisma.director.upsert({
+      where: { usuarioId: uDir2.id },
+      update: {},
+      create: {
+        usuarioId: uDir2.id,
+        programaId: progInd.id,
+        Facultad: progInd.facultad,
+      },
+    }),
+    prisma.director.upsert({
+      where: { usuarioId: uDir3.id },
+      update: {},
+      create: {
+        usuarioId: uDir3.id,
+        programaId: progCiv.id,
+        Facultad: progCiv.facultad,
+      },
+    }),
+  ]);
+
+  const [dirSis, dirInd, dirCiv] = directores;
+
+ const adminPassword = await bcrypt.hash("admin1234", 10);
+
+  const admin = await prisma.usuario.upsert({
+    where: { email: "admin@ufps.edu.co" },
     update: {},
     create: {
-      nombre: 'Ingeniería de Sistemas',
-      facultad: 'Facultad de Ingeniería',
-    },
-  });
-
-  const programa2 = await prisma.programa.upsert({
-    where: { nombre: 'Ingeniería de Sistemas' },
-    update: {},
-    create: {
-      nombre: 'Ingeniería de Sistemas',
-      facultad: 'Facultad de Ingeniería',
-    },
-  });
-
-  const programa3 = await prisma.programa.upsert({
-    where: { nombre: 'Ingeniería de Sistemas' },
-    update: {},
-    create: {
-      nombre: 'Ingeniería de Sistemas',
-      facultad: 'Facultad de Ingeniería',
-    },
-  });
-
-  // 2️⃣ Crear usuario administrador
-  const adminPassword = await bcrypt.hash('admin1234', 10);
-  const adminUsuario = await prisma.usuario.upsert({
-    where: { email: 'admin@ejemplo.com' },
-    update: {},
-    create: {
-      nombre: 'Administrador Principal',
-      email: 'admin@ejemplo.com',
+      nombre: "Administrador General",
+      email: "admin@ufps.edu.co",
       password: adminPassword,
       rol: Rol.ADMIN,
     },
   });
 
-  // 3️⃣ Crear usuario director
-  const directorUsuario = await prisma.usuario.upsert({
-    where: { email: 'juancamilobame@ufps.edu.co' },
+ const empresaPassword = await bcrypt.hash("empresa1234", 10);
+
+  const usuarioEmpresa = await prisma.usuario.upsert({
+    where: { email: "empresa@demo.com" },
     update: {},
     create: {
-      nombre: 'Juan Camilo Bame',
-      email: 'juancamilobame@ufps.edu.co',
-      password: null, // sin contraseña
-      rol: Rol.DIRECTOR,
-    },
-  });
-
-  // 4️⃣ Crear director (un director por programa)
-  const director = await prisma.director.upsert({
-    where: { programaId: programa.id },
-    update: {
-      usuarioId: directorUsuario.id,
-      Facultad: programa.facultad,
-    },
-    create: {
-      usuarioId: directorUsuario.id,
-      programaId: programa.id,
-      Facultad: programa.facultad,
-    },
-  });
-
-  const directorUsuario2 = await prisma.usuario.upsert({
-    where: { email: 'ejemplo1@ufps.edu.co' },
-    update: {},
-    create: {
-      nombre: 'ejemplo1',
-      email: 'ejemplo1@ufps.edu.co',
-      password: null, // sin contraseña
-      rol: Rol.DIRECTOR,
-    },
-  });
-
-  // 4️⃣ Crear director (un director por programa)
-  const director2 = await prisma.director.upsert({
-    where: { programaId: programa2.id },
-    update: {
-      usuarioId: directorUsuario2.id,
-      Facultad: programa2.facultad,
-    },
-    create: {
-      usuarioId: directorUsuario2.id,
-      programaId: programa2.id,
-      Facultad: programa2.facultad,
-    },
-  });
-
-  const directorUsuario3 = await prisma.usuario.upsert({
-    where: { email: 'ejemplo2@ufps.edu.co' },
-    update: {},
-    create: {
-      nombre: 'ejemplo2',
-      email: 'ejemplo2@ufps.edu.co',
-      password: null, // sin contraseña
-      rol: Rol.DIRECTOR,
-    },
-  });
-
-  // 4️⃣ Crear director (un director por programa)
-  const director3 = await prisma.director.upsert({
-    where: { programaId: programa3.id },
-    update: {
-      usuarioId: directorUsuario3.id,
-      Facultad: programa3.facultad,
-    },
-    create: {
-      usuarioId: directorUsuario3.id,
-      programaId: programa3.id,
-      Facultad: programa3.facultad,
-    },
-  });
-
-  // 5️⃣ Crear empresa
-  const empresaPassword = await bcrypt.hash('empresa1234', 10);
-  const empresaUsuario = await prisma.usuario.upsert({
-    where: { email: 'empresa@ejemplo.com' },
-    update: {},
-    create: {
-      nombre: 'Empresa Demo S.A.',
-      email: 'empresa@ejemplo.com',
+      nombre: "Empresa Demo S.A.",
+      email: "empresa@demo.com",
       password: empresaPassword,
       rol: Rol.EMPRESA,
     },
   });
 
   const empresa = await prisma.empresa.upsert({
-    where: { nit: '9001234567' },
-    update: {
-      usuarioId: empresaUsuario.id,
-      estado: EstadoEmpresa.APROBADA,
-      habilitada: true,
-      directorId: director.id,
-    },
+    where: { nit: "9001234567" },
+    update: {},
     create: {
-      usuarioId: empresaUsuario.id,
-      nit: '9001234567',
-      telefono: '555-1234',
-      direccion: 'Calle Falsa 123',
-      sector: 'Tecnología',
-      descripcion: 'Empresa demostrativa para pruebas',
+      usuarioId: usuarioEmpresa.id,
+      nit: "9001234567",
+      telefono: "3001112233",
+      direccion: "Calle 45 #12-34",
+      sector: "Tecnología",
+      descripcion: "Empresa de ejemplo registrada automáticamente.",
       estado: EstadoEmpresa.APROBADA,
       habilitada: true,
-      directorId: director.id,
+      directorId: dirSis.id,
     },
   });
 
-  // 6️⃣ Crear usuario estudiante
-  const estudianteUsuario = await prisma.usuario.upsert({
-    where: { email: 'adrianamilenaal@ufps.edu.co' },
+ await prisma.representanteLegal.upsert({
+    where: { empresaId: empresa.id },
     update: {},
     create: {
-      nombre: 'Adriana Milena Al',
-      email: 'adrianamilenaal@ufps.edu.co',
-      password: null,
+      empresaId: empresa.id,
+      nombreCompleto: "Juan Pérez",
+      tipoDocumento: "CC",
+      numeroDocumento: "1010101010",
+      email: "legal@demo.com",
+      telefono: "3102223344",
+    },
+  });
+
+ const estudiantePassword = await bcrypt.hash("estudiante1234", 10);
+
+  const usuarioEst = await prisma.usuario.upsert({
+    where: { email: "estudiante1@ufps.edu.co" },
+    update: {},
+    create: {
+      nombre: "Estudiante Demostración",
+      email: "estudiante1@ufps.edu.co",
+      password: estudiantePassword,
       rol: Rol.ESTUDIANTE,
     },
   });
 
-  // 7️⃣ Crear estudiante
   const estudiante = await prisma.estudiante.upsert({
-    where: { usuarioId: estudianteUsuario.id },
+    where: { usuarioId: usuarioEst.id },
     update: {},
     create: {
-      usuarioId: estudianteUsuario.id,
-      codigo: '2025001',
-      cedula: '123456789',
-      telefono: '3001234567',
-      area: 'Desarrollo Web',
-      habilidadesTecnicas: ['TypeScript', 'Node.js', 'React'],
-      habilidadesBlandas: ['Trabajo en equipo', 'Comunicación'],
-      experiencia: 'Proyectos universitarios y prácticas',
+      usuarioId: usuarioEst.id,
+      codigo: "2025001",
+      telefono: "3003334455",
+      documento: "123456789",
+      programaAcademico: "Ingeniería de Sistemas",
+      semestre: 8,
+      perfil: "Estudiante interesado en desarrollo backend.",
+      habilidadesTecnicas: ["Node.js", "TypeScript"],
+      habilidadesBlandas: ["Comunicación", "Trabajo en equipo"],
+      experiencia: "Proyectos académicos y freelance.",
+      area: "Desarrollo Web",
       perfilCompleto: true,
+      estadoProceso: EstadoPractica.EN_PROCESO,
+      hojaDeVidaUrl: "https://example.com/cv-estudiante1.pdf",
+    },
+  });
+
+ let convenio = await prisma.convenio.findFirst({
+    where: {
+      nombre: "Convenio Marco 2025",
+      empresaId: empresa.id
+    }
+  });
+
+  if (!convenio) {
+    convenio = await prisma.convenio.create({
+      data: {
+        empresaId: empresa.id,
+        directorId: dirSis.id,
+        nombre: "Convenio Marco 2025",
+        descripcion: "Convenio general para prácticas profesionales 2025.",
+        tipo: TipoConvenio.MACRO,
+        fechaInicio: new Date("2025-01-01"),
+        fechaFin: new Date("2025-12-31"),
+        estado: EstadoConvenio.APROBADO,
+        archivoUrl: "https://example.com/convenio-marco-2025.pdf",
+      },
+    });
+  }
+
+  let vacante = await prisma.vacante.findFirst({
+    where: {
+      titulo: "Practicante Backend Node.js",
+      empresaId: empresa.id
+    }
+  });
+
+  if (!vacante) {
+    vacante = await prisma.vacante.create({
+      data: {
+        empresaId: empresa.id,
+        convenioId: convenio.id,
+        directorValidaId: dirSis.id,
+        titulo: "Practicante Backend Node.js",
+        modalidad: Modalidad.HIBRIDO,
+        descripcion: "Asistencia en APIs con Node.js, Prisma y PostgreSQL.",
+        area: "Desarrollo de Software",
+        ciudad: "Cúcuta",
+        habilidadesTecnicas: ["Node.js", "SQL", "TypeScript"],
+        habilidadesBlandas: ["Comunicación", "Responsabilidad"],
+        estado: EstadoGeneral.APROBADA,
+      },
+    });
+  }
+
+ let postulacion = await prisma.postulacion.findFirst({
+    where: {
+      estudianteId: estudiante.id,
+      vacanteId: vacante.id,
+    }
+  });
+
+  if (!postulacion) {
+    postulacion = await prisma.postulacion.create({
+      data: {
+        estudianteId: estudiante.id,
+        vacanteId: vacante.id,
+        estado: "EN_REVISION",
+        comentario: "Interesado en la vacante de backend",
+      },
+    });
+  }
+let practica = await prisma.practica.findFirst({
+    where: {
+      estudianteId: estudiante.id,
+      vacanteId: vacante.id,
+    }
+  });
+
+  if (!practica) {
+    practica = await prisma.practica.create({
+      data: {
+        estudianteId: estudiante.id,
+        vacanteId: vacante.id,
+        estado: EstadoPractica.EN_PROCESO,
+        inicio: new Date("2025-02-01"),
+        fin: new Date("2025-07-31"),
+      },
+    });
+  }
+
+  const cronograma = await prisma.cronograma.upsert({
+    where: {
+      programaId_semestre: {
+        programaId: progSis.id,
+        semestre: "2025-1",
+      },
+    },
+    update: {},
+    create: {
+      programaId: progSis.id,
+      directorId: dirSis.id,
+      titulo: "Cronograma Prácticas 2025-1",
+      descripcion: "Actividades programadas para el semestre",
+      semestre: "2025-1",
       activo: true,
+      archivoUrl: "https://example.com/cronograma-2025-1.pdf",
     },
   });
 
-  // 8️⃣ Crear convenio
-  const convenio = await prisma.convenio.upsert({
-    where: { id: 1 },
+  let actividad = await prisma.actividadCronograma.findFirst({
+    where: {
+      cronogramaId: cronograma.id,
+      nombre: "Revisión de hojas de vida"
+    }
+  });
+
+  if (!actividad) {
+    actividad = await prisma.actividadCronograma.create({
+      data: {
+        cronogramaId: cronograma.id,
+        nombre: "Revisión de hojas de vida",
+        descripcion: "El director revisará los CV recibidos.",
+        fechaInicio: new Date("2025-01-15"),
+        fechaFin: new Date("2025-01-30"),
+        tipo: TipoActividad.REVISIÓN,
+      },
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // CONVERSACIÓN + MENSAJE
+  // ─────────────────────────────────────────────────────────────
+  const conversacion = await prisma.conversacion.upsert({
+    where: {
+      empresaId_directorId: {
+        empresaId: empresa.id,
+        directorId: dirSis.id,
+      },
+    },
     update: {},
     create: {
       empresaId: empresa.id,
-      directorId: director.id,
-      nombre: 'Convenio de Prácticas 2025',
-      descripcion: 'Convenio marco para estudiantes 2025',
-      tipo: TipoConvenio.MACRO,
-      fechaInicio: new Date('2025-01-01'),
-      fechaFin: new Date('2025-12-31'),
-      estado: EstadoConvenio.EN_REVISION,
-      version: 1,
+      directorId: dirSis.id,
+      titulo: "Contacto inicial de prácticas",
     },
   });
 
-  // 9️⃣ Crear vacante
-  await prisma.vacante.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      empresaId: empresa.id,
-      convenioId: convenio.id,
-      directorValidaId: director.id,
-      titulo: 'Practicante de Desarrollo Backend',
-      modalidad: Modalidad.HIBRIDO,
-      descripcion: 'Vacante para desarrollo con Node.js y bases de datos',
-      area: 'Desarrollo de Software',
-      ciudad: 'Cúcuta',
-      habilidadesTecnicas: ['Node.js', 'TypeScript', 'PostgreSQL'],
-      habilidadesBlandas: ['Responsabilidad', 'Proactividad'],
-      estado: EstadoGeneral.PENDIENTE,
-    },
+  let mensaje = await prisma.mensaje.findFirst({
+    where: {
+      conversacionId: conversacion.id,
+      remitenteId: usuarioEmpresa.id
+    }
   });
 
-  console.log('✅ Seed ejecutado correctamente');
+  if (!mensaje) {
+    mensaje = await prisma.mensaje.create({
+      data: {
+        conversacionId: conversacion.id,
+        remitenteId: usuarioEmpresa.id,
+        remitenteRol: Rol.EMPRESA,
+        contenido: "Buenas tardes, deseamos iniciar el proceso de prácticas.",
+      },
+    });
+  }
+
+   let notificacion = await prisma.notificacion.findFirst({
+    where: {
+      id: 1
+    }
+  });
+
+  if (!notificacion) {
+    notificacion = await prisma.notificacion.create({
+      data: {
+        tipo: TipoNotificacion.NUEVA_SOLICITUD_VACANTE,
+        titulo: "Nueva vacante pendiente",
+        mensaje: "Tienes una nueva vacante pendiente de revisión",
+        prioridad: PrioridadNotificacion.MEDIA,
+        destinatarioId: dirSis.id,
+        destinatarioRol: Rol.DIRECTOR,
+        leida: false,
+      },
+    });
+  }
+
+  console.log("✅ Seed completado correctamente.");
+  console.log(`📊 Datos creados:
+  - Programas: ${programas.length}
+  - Directores: ${directores.length}
+  - Empresas: 1
+  - Estudiantes: 1
+  - Convenios: 1
+  - Vacantes: 1
+  - Postulaciones: 1
+  - Prácticas: 1
+  - Cronogramas: 1
+  - Actividades: 1
+  - Conversaciones: 1
+  - Mensajes: 1
+  - Notificaciones: 1`);
 }
 
 main()
