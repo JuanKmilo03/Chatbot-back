@@ -23,10 +23,15 @@ export const crearComentarioController = async (req: Request, res: Response): Pr
   try {
     const convenioId = parseInt(req.params.convenioId);
     const { contenido } = req.body;
-    const usuario = (req as any).usuario;
+    const usuario = (req as any).user; // CORREGIDO: usar 'user' en lugar de 'usuario'
 
     if (!contenido || contenido.trim() === '') {
       res.status(400).json({ error: 'El contenido del comentario es requerido' });
+      return;
+    }
+
+    if (!usuario) {
+      res.status(401).json({ error: 'Usuario no autenticado' });
       return;
     }
 
@@ -113,10 +118,15 @@ export const actualizarComentarioController = async (req: Request, res: Response
   try {
     const comentarioId = parseInt(req.params.comentarioId);
     const { contenido } = req.body;
-    const usuario = (req as any).usuario;
+    const usuario = (req as any).user; // CORREGIDO: usar 'user' en lugar de 'usuario'
 
     if (!contenido || contenido.trim() === '') {
       res.status(400).json({ error: 'El contenido del comentario es requerido' });
+      return;
+    }
+
+    if (!usuario) {
+      res.status(401).json({ error: 'Usuario no autenticado' });
       return;
     }
 
@@ -168,7 +178,12 @@ export const actualizarComentarioController = async (req: Request, res: Response
 export const eliminarComentarioController = async (req: Request, res: Response): Promise<void> => {
   try {
     const comentarioId = parseInt(req.params.comentarioId);
-    const usuario = (req as any).usuario;
+    const usuario = (req as any).user; // CORREGIDO: usar 'user' en lugar de 'usuario'
+
+    if (!usuario) {
+      res.status(401).json({ error: 'Usuario no autenticado' });
+      return;
+    }
 
     // Determinar el ID del autor según el rol
     let autorId: number;

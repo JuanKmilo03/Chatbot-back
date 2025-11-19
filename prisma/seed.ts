@@ -16,6 +16,24 @@ async function main() {
     },
   });
 
+  const programa2 = await prisma.programa.upsert({
+    where: { nombre: 'Ingeniería de Sistemas' },
+    update: {},
+    create: {
+      nombre: 'Ingeniería de Sistemas',
+      facultad: 'Facultad de Ingeniería',
+    },
+  });
+
+  const programa3 = await prisma.programa.upsert({
+    where: { nombre: 'Ingeniería de Sistemas' },
+    update: {},
+    create: {
+      nombre: 'Ingeniería de Sistemas',
+      facultad: 'Facultad de Ingeniería',
+    },
+  });
+
   // 2️⃣ Crear usuario administrador
   const adminPassword = await bcrypt.hash('admin1234', 10);
   const adminUsuario = await prisma.usuario.upsert({
@@ -52,6 +70,56 @@ async function main() {
       usuarioId: directorUsuario.id,
       programaId: programa.id,
       Facultad: programa.facultad,
+    },
+  });
+
+  const directorUsuario2 = await prisma.usuario.upsert({
+    where: { email: 'ejemplo1@ufps.edu.co' },
+    update: {},
+    create: {
+      nombre: 'ejemplo1',
+      email: 'ejemplo1@ufps.edu.co',
+      password: null, // sin contraseña
+      rol: Rol.DIRECTOR,
+    },
+  });
+
+  // 4️⃣ Crear director (un director por programa)
+  const director2 = await prisma.director.upsert({
+    where: { programaId: programa2.id },
+    update: {
+      usuarioId: directorUsuario2.id,
+      Facultad: programa2.facultad,
+    },
+    create: {
+      usuarioId: directorUsuario2.id,
+      programaId: programa2.id,
+      Facultad: programa2.facultad,
+    },
+  });
+
+  const directorUsuario3 = await prisma.usuario.upsert({
+    where: { email: 'ejemplo2@ufps.edu.co' },
+    update: {},
+    create: {
+      nombre: 'ejemplo2',
+      email: 'ejemplo2@ufps.edu.co',
+      password: null, // sin contraseña
+      rol: Rol.DIRECTOR,
+    },
+  });
+
+  // 4️⃣ Crear director (un director por programa)
+  const director3 = await prisma.director.upsert({
+    where: { programaId: programa3.id },
+    update: {
+      usuarioId: directorUsuario3.id,
+      Facultad: programa3.facultad,
+    },
+    create: {
+      usuarioId: directorUsuario3.id,
+      programaId: programa3.id,
+      Facultad: programa3.facultad,
     },
   });
 
@@ -110,7 +178,6 @@ async function main() {
       codigo: '2025001',
       cedula: '123456789',
       telefono: '3001234567',
-      descripcion: 'Apasionada por el desarrollo de software',
       area: 'Desarrollo Web',
       habilidadesTecnicas: ['TypeScript', 'Node.js', 'React'],
       habilidadesBlandas: ['Trabajo en equipo', 'Comunicación'],
@@ -162,7 +229,6 @@ async function main() {
 main()
   .catch((e) => {
     console.error('❌ Error en el seed:', e);
-    process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();

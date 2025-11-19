@@ -1,5 +1,5 @@
 import fs from "fs";
-import { EstadoConvenio, EstadoEmpresa, PrismaClient, TipoConvenio, TipoDocumento } from "@prisma/client";
+import { EstadoConvenio, EstadoEmpresa, Prisma, PrismaClient, TipoConvenio, TipoDocumento } from "@prisma/client";
 import { AuthRequest } from "../middlewares/auth.middleware.js";
 import cloudinary from "../config/cloudinary.config.js";
 
@@ -61,7 +61,7 @@ export const convenioService = {
       },
     });
 
-    if(estado && estado === EstadoConvenio.APROBADO){
+    if (estado && estado === EstadoConvenio.APROBADO) {
       await prisma.empresa.update({
         where: { id: convenio.empresaId },
         data: {
@@ -147,6 +147,32 @@ export const convenioService = {
       total,
       page,
       pageSize,
+    };
+  },
+  listarConvenios: async (options: { where: Prisma.ConvenioWhereInput, page?: number, take?: number, orderBy?: Prisma.Enumerable<Prisma.ConvenioOrderByWithRelationInput> }) => {
+    const { where, page = 1, take = 10, orderBy = { creadoEn: 'desc' } } = options;
+    const skip = (page - 1) * take;
+
+    const [convenios, total] = await Promise.all([
+      prisma.convenio.findMany({
+        where,
+        include: {
+          empresa: {
+            include: { usuario: true }
+          }, director: true
+        },
+        orderBy,
+        skip,
+        take,
+      }),
+      prisma.convenio.count({ where })
+    ]);
+
+    return {
+      data: convenios,
+      total,
+      page,
+      pageSize: take,
     };
   },
   listarTodosLosConvenios: async () => {

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { EstudianteExcelService, EstudianteService, estudianteService } from "../services/estudiante.service.js";
+import { EstudianteExcelService, estudianteService, EstudianteService } from "../services/estudiante.service.js";
 import { PrismaClient } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware.js';
 import cloudinary from '../config/cloudinary.config.js';
@@ -106,7 +106,7 @@ export const listarEstudiantesPractica = async (req: Request, res: Response) => 
   try {
     const estudiantes = await estudianteExcelService.listarEstudiantesEnPractica();
 
-    const estudiantesFormateados = estudiantes.map(est => ({
+    const estudiantesFormateados = estudiantes.map((est: { id: any; usuario: { nombre: any; email: any; creadoEn: any; }; codigo: any; telefono: any; programaAcademico: any; semestre: any; empresa: { usuario: { nombre: any; }; id: any; }; empresaAsignada: any; estadoProceso: any; practicas: any; }) => ({
       id: est.id,
       nombre: est.usuario.nombre,
       email: est.usuario.email,

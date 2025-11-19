@@ -1,12 +1,9 @@
-import { PrismaClient, EstadoPractica, Rol, Estudiante, Prisma } from '@prisma/client';
+import { EstadoPractica, Rol, Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import XLSX from 'xlsx';
 import csv from 'csv-parser';
 import { Readable } from 'stream';
-import multer from 'multer';
-
-const prisma = new PrismaClient();
-
+import { prisma } from '../config/db.js';
 
 
 interface EstudianteExcel {
@@ -22,202 +19,236 @@ interface EstudianteExcel {
 
 export class EstudianteExcelService {
 
-  async procesarArchivoEstudiantes(
-    archivoBuffer: Buffer,
-    nombreArchivo: string
-  ): Promise<{ exitosos: number; errores: string[] }> {
+  // Método para procesar archivo Excel/CSV
+  async procesarArchivoEstudiantes(archivoBuffer: Buffer, nombreArchivo: string): Promise<{
+    exitosos: number;
+    errores: string[]
+  }> {
     const estudiantes: EstudianteExcel[] = [];
     const errores: string[] = [];
 
     try {
+      // Obtener extensión del nombre del archivo
       const extension = nombreArchivo.toLowerCase();
 
-      if (extension.endsWith('.xlsx') || extension.endsWith('.xls')) {
-        const workbook = XLSX.read(archivoBuffer, { type: 'buffer' });
-        const data = XLSX.utils.sheet_to_json(
-          workbook.Sheets[workbook.SheetNames[0]]
-        );
+      console.log('Procesando archivo:', nombreArchivo);
+      console.log('Extensión detectada:', extension);
 
-        data.forEach((fila: any, i) => {
+      if (extension.endsWith('.xlsx') || extension.endsWith('.xls')) {
+        // Procesar Excel
+        const workbook = XLSX.read(archivoBuffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const datos = XLSX.utils.sheet_to_json(worksheet);
+
+        console.log('Filas encontradas en Excel:', datos.length);
+
+        datos.forEach((fila: any, index) => {
           try {
-            const estudiante = this.validarFilaEstudiante(fila, i + 2);
-            if (estudiante) estudiantes.push(estudiante);
-          } catch (e: any) {
-            errores.push(`Fila ${i + 2}: ${e.message}`);
+            const estudiante = this.validarFilaEstudiante(fila, index + 2);
+            if (estudiante) {
+              estudiantes.push(estudiante);
+            }
+          } catch (error: any) {
+            errores.push(`Fila ${index + 2}: ${error.message}`);
           }
         });
 
       } else if (extension.endsWith('.csv')) {
+        // Procesar CSV
+        console.log('Procesando como CSV...');
         await new Promise((resolve, reject) => {
           const stream = Readable.from(archivoBuffer.toString());
-          let fila = 0;
+          let filaCount = 0;
 
           stream
             .pipe(csv())
-            .on('data', (data: any) => {
-              fila++;
+            .on('data', (fila: any) => {
+              filaCount++;
               try {
-                const estudiante = this.validarFilaEstudiante(data, fila + 1);
-                if (estudiante) estudiantes.push(estudiante);
-              } catch (e: any) {
-                errores.push(`Fila ${fila + 1}: ${e.message}`);
+                const estudiante = this.validarFilaEstudiante(fila);
+                if (estudiante) {
+                  estudiantes.push(estudiante);
+                }
+              } catch (error: any) {
+                errores.push(`Fila ${filaCount + 1}: ${error.message}`);
               }
             })
-            .on('end', resolve)
+            .on('end', () => {
+              console.log('CSV procesado, filas:', filaCount);
+              resolve(filaCount);
+            })
             .on('error', reject);
         });
       } else {
-        throw new Error("Formato no soportado. Use .xlsx, .xls o .csv");
+        throw new Error(`Formato de archivo no soportado: ${nombreArchivo}. Use .xlsx, .xls o .csv`);
       }
 
-      // GUARDAR
-      const resp = await this.guardarEstudiantes(estudiantes);
-      errores.push(...resp.errores);
 
-      return { exitosos: resp.exitosos, errores };
+      // Procesar estudiantes válidos
+      const resultados = await this.guardarEstudiantes(estudiantes);
+      errores.push(...resultados.errores);
 
-    } catch (e: any) {
-      throw new Error(`Error procesando archivo: ${e.message}`);
+      return {
+        exitosos: resultados.exitosos,
+        errores
+      };
+
+    } catch (error: any) {
+      throw new Error(`Error procesando archivo: ${error.message}`);
     }
   }
 
-  private validarFilaEstudiante(fila: any, numeroFila?: number): EstudianteExcel {
+  private validarFilaEstudiante(fila: any, numeroFila?: number): EstudianteExcel | null {
     const nombre = fila['nombre'] || fila['Nombre'] || fila['NOMBRE'];
-    const email = fila['email'] || fila['Email'] || fila['EMAIL'];
+    const email = fila['email'] || fila['Email'] || fila['EMAIL'] || fila['correo'];
     const empresa = fila['empresa'] || fila['Empresa'] || fila['EMPRESA'];
-    const estado = fila['estado'] || fila['Estado'] || fila['ESTADO'];
+    const estado = fila['estado'] || fila['Estado'] || fila['ESTADO'] || fila['estado_proceso'];
 
-    const codigo = fila['codigo']?.toString()
-      || fila['Codigo']?.toString()
-      || fila['CODIGO']?.toString();
+    // Obtener como string directamente para evitar problemas
+    const codigo = fila['codigo']?.toString() || fila['Codigo']?.toString() || fila['CODIGO']?.toString() || fila['código']?.toString();
+    const telefono = fila['telefono']?.toString() || fila['Telefono']?.toString() || fila['TELEFONO']?.toString();
 
-    const telefono = fila['telefono']?.toString()
-      || fila['Telefono']?.toString();
+    const programa = fila['programa'] || fila['Programa'] || fila['PROGRAMA'];
+    const semestre = fila['semestre'] ? parseInt(fila['semestre']) : undefined;
 
-    const programa = fila['programa']
-      || fila['Programa']
-      || fila['PROGRAMA'];
+    if (!nombre || !email || !empresa || !estado) {
+      throw new Error(`Campos requeridos faltantes: nombre, email, empresa, estado`);
+    }
 
-    const semestre = fila['semestre']
-      ? parseInt(fila['semestre'])
-      : undefined;
-
-    if (!nombre || !email || !empresa || !estado)
-      throw new Error("Campos requeridos faltantes (nombre, email, empresa, estado)");
-
-    if (!this.esEmailValido(email))
+    if (!this.esEmailValido(email)) {
       throw new Error(`Email inválido: ${email}`);
+    }
 
     const estadoProceso = this.mapearEstadoPractica(estado);
-    if (!estadoProceso)
-      throw new Error(`Estado de práctica inválido: ${estado}`);
+    if (!estadoProceso) {
+      throw new Error(`Estado de práctica inválido: ${estado}. Valores válidos: EN_PROCESO, FINALIZADA, CANCELADA`);
+    }
 
     return {
       nombre,
       email,
-      codigo,
-      telefono,
+      codigo: codigo,
+      telefono: telefono,
       programaAcademico: programa,
-      semestre,
+      semestre: semestre,
       empresa,
       estadoProceso
     };
   }
 
-  private async guardarEstudiantes(
-    estudiantes: EstudianteExcel[]
-  ): Promise<{ exitosos: number; errores: string[] }> {
 
-    let exitosos = 0;
+  private async guardarEstudiantes(estudiantes: EstudianteExcel[]): Promise<{
+    exitosos: number;
+    errores: string[]
+  }> {
     const errores: string[] = [];
+    let exitosos = 0;
 
-    for (const est of estudiantes) {
+    for (const datosEst of estudiantes) {
       try {
         await prisma.$transaction(async (tx) => {
-
-          // BUSCAR EMPRESA
+          // 1. Buscar empresa
           let empresaId: number | undefined;
           let empresaAsignada: string | undefined;
 
-          const empresa = await tx.empresa.findFirst({
+          const empresaExistente = await tx.empresa.findFirst({
             where: {
-              usuario: { nombre: { contains: est.empresa, mode: 'insensitive' } }
+              usuario: {
+                nombre: {
+                  contains: datosEst.empresa,
+                  mode: 'insensitive'
+                }
+              }
             }
           });
 
-          if (empresa) empresaId = empresa.id;
-          else empresaAsignada = est.empresa;
+          if (empresaExistente) {
+            empresaId = empresaExistente.id;
+          } else {
+            empresaAsignada = datosEst.empresa;
+          }
 
-          // BUSCAR USUARIO
-          const usuario = await tx.usuario.findUnique({
-            where: { email: est.email }
+          // 2. Buscar usuario existente por email
+          const usuarioExistente = await tx.usuario.findUnique({
+            where: { email: datosEst.email }
           });
 
-          const codigoStr = est.codigo ?? null;
-          const telefonoStr = est.telefono ?? null;
+          // CONVERTIR números a strings - CORRECCIÓN CLAVE
+          const codigoStr = datosEst.codigo ? datosEst.codigo.toString() : null;
+          const telefonoStr = datosEst.telefono ? datosEst.telefono.toString() : null;
 
-          if (usuario) {
-            // UPDATE
+          if (usuarioExistente) {
+            // Actualizar estudiante existente
             await tx.estudiante.update({
-              where: { usuarioId: usuario.id },
+              where: { usuarioId: usuarioExistente.id },
               data: {
                 empresaId,
                 empresaAsignada,
-                estadoProceso: est.estadoProceso,
-                codigo: codigoStr,
+                estadoProceso: datosEst.estadoProceso,
+                codigo: codigoStr, // Campo correcto: codigo
                 telefono: telefonoStr,
-                programaAcademico: est.programaAcademico,
-                semestre: est.semestre
+                programaAcademico: datosEst.programaAcademico,
+                semestre: datosEst.semestre
               }
             });
-
           } else {
-            // CREATE
-            const nuevo = await tx.usuario.create({
+            // Crear nuevo usuario y estudiante
+            const nuevoUsuario = await tx.usuario.create({
               data: {
-                nombre: est.nombre,
-                email: est.email,
+                nombre: datosEst.nombre,
+                email: datosEst.email,
                 rol: Rol.ESTUDIANTE
               }
             });
 
             await tx.estudiante.create({
               data: {
-                usuarioId: nuevo.id,
+                usuarioId: nuevoUsuario.id,
                 empresaId,
                 empresaAsignada,
-                estadoProceso: est.estadoProceso,
+                estadoProceso: datosEst.estadoProceso,
                 codigo: codigoStr,
                 telefono: telefonoStr,
-                programaAcademico: est.programaAcademico,
-                semestre: est.semestre
+                programaAcademico: datosEst.programaAcademico,
+                semestre: datosEst.semestre
               }
             });
           }
 
           exitosos++;
         });
-
-      } catch (e: any) {
-        errores.push(`Error guardando ${est.email}: ${e.message}`);
+      } catch (error: any) {
+        errores.push(`Error guardando ${datosEst.email}: ${error.message}`);
       }
     }
 
     return { exitosos, errores };
   }
-
   async listarEstudiantesEnPractica() {
-    return prisma.estudiante.findMany({
+    return await prisma.estudiante.findMany({
       where: {
         estadoProceso: {
           in: [EstadoPractica.EN_PROCESO, EstadoPractica.FINALIZADA]
         }
       },
       include: {
-        usuario: { select: { id: true, nombre: true, email: true, creadoEn: true } },
+        usuario: {
+          select: {
+            id: true,
+            nombre: true,
+            email: true,
+            creadoEn: true
+          }
+        },
         empresa: {
           include: {
-            usuario: { select: { nombre: true, email: true } }
+            usuario: {
+              select: {
+                nombre: true,
+                email: true
+              }
+            }
           }
         },
         practicas: {
@@ -225,50 +256,76 @@ export class EstudianteExcelService {
             vacante: {
               include: {
                 empresa: {
-                  include: { usuario: { select: { nombre: true } } }
+                  include: {
+                    usuario: {
+                      select: {
+                        nombre: true
+                      }
+                    }
+                  }
                 }
               }
             }
           }
         }
       },
-      orderBy: { usuario: { nombre: "asc" } }
+      orderBy: {
+        usuario: {
+          nombre: 'asc'
+        }
+      }
     });
   }
 
   private esEmailValido(email: string): boolean {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
   }
 
   private mapearEstadoPractica(estado: string): EstadoPractica | null {
-    const map: any = {
-      "EN_PROCESO": EstadoPractica.EN_PROCESO,
-      "FINALIZADA": EstadoPractica.FINALIZADA,
-      "CANCELADA": EstadoPractica.CANCELADA,
-      "ACTIVA": EstadoPractica.EN_PROCESO,
-      "FINALIZADO": EstadoPractica.FINALIZADA,
-      "CANCELADO": EstadoPractica.CANCELADA
+    const estados: { [key: string]: EstadoPractica } = {
+      'EN_PROCESO': EstadoPractica.EN_PROCESO,
+      'EN PROCESO': EstadoPractica.EN_PROCESO,
+      'FINALIZADA': EstadoPractica.FINALIZADA,
+      'FINALIZADO': EstadoPractica.FINALIZADA,
+      'CANCELADA': EstadoPractica.CANCELADA,
+      'CANCELADO': EstadoPractica.CANCELADA,
+      'ACTIVA': EstadoPractica.EN_PROCESO,
+      'ACTIVO': EstadoPractica.EN_PROCESO
     };
-    return map[estado.toUpperCase()] ?? null;
+    return estados[estado.toUpperCase()] || null;
   }
 }
-
-
 export class EstudianteService {
+  static getById: any;
+  static getAll(arg0: { skip: number; take: number; }) {
+    throw new Error('Method not implemented.');
+  }
 
+  // Método findMany para buscar estudiantes con filtros
+  static async findMany(filtros: Prisma.EstudianteWhereInput) {
+    return prisma.estudiante.findMany({
+      where: filtros,
+      include: {
+        usuario: true,
+        postulaciones: true,
+        practicas: true,
+      },
+    });
+  }
+
+  static create(arg0: { usuario: { create: { nombre: any; email: any; rol: string; }; }; codigo: any; cedula: any; perfilCompleto: boolean; activo: boolean; }) {
+    throw new Error('Method not implemented.');
+  }
   static async crear(data: {
     nombre: string;
     email: string;
     password?: string;
-
     habilidadesTecnicas?: string[];
     habilidadesBlandas?: string[];
-
     perfil?: string;
-    codigo?: string;
-    cedula?: string;
   }) {
-    const { nombre, email, password, habilidadesTecnicas, habilidadesBlandas, perfil, codigo, cedula } = data;
+    const { nombre, email, password, habilidadesTecnicas, habilidadesBlandas, perfil } = data;
 
     const existe = await prisma.usuario.findUnique({ where: { email } });
     if (existe) throw new Error('El correo ya está registrado');
@@ -287,10 +344,9 @@ export class EstudianteService {
     const estudiante = await prisma.estudiante.create({
       data: {
         usuarioId: usuario.id,
-        habilidadesTecnicas: habilidadesTecnicas ?? [],
-        habilidadesBlandas: habilidadesBlandas ?? [],
+        habilidadesTecnicas: habilidadesTecnicas || [],
+        habilidadesBlandas: habilidadesBlandas || [],
         perfil,
-        codigo,
       },
       include: { usuario: true },
     });
@@ -309,8 +365,11 @@ export class EstudianteService {
   }
 
   static async obtenerPorId(id: number) {
-    if (!id || typeof id !== "number") {
-      throw new Error("ID de estudiante inválido");
+    console.log('🔍 obtenerPorId llamado con id:', id);
+
+    if (!id || typeof id !== 'number') {
+      console.error('obtenerPorId llamado SIN id o con id inválido');
+      throw new Error('ID de estudiante es requerido y debe ser un número');
     }
 
     const estudiante = await prisma.estudiante.findUnique({
@@ -321,7 +380,11 @@ export class EstudianteService {
           include: {
             vacante: {
               include: {
-                empresa: { include: { usuario: true } }
+                empresa: {
+                  include: {
+                    usuario: true
+                  }
+                }
               }
             }
           }
@@ -330,7 +393,11 @@ export class EstudianteService {
           include: {
             vacante: {
               include: {
-                empresa: { include: { usuario: true } }
+                empresa: {
+                  include: {
+                    usuario: true
+                  }
+                }
               }
             }
           }
@@ -338,7 +405,9 @@ export class EstudianteService {
       },
     });
 
-    if (!estudiante) throw new Error("Estudiante no encontrado");
+    if (!estudiante) {
+      throw new Error('Estudiante no encontrado');
+    }
 
     return estudiante;
   }
@@ -358,20 +427,22 @@ export class EstudianteService {
   }
 
   static async actualizar(id: number, data: any) {
-    const { nombre, email, habilidadesTecnicas, habilidadesBlandas, perfil, codigo, cedula } = data;
+    const { nombre, email, habilidadesTecnicas, habilidadesBlandas, perfil } = data;
 
     const existe = await prisma.estudiante.findUnique({ where: { id } });
-    if (!existe) throw new Error("Estudiante no encontrado");
+    if (!existe) throw new Error('Estudiante no encontrado');
 
     if (email) {
       const usuarioConEmail = await prisma.usuario.findFirst({
         where: {
           email,
-          id: { not: existe.usuarioId },
-        },
+          id: { not: existe.usuarioId }
+        }
       });
 
-      if (usuarioConEmail) throw new Error("El email ya está en uso");
+      if (usuarioConEmail) {
+        throw new Error('El email ya está en uso por otro usuario');
+      }
     }
 
     const estudianteActualizado = await prisma.estudiante.update({
@@ -380,13 +451,10 @@ export class EstudianteService {
         ...(habilidadesTecnicas && { habilidadesTecnicas }),
         ...(habilidadesBlandas && { habilidadesBlandas }),
         ...(perfil && { perfil }),
-        ...(codigo && { codigo }),
-        ...(cedula && { cedula }),
-
         usuario: {
           update: {
             ...(nombre && { nombre }),
-            ...(email && { email }),
+            ...(email && { email })
           },
         },
       },
@@ -408,40 +476,22 @@ export class EstudianteService {
     });
   }
 
-  
   static async eliminar(id: number) {
     const existe = await prisma.estudiante.findUnique({
       where: { id },
       include: { usuario: true }
     });
 
-    if (!existe) throw new Error("Estudiante no encontrado");
+    if (!existe) throw new Error('Estudiante no encontrado');
 
-    await prisma.estudiante.delete({ where: { id } });
-
-    await prisma.usuario.delete({
-      where: { id: existe.usuarioId },
+    await prisma.estudiante.delete({
+      where: { id }
     });
 
-    return { message: "Estudiante eliminado correctamente" };
+    await prisma.usuario.delete({
+      where: { id: existe.usuarioId }
+    });
+
+    return { message: 'Estudiante eliminado correctamente' };
   }
-
-  static async subirHojaDeVida(id: number, archivoUrl: string) {
-  const estudiante = await prisma.estudiante.findUnique({
-    where: { id }
-  });
-
-  if (!estudiante) throw new Error("Estudiante no encontrado");
-
-  const actualizado = await prisma.estudiante.update({
-    where: { id },
-    data: {
-      hojaDeVidaUrl: archivoUrl
-    }
-  });
-
-  return actualizado;
 }
-}
-
-export const estudianteService = EstudianteService;

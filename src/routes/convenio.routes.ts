@@ -12,6 +12,8 @@ import {
   aprobarConvenio,
   crearConvenioPorDirector,
   subirNuevaVersionConvenio,
+  listarConvenios,
+  listarConveniosPendientes,
 } from "../controllers/convenio.controller.js";
 import {
   crearComentarioController,
@@ -222,7 +224,8 @@ router.post("/:id/rechazar", verifyToken, authorizeRoles("DIRECTOR"), rechazarCo
  *       403:
  *         description: Acceso denegado (solo director o admin)
  */
-router.get("/", verifyToken, authorizeRoles('DIRECTOR', 'ADMIN'), listarTodosLosConvenios);
+router.get("/", verifyToken, authorizeRoles('DIRECTOR', 'ADMIN'), listarConvenios);
+router.get("/pendientes", verifyToken, authorizeRoles('DIRECTOR', 'ADMIN'), listarConveniosPendientes);
 
 router.get("/empresa/:empresaId", verifyToken, authorizeRoles('DIRECTOR', 'ADMIN'), listarConveniosPorEmpresaId);
 
