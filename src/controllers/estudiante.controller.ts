@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
 import { EstudianteExcelService, EstudianteService } from "../services/estudiante.service.js";
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware.js';
 import { deleteFromCloudinary, uploadToCloudinary } from '../config/cloudinary.config.js';
+import { leerCSV, leerExcel } from '../utils/fileParse.js';
+import path from 'path';
 
 const estudianteExcelService = new EstudianteExcelService();
 const prisma = new PrismaClient();
@@ -11,7 +13,7 @@ export const uploadHojaVida = async (req: Request, res: Response) => {
   try {
     // Usar el email del token de Firebase
     const userEmail = (req as any).user.email;
-    
+
     if (!userEmail) {
       return res.status(400).json({
         error: 'Email no disponible en el token'
@@ -119,7 +121,7 @@ export const uploadHojaVida = async (req: Request, res: Response) => {
 export const listarEstudiantesIndependiente = async (req: Request, res: Response) => {
   try {
     console.log('📋 Listando estudiantes con método independiente...');
-    
+
     const estudiantes = await prisma.estudiante.findMany({
       include: {
         usuario: {
@@ -168,10 +170,65 @@ export const listarEstudiantesIndependiente = async (req: Request, res: Response
 
   } catch (error: any) {
     console.error('❌ Error en listado independiente:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Error listando estudiantes',
-      detalles: error.message 
+      detalles: error.message
     });
+  }
+};
+
+type EstudianteRowRaw = {
+  nombre: string;
+  email: string;
+  codigo: string;
+  documento: string;
+  activo?: string | boolean;
+};
+type EstudianteRow = {
+  nombre: string;
+  email: string;
+  codigo: string;
+  documento: string;
+  activo?: boolean;
+};
+export const cargarMasivo = async (req: Request, res: Response) => {
+  try {
+    const archivo = req.file;
+
+    if (!archivo) {
+      return res.status(400).json({ message: "No se subió archivo" });
+    }
+
+    const ext = path.extname(archivo.originalname).toLowerCase();
+
+    let rowsRaw: EstudianteRowRaw[];
+
+    if (ext === ".csv") {
+      rowsRaw = await leerCSV<EstudianteRowRaw>(archivo);
+    } else if (ext === ".xlsx" || ext === ".xls") {
+      rowsRaw = leerExcel<EstudianteRowRaw>(archivo);
+    } else {
+      return res.status(400).json({ message: "Formato no soportado" });
+    }
+
+    // Convertir strings a boolean y asignar el tipo correcto
+    const rows: EstudianteRow[] = rowsRaw.map((r) => ({
+      ...r,
+      codigo: String(r.codigo).trim(),
+      documento: String(r.documento).trim(),
+      activo: ["true", "1", true].includes(r.activo as any),
+    }));
+
+    const resultado = await EstudianteService.cargarMasivo(rows);
+
+    return res.json({
+      message: "Cargue masivo procesado",
+      resultados: resultado,
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Error procesando el archivo" });
   }
 };
 
@@ -199,9 +256,9 @@ export const cargarEstudiantesExcel = async (req: Request, res: Response) => {
 
   } catch (error: any) {
     console.error('Error en controlador:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Error procesando archivo',
-      detalles: error.message 
+      detalles: error.message
     });
   }
 };
@@ -209,7 +266,7 @@ export const cargarEstudiantesExcel = async (req: Request, res: Response) => {
 export const listarEstudiantesPractica = async (req: Request, res: Response) => {
   try {
     const estudiantes = await estudianteExcelService.listarEstudiantesEnPractica();
-    
+
     // Formatear respuesta
     const estudiantesFormateados = estudiantes.map(est => ({
       id: est.id,
@@ -229,9 +286,9 @@ export const listarEstudiantesPractica = async (req: Request, res: Response) => 
     res.json(estudiantesFormateados);
 
   } catch (error: any) {
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Error listando estudiantes',
-      detalles: error.message 
+      detalles: error.message
     });
   }
 };
@@ -240,20 +297,17 @@ export const listarEstudiantesPractica = async (req: Request, res: Response) => 
 export const estudianteController = {
   crear: async (req: Request, res: Response) => {
     try {
-      const { nombre, email, password, habilidadesTecnicas, habilidadesBlandas, perfil } = req.body;
+      const { nombre, email, codigo, documento } = req.body;
 
-      if (!nombre || !email) {
-        return res.status(400).json({ message: "Nombre y correo son obligatorios" });
+      if (!nombre || !email || !documento || !codigo) {
+        return res.status(400).json({ message: "Nombre, correo, documento y código son obligatorios" });
       }
 
-      // Crear estudiante usando el servicio
       const estudiante = await EstudianteService.crear({
         nombre,
         email,
-        password,
-        habilidadesTecnicas,
-        habilidadesBlandas,
-        perfil
+        codigo,
+        documento
       });
 
       return res.status(201).json({
@@ -262,13 +316,17 @@ export const estudianteController = {
       });
     } catch (error: any) {
       console.error(error);
-      if (error.message.includes('ya está registrado')) {
-        return res.status(409).json({ message: "Correo institucional ya registrado" });
+
+      if (error.message.includes("ya está registrado")) {
+        return res
+          .status(409)
+          .json({ message: "Correo institucional ya registrado" });
       }
+
       return res.status(500).json({
         message: "Error creando estudiante",
         error: error.message,
-        data: null
+        data: null,
       });
     }
   },
@@ -278,32 +336,82 @@ export const estudianteController = {
    * @route GET /api/estudiantes
    * @access Director | Admin
    */
-  obtenerTodos: async (req: Request, res: Response) => {
+  obtenerTodos: async (
+    req: Request<{}, {}, {}, Record<string, string>>,
+    res: Response
+  ) => {
     try {
-      const { skip, take } = req.query;
+      const {
+        skip = "0",
+        take = "10",
+        nombre,
+        codigo,
+        documento,
+        email,
+        createdAt
+      } = req.query;
 
-      // Obtener todos los estudiantes
-      const estudiantes = await EstudianteService.obtenerTodos();
+      const filtros: Prisma.EstudianteWhereInput = {};
+      const usuarioFilter: Prisma.UsuarioWhereInput = {};
 
-      // Implementar paginación manualmente
-      const startIndex = Number(skip) || 0;
-      const pageSize = Number(take) || 10;
-      const paginatedEstudiantes = estudiantes.slice(startIndex, startIndex + pageSize);
+      if (nombre) {
+        usuarioFilter.nombre = {
+          contains: nombre,
+          mode: "insensitive",
+        };
+      }
+
+      if (email) {
+        usuarioFilter.email = {
+          contains: email,
+          mode: "insensitive",
+        };
+      }
+      if (Object.keys(usuarioFilter).length > 0) {
+        filtros.usuario = usuarioFilter;
+      }
+
+      if (codigo) {
+        filtros.codigo = {
+          contains: codigo,
+          mode: "insensitive",
+        };
+      }
+
+      if (documento) {
+        filtros.documento = {
+          contains: documento,
+          mode: "insensitive",
+        };
+      }
+
+      if (createdAt) {
+        filtros.createdAt = {
+          gte: new Date(createdAt),
+        };
+      }
+
+      const { data, total } = await EstudianteService.findManyWithPagination({
+        filtros,
+        skip: Number(skip),
+        take: Number(take),
+      });
 
       return res.status(200).json({
         message: "Estudiantes obtenidos correctamente",
-        data: paginatedEstudiantes,
-        total: estudiantes.length,
-        page: Math.floor(startIndex / pageSize) + 1,
-        pageSize: pageSize,
-        totalPages: Math.ceil(estudiantes.length / pageSize)
+        data,
+        total,
+        pageSize: Number(take),
+        page: Math.floor(Number(skip) / Number(take)) + 1,
+        totalPages: Math.ceil(total / Number(take)),
       });
+
     } catch (error: any) {
       console.error(error);
-      return res.status(500).json({ 
-        message: "Error obteniendo estudiantes", 
-        error: error.message, 
-        data: null 
+      return res.status(500).json({
+        message: "Error obteniendo estudiantes",
+        error: error.message,
+        data: null,
       });
     }
   },
@@ -316,26 +424,26 @@ export const estudianteController = {
   obtenerPorId: async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      
+
       if (!id || isNaN(Number(id))) {
         return res.status(400).json({ message: "ID de estudiante inválido" });
       }
 
       const estudiante = await EstudianteService.obtenerPorId(Number(id));
 
-      return res.status(200).json({ 
-        message: "Estudiante obtenido correctamente", 
-        data: estudiante 
+      return res.status(200).json({
+        message: "Estudiante obtenido correctamente",
+        data: estudiante
       });
     } catch (error: any) {
       console.error(error);
       if (error.message === 'Estudiante no encontrado') {
         return res.status(404).json({ message: "Estudiante no encontrado" });
       }
-      return res.status(500).json({ 
-        message: "Error obteniendo estudiante", 
-        error: error.message, 
-        data: null 
+      return res.status(500).json({
+        message: "Error obteniendo estudiante",
+        error: error.message,
+        data: null
       });
     }
   },
@@ -354,19 +462,19 @@ export const estudianteController = {
 
       const estudiante = await EstudianteService.obtenerPorUsuarioId(userId);
 
-      return res.status(200).json({ 
-        message: "Perfil obtenido correctamente", 
-        data: estudiante 
+      return res.status(200).json({
+        message: "Perfil obtenido correctamente",
+        data: estudiante
       });
     } catch (error: any) {
       console.error(error);
       if (error.message === 'Estudiante no encontrado') {
         return res.status(404).json({ message: "Estudiante no encontrado", data: null });
       }
-      return res.status(500).json({ 
-        message: "Error obteniendo perfil", 
-        error: error.message, 
-        data: null 
+      return res.status(500).json({
+        message: "Error obteniendo perfil",
+        error: error.message,
+        data: null
       });
     }
   },
@@ -385,12 +493,14 @@ export const estudianteController = {
       if (req.user?.rol === "ESTUDIANTE") {
         const estudiante = await EstudianteService.obtenerPorUsuarioId(req.user.id);
         if (estudiante.id !== Number(id)) {
-          return res.status(403).json({ 
-            message: "No puedes actualizar este estudiante", 
-            data: null 
+          return res.status(403).json({
+            message: "No puedes actualizar este estudiante",
+            data: null
           });
         }
       }
+
+      console.log({ data })
 
       const estudianteActualizado = await EstudianteService.actualizar(Number(id), data);
 
@@ -406,9 +516,9 @@ export const estudianteController = {
       if (error.message.includes('email ya está en uso')) {
         return res.status(409).json({ message: error.message });
       }
-      return res.status(500).json({ 
-        message: "Error actualizando estudiante", 
-        data: null 
+      return res.status(500).json({
+        message: "Error actualizando estudiante",
+        data: null
       });
     }
   },
@@ -419,18 +529,18 @@ export const estudianteController = {
       const { id } = req.params;
 
       if (!userId) {
-        return res.status(401).json({ 
-          message: "Usuario no autenticado", 
-          data: null 
+        return res.status(401).json({
+          message: "Usuario no autenticado",
+          data: null
         });
       }
 
       // Solo puede actualizar su propio perfil
       const estudiante = await EstudianteService.obtenerPorUsuarioId(userId);
       if (estudiante.id !== Number(id)) {
-        return res.status(403).json({ 
-          message: "No puedes actualizar este perfil", 
-          data: null 
+        return res.status(403).json({
+          message: "No puedes actualizar este perfil",
+          data: null
         });
       }
 
@@ -445,9 +555,9 @@ export const estudianteController = {
       if (error.message === 'Estudiante no encontrado') {
         return res.status(404).json({ message: "Estudiante no encontrado" });
       }
-      return res.status(500).json({ 
-        message: "Error completando perfil", 
-        data: null 
+      return res.status(500).json({
+        message: "Error completando perfil",
+        data: null
       });
     }
   },
@@ -472,9 +582,9 @@ export const estudianteController = {
       if (error.message === 'Estudiante no encontrado') {
         return res.status(404).json({ message: "Estudiante no encontrado" });
       }
-      return res.status(500).json({ 
-        message: "Error eliminando estudiante", 
-        data: null 
+      return res.status(500).json({
+        message: "Error eliminando estudiante",
+        data: null
       });
     }
   },
@@ -482,7 +592,7 @@ export const estudianteController = {
   desactivar: async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      
+
       // Usar el método actualizar para marcar como inactivo
       const estudianteActualizado = await EstudianteService.actualizar(Number(id), {
         activo: false
@@ -494,9 +604,9 @@ export const estudianteController = {
       });
     } catch (error: any) {
       console.error(error);
-      return res.status(500).json({ 
-        message: "Error desactivando estudiante", 
-        data: null 
+      return res.status(500).json({
+        message: "Error desactivando estudiante",
+        data: null
       });
     }
   },
@@ -504,7 +614,7 @@ export const estudianteController = {
   reactivar: async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      
+
       const estudianteActualizado = await EstudianteService.actualizar(Number(id), {
         activo: true
       });
@@ -515,9 +625,9 @@ export const estudianteController = {
       });
     } catch (error: any) {
       console.error(error);
-      return res.status(500).json({ 
-        message: "Error reactivando estudiante", 
-        data: null 
+      return res.status(500).json({
+        message: "Error reactivando estudiante",
+        data: null
       });
     }
   },
