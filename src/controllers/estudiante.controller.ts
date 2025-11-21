@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { EstudianteExcelService, estudianteService, EstudianteService } from "../services/estudiante.service.js";
+import { EstudianteExcelService, EstudianteService } from "../services/estudiante.service.js";
 import { PrismaClient } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware.js';
 import cloudinary from '../config/cloudinary.config.js';
@@ -106,7 +106,7 @@ export const listarEstudiantesPractica = async (req: Request, res: Response) => 
   try {
     const estudiantes = await estudianteExcelService.listarEstudiantesEnPractica();
 
-    const estudiantesFormateados = estudiantes.map((est: { id: any; usuario: { nombre: any; email: any; creadoEn: any; }; codigo: any; telefono: any; programaAcademico: any; semestre: any; empresa: { usuario: { nombre: any; }; id: any; }; empresaAsignada: any; estadoProceso: any; practicas: any; }) => ({
+    const estudiantesFormateados = estudiantes.map((est) => ({
       id: est.id,
       nombre: est.usuario.nombre,
       email: est.usuario.email,
@@ -138,7 +138,7 @@ export const estudianteController = {
     try {
       const { nombre, email, password, perfil, habilidadesTecnicas, habilidadesBlandas } = req.body;
 
-      const estudiante = await estudianteService.crear({
+      const estudiante = await EstudianteService.crear({
         nombre,
         email,
         password,
@@ -178,9 +178,9 @@ export const estudianteController = {
           }
 
           // Guardar URL en Prisma
-          const estudianteActualizado = await estudianteService.subirHojaDeVida(
+          const estudianteActualizado = await EstudianteService.actualizar(
             Number(id),
-            result.secure_url
+            { hojaDeVidaUrl: result.secure_url }
           );
 
           return res.status(200).json({
@@ -219,7 +219,9 @@ export const estudianteController = {
               resolve({ secure_url: result.secure_url });
             }
           );
-          stream.end(req.file.buffer);
+          if (req.file) {
+            stream.end(req.file.buffer);
+          }
         });
 
         hojaDeVidaUrl = uploadResult.secure_url;
@@ -232,7 +234,7 @@ export const estudianteController = {
       if (habilidadesBlandas) dataToUpdate.habilidadesBlandas = habilidadesBlandas;
       if (hojaDeVidaUrl) dataToUpdate.hojaDeVidaUrl = hojaDeVidaUrl;
 
-      const estudianteActualizado = await estudianteService.actualizar(Number(id), dataToUpdate);
+      const estudianteActualizado = await EstudianteService.actualizar(Number(id), dataToUpdate);
 
       return res.status(200).json({
         message: "Perfil actualizado correctamente",

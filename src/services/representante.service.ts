@@ -8,6 +8,8 @@ const prisma = new PrismaClient();
  */
 export interface RepresentanteLegalDTO {
   nombreCompleto: string;
+  tipoDocumento: string;
+  numeroDocumento: string;
   email: string;
   telefono: string;
 }
@@ -52,11 +54,15 @@ export class RepresentanteService {
       create: {
         empresaId,
         nombreCompleto: data.nombreCompleto.trim(),
+        tipoDocumento: data.tipoDocumento.trim(),
+        numeroDocumento: data.numeroDocumento.trim(),
         email: data.email.trim().toLowerCase(),
         telefono: data.telefono.trim(),
       },
       update: {
         nombreCompleto: data.nombreCompleto.trim(),
+        tipoDocumento: data.tipoDocumento.trim(),
+        numeroDocumento: data.numeroDocumento.trim(),
         email: data.email.trim().toLowerCase(),
         telefono: data.telefono.trim(),
       },
