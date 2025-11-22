@@ -275,18 +275,19 @@ model Reporte {
 }
 
 model Documento {
-  id          Int           @id @default(autoincrement())
-  titulo      String
-  descripcion String?
-  categoria   TipoDocumento @default(GENERAL)
-  archivoUrl  String
-  publicId    String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  directorId  Int
-  director    Director      @relation(fields: [directorId], references: [id], onDelete: Cascade)
-  convenioId  Int?
-  Convenio    Convenio?     @relation(fields: [convenioId], references: [id])
+  id             Int           @id @default(autoincrement())
+  titulo         String
+  descripcion    String?
+  categoria      TipoDocumento @default(GENERAL)
+  archivoUrl     String
+  nombreArchivo  String?
+  publicId       String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  directorId     Int
+  director       Director      @relation(fields: [directorId], references: [id], onDelete: Cascade)
+  convenioId     Int?
+  Convenio       Convenio?     @relation(fields: [convenioId], references: [id])
 }
 
 enum TipoDocumento {

@@ -28,6 +28,7 @@ export const documentoService = {
         descripcion: data.descripcion,
         categoria: data.categoria,
         archivoUrl: result.secure_url,
+        nombreArchivo: archivo.originalname,
         publicId: result.public_id,
         directorId,
         convenioId: data.convenioId ? Number(data.convenioId) : null,
@@ -67,6 +68,7 @@ export const documentoService = {
 
     let archivoUrl = documento.archivoUrl;
     let publicId = documento.publicId;
+    let nombreArchivo = documento.nombreArchivo;
 
     if (archivo) {
       if (publicId) await cloudinary.uploader.destroy(publicId);
@@ -77,6 +79,7 @@ export const documentoService = {
       });
       archivoUrl = result.secure_url;
       publicId = result.public_id;
+      nombreArchivo = archivo.originalname;
       fs.unlinkSync(archivo.path);
     }
 
@@ -87,6 +90,7 @@ export const documentoService = {
         descripcion: data.descripcion ?? documento.descripcion,
         categoria: data.categoria ?? documento.categoria,
         archivoUrl,
+        nombreArchivo,
         publicId,
       },
     });
@@ -126,6 +130,7 @@ export const documentoService = {
         descripcion: true,
         categoria: true,
         archivoUrl: true,
+        nombreArchivo: true,
         createdAt: true
       },
       orderBy: { createdAt: "desc" }
@@ -144,6 +149,7 @@ export const documentoService = {
         descripcion: true,
         categoria: true,
         archivoUrl: true,
+        nombreArchivo: true,
         createdAt: true
       }
     });
@@ -158,6 +164,7 @@ export const documentoService = {
         descripcion: true,
         categoria: true,
         archivoUrl: true,
+        nombreArchivo: true,
         createdAt: true
       }
     });
@@ -178,6 +185,7 @@ export const documentoService = {
           descripcion: true,
           categoria: true,
           archivoUrl: true,
+          nombreArchivo: true,
           createdAt: true,
           Convenio: {
             select: {
@@ -208,6 +216,7 @@ export const documentoService = {
         descripcion: true,
         categoria: true,
         archivoUrl: true,
+        nombreArchivo: true,
         createdAt: true
       }
     });
@@ -222,6 +231,7 @@ export const documentoService = {
         descripcion: true,
         categoria: true,
         archivoUrl: true,
+        nombreArchivo: true,
         createdAt: true
       }
     });
