@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, TipoDocumento } from "@prisma/client";
 import cloudinary from "../config/cloudinary.config.js";
 import fs from "fs";
 
@@ -102,4 +102,133 @@ export const documentoService = {
 
     await prisma.documento.delete({ where: { id } });
   },
+
+  async obtenerDocumentoId(id: number) {
+    const documento = await prisma.documento.findUnique({
+      where: { id },
+      include: { director: true },
+    });
+
+    if (!documento) {
+      throw new Error("Documento no encontrado");
+    }
+    return documento;
+  },
+
+  async obtenerDocumentosGenerales() {
+    return prisma.documento.findMany({
+      where: {
+        categoria: TipoDocumento.GENERAL
+      },
+      select: {
+        id: true,
+        titulo: true,
+        descripcion: true,
+        categoria: true,
+        archivoUrl: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: "desc" }
+    });
+  },
+
+  async obtenerDocumentosEmpresa(empresaId?: number) {
+
+    const documentosGenerales = await prisma.documento.findMany({
+      where: {
+        categoria: TipoDocumento.GENERAL
+      },
+      select: {
+        id: true,
+        titulo: true,
+        descripcion: true,
+        categoria: true,
+        archivoUrl: true,
+        createdAt: true
+      }
+    });
+
+    const documentosEmpresa = await prisma.documento.findMany({
+      where: {
+        categoria: TipoDocumento.EMPRESA
+      },
+      select: {
+        id: true,
+        titulo: true,
+        descripcion: true,
+        categoria: true,
+        archivoUrl: true,
+        createdAt: true
+      }
+    });
+
+    // pa obtener convenio específico de la empresa
+    let convenioEmpresa: any[] = [];
+    if (empresaId) {
+      convenioEmpresa = await prisma.documento.findMany({
+        where: {
+          categoria: TipoDocumento.CONVENIO_EMPRESA,
+          Convenio: {
+            empresaId: empresaId
+          }
+        },
+        select: {
+          id: true,
+          titulo: true,
+          descripcion: true,
+          categoria: true,
+          archivoUrl: true,
+          createdAt: true,
+          Convenio: {
+            select: {
+              id: true,
+              estado: true
+            }
+          }
+        }
+      });
+    }
+
+    return {
+      documentosGenerales,
+      documentosEmpresa,
+      convenioEmpresa
+    };
+  },
+
+  async obtenerDocumentosEstudiante() {
+
+    const documentosGenerales = await prisma.documento.findMany({
+      where: {
+        categoria: TipoDocumento.GENERAL
+      },
+      select: {
+        id: true,
+        titulo: true,
+        descripcion: true,
+        categoria: true,
+        archivoUrl: true,
+        createdAt: true
+      }
+    });
+
+    const documentosEstudiante = await prisma.documento.findMany({
+      where: {
+        categoria: TipoDocumento.ESTUDIANTE
+      },
+      select: {
+        id: true,
+        titulo: true,
+        descripcion: true,
+        categoria: true,
+        archivoUrl: true,
+        createdAt: true
+      }
+    });
+
+    return {
+      documentosGenerales,
+      documentosEstudiante
+    };
+  }
 };
