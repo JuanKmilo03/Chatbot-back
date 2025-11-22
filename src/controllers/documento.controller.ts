@@ -153,3 +153,69 @@ export const eliminarDocumento = async (req: AuthRequest, res: Response) => {
     res.status(statusCode).json({ message: error.message });
   }
 };
+
+export const obtenerDocumentoId = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: "ID de documento es requerido" });
+    }
+
+    const documento = await documentoService.obtenerDocumentoId(Number(id));
+
+    res.status(200).json(documento);
+  } catch (error: any) {
+    console.error("Error al obtener documento por ID:", error);
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    res.status(statusCode).json({ message: error.message });
+  }
+};
+
+export const obtenerDocumentosGenerales = async (req: Request, res: Response) => {
+  try {
+    const documentos = await documentoService.obtenerDocumentosGenerales();
+
+    res.status(200).json(documentos);
+  } catch (error: any) {
+    console.error("Error al obtener documentos generales:", error);
+    res.status(500).json({ message: error.message || "Error al obtener documentos generales" });
+  }
+};
+
+export const obtenerDocumentosEmpresa = async (req: AuthRequest, res: Response) => {
+  try {
+    const usuarioId = req.user?.id;
+    const empresaId = req.user?.id;
+
+    if (!usuarioId) {
+      return res.status(401).json({ message: "No autorizado" });
+    }
+
+    const documentos = await documentoService.obtenerDocumentosEmpresa(empresaId);
+
+    res.status(200).json(documentos);
+  } catch (error: any) {
+    console.error("Error al obtener documentos para empresa:", error);
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    res.status(statusCode).json({ message: error.message });
+  }
+};
+
+export const obtenerDocumentosEstudiante = async (req: AuthRequest, res: Response) => {
+  try {
+    const usuarioId = req.user?.id;
+
+    if (!usuarioId) {
+      return res.status(401).json({ message: "No autorizado" });
+    }
+
+    const documentos = await documentoService.obtenerDocumentosEstudiante();
+
+    res.status(200).json(documentos);
+  } catch (error: any) {
+    console.error("Error al obtener documentos para estudiante:", error);
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    res.status(statusCode).json({ message: error.message });
+  }
+};

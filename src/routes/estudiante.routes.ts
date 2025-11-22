@@ -378,10 +378,10 @@ router.patch(
 
 router.post('/cargar',verifyToken, authorizeRoles(Rol.DIRECTOR, Rol.ADMIN), upload.single('archivo'), cargarMasivo);
 
+router.patch('/:id/completar-perfil', verifyToken, authorizeRoles(Rol.ESTUDIANTE), estudianteController.completarPerfil);
+// router.put("/estudiantes/:id/perfil-completo", upload.single("hojaDeVida"),estudianteController.actualizarPerfilCompleto);
 router.post('/cargar-excel', upload.single('archivo'), cargarEstudiantesExcel);
 router.get('/estudiantes-practica', listarEstudiantesPractica);
-
-router.post('/hoja-vida', authFirebase, upload.single('hojaVida'));
-
+// router.post('/:id/subirhoja', upload.single('archivo'), estudianteController.subirHojaDeVida);
 
 export default router;

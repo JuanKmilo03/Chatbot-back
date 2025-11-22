@@ -5,6 +5,7 @@ import { AuthRequest } from '../middlewares/auth.middleware.js';
 import { deleteFromCloudinary, uploadToCloudinary } from '../config/cloudinary.config.js';
 import { leerCSV, leerExcel } from '../utils/fileParse.js';
 import path from 'path';
+import multer from 'multer';
 
 const estudianteExcelService = new EstudianteExcelService();
 const prisma = new PrismaClient();
@@ -117,6 +118,10 @@ export const uploadHojaVida = async (req: Request, res: Response) => {
     });
   }
 };
+
+const storage = multer.memoryStorage();
+export const upload = multer({ storage });
+
 
 export const listarEstudiantesIndependiente = async (req: Request, res: Response) => {
   try {
@@ -295,6 +300,7 @@ export const listarEstudiantesPractica = async (req: Request, res: Response) => 
 
 
 export const estudianteController = {
+
   crear: async (req: Request, res: Response) => {
     try {
       const { nombre, email, codigo, documento } = req.body;
@@ -328,6 +334,7 @@ export const estudianteController = {
         error: error.message,
         data: null,
       });
+
     }
   },
 

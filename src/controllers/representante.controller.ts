@@ -11,7 +11,7 @@ const prisma = new PrismaClient();
 export const upsertRepresentante = async (req: Request, res: Response) => {
   try {
     const usuario = (req as any).user;
-    const { nombreCompleto, email, telefono } = req.body;
+    const { nombreCompleto, tipoDocumento, numeroDocumento, email, telefono } = req.body;
 
     if (!usuario) {
       return res.status(401).json({ message: "Usuario no autenticado" });
@@ -28,6 +28,8 @@ export const upsertRepresentante = async (req: Request, res: Response) => {
 
     const representante = await RepresentanteService.upsertRepresentante(empresa.id, {
       nombreCompleto,
+      tipoDocumento,
+      numeroDocumento,
       email,
       telefono,
     });
