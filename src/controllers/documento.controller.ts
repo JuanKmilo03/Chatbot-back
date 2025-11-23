@@ -219,3 +219,50 @@ export const obtenerDocumentosEstudiante = async (req: AuthRequest, res: Respons
     res.status(statusCode).json({ message: error.message });
   }
 };
+
+export const obtenerDocumentoEmpresaPorId = async (req: AuthRequest, res: Response) => {
+  try {
+    const usuarioId = req.user?.id;
+    const empresaId = req.user?.id;
+    const { id } = req.params;
+
+    if (!usuarioId) {
+      return res.status(401).json({ message: "No autorizado" });
+    }
+
+    if (!id) {
+      return res.status(400).json({ message: "ID de documento es requerido" });
+    }
+
+    const documento = await documentoService.obtenerDocumentoEmpresaPorId(Number(id), empresaId);
+
+    res.status(200).json(documento);
+  } catch (error: any) {
+    console.error("Error al obtener documento para empresa:", error);
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    res.status(statusCode).json({ message: error.message });
+  }
+};
+
+export const obtenerDocumentoEstudiantePorId = async (req: AuthRequest, res: Response) => {
+  try {
+    const usuarioId = req.user?.id;
+    const { id } = req.params;
+
+    if (!usuarioId) {
+      return res.status(401).json({ message: "No autorizado" });
+    }
+
+    if (!id) {
+      return res.status(400).json({ message: "ID de documento es requerido" });
+    }
+
+    const documento = await documentoService.obtenerDocumentoEstudiantePorId(Number(id));
+
+    res.status(200).json(documento);
+  } catch (error: any) {
+    console.error("Error al obtener documento para estudiante:", error);
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    res.status(statusCode).json({ message: error.message });
+  }
+};

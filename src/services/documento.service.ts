@@ -240,5 +240,71 @@ export const documentoService = {
       documentosGenerales,
       documentosEstudiante
     };
+  },
+
+  async obtenerDocumentoEmpresaPorId(id: number, empresaId?: number) {
+    const documento = await prisma.documento.findFirst({
+      where: {
+        id,
+        OR: [
+          { categoria: TipoDocumento.GENERAL },
+          { categoria: TipoDocumento.EMPRESA },
+          ...(empresaId ? [{
+            categoria: TipoDocumento.CONVENIO_EMPRESA,
+            Convenio: {
+              empresaId: empresaId
+            }
+          }] : [])
+        ]
+      },
+      select: {
+        id: true,
+        titulo: true,
+        descripcion: true,
+        categoria: true,
+        archivoUrl: true,
+        nombreArchivo: true,
+        createdAt: true,
+        Convenio: {
+          select: {
+            id: true,
+            estado: true
+          }
+        }
+      }
+    });
+
+    if (!documento) {
+      throw new Error("Documento no encontrado o no autorizado");
+    }
+
+    return documento;
+  },
+
+  async obtenerDocumentoEstudiantePorId(id: number) {
+    const documento = await prisma.documento.findFirst({
+      where: {
+        id,
+        OR: [
+          { categoria: TipoDocumento.GENERAL },
+          { categoria: TipoDocumento.ESTUDIANTE }
+        ]
+      },
+      select: {
+        id: true,
+        titulo: true,
+        descripcion: true,
+        categoria: true,
+        archivoUrl: true,
+        nombreArchivo: true,
+        createdAt: true
+      }
+    });
+
+    if (!documento) {
+      throw new Error("Documento no encontrado o no autorizado");
+    }
+
+    return documento;
   }
 };
