@@ -28,11 +28,34 @@ router.post(
   subirDocumento
 );
 
-router.get("/", listarDocumentos);
+router.get("/",
+  verifyToken,
+  authorizeRoles('ADMIN', 'DIRECTOR'),
+  listarDocumentos);
 
-router.get("/convenio", verifyToken, authorizeRoles('EMPRESA', 'DIRECTOR'), obtenerPlantillaConvenio);
+router.get("/publicos/generales", 
+  obtenerDocumentosGenerales);
+// router.get("/publicos/:id", obtenerDocumentoId);
 
-router.get("/:id", obtenerDocumentoPorId);
+router.get("/empresa", 
+  verifyToken, 
+  authorizeRoles(Rol.EMPRESA, Rol.ADMIN), 
+  obtenerDocumentosEmpresa);
+// router.get("/empresa/:id", verifyToken, authorizeRoles(Rol.EMPRESA, Rol.ADMIN), obtenerDocumentoEmpresaPorId);
+
+router.get("/estudiante", 
+  verifyToken, 
+  authorizeRoles(Rol.ESTUDIANTE, Rol.ADMIN), 
+  obtenerDocumentosEstudiante);
+// router.get("/estudiante/:id", verifyToken, authorizeRoles(Rol.ESTUDIANTE, Rol.ADMIN), obtenerDocumentoEstudiantePorId);
+
+router.get("/convenio",
+  verifyToken,
+  authorizeRoles('ADMIN', 'DIRECTOR'),
+  obtenerPlantillaConvenio);
+
+router.get("/:id",
+  obtenerDocumentoPorId);
 
 router.put(
   "/:id",
@@ -49,12 +72,6 @@ router.delete(
   eliminarDocumento
 );
 
-router.get("/publicos/generales", obtenerDocumentosGenerales);
-router.get("/publicos/:id", obtenerDocumentoId);
-router.get("/empresa", verifyToken, authorizeRoles(Rol.EMPRESA, Rol.ADMIN), obtenerDocumentosEmpresa);
-router.get("/empresa/:id", verifyToken, authorizeRoles(Rol.EMPRESA, Rol.ADMIN), obtenerDocumentoEmpresaPorId);
-router.get("/estudiante", verifyToken, authorizeRoles(Rol.ESTUDIANTE, Rol.ADMIN), obtenerDocumentosEstudiante);
-router.get("/estudiante/:id", verifyToken, authorizeRoles(Rol.ESTUDIANTE, Rol.ADMIN), obtenerDocumentoEstudiantePorId);
 
 
 export default router;
