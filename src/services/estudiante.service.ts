@@ -665,9 +665,6 @@ export class EstudianteService {
         });
       }
     }
-
-    console.log('resultados:', resultados);
-
     return resultados;
   }
 }

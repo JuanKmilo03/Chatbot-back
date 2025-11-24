@@ -72,9 +72,9 @@ export const uploadHojaVida = async (req: Request, res: Response) => {
     });
 
     // Eliminar hoja de vida anterior si existe
-    if (usuario.estudiante.hojaVidaArchivoUrl) {
+    if (usuario.estudiante.hojaDeVidaUrl) {
       try {
-        await deleteFromCloudinary(usuario.estudiante.hojaVidaArchivoUrl);
+        await deleteFromCloudinary(usuario.estudiante.hojaDeVidaUrl);
       } catch (error) {
         console.warn('No se pudo eliminar la hoja de vida anterior:', error);
       }
@@ -84,7 +84,7 @@ export const uploadHojaVida = async (req: Request, res: Response) => {
     const estudianteActualizado = await prisma.estudiante.update({
       where: { id: usuario.estudiante.id },
       data: {
-        hojaVidaArchivoUrl: uploadResult.secure_url
+        hojaDeVidaUrl: uploadResult.secure_url
       },
       include: {
         usuario: {
@@ -99,7 +99,7 @@ export const uploadHojaVida = async (req: Request, res: Response) => {
     res.status(200).json({
       message: 'Hoja de vida subida exitosamente',
       data: {
-        hojaVidaUrl: estudianteActualizado.hojaVidaArchivoUrl,
+        hojaVidaUrl: estudianteActualizado.hojaDeVidaUrl,
         estudiante: {
           id: estudianteActualizado.id,
           nombres: estudianteActualizado.usuario.nombre,
