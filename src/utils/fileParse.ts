@@ -30,3 +30,17 @@ export function leerExcel<T = Record<string, any>>(file: Express.Multer.File): T
 
   return data as T[];
 }
+
+export function parseFecha(value: any): Date | null {
+  if (!value) return null;
+
+  // Caso: Excel numérico tipo 45234
+  if (!isNaN(value)) {
+    const excelBase = new Date(1900, 0, 1);
+    excelBase.setDate(excelBase.getDate() + (value - 2));
+    return excelBase;
+  }
+
+  const fecha = new Date(value);
+  return isNaN(fecha.getTime()) ? null : fecha;
+}
