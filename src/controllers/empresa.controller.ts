@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import * as empresaService from "../services/empresa.service.js";
-import {AuthRequest} from "../middlewares/auth.middleware.js"
+import { AuthRequest } from "../middlewares/auth.middleware.js"
+import { EstadoEmpresa } from "@prisma/client";
+import path from "path";
+import { leerCSV, leerExcel } from "../utils/fileParse.js";
 
 
 export const crearEmpresaPorDirectorController = async (req: AuthRequest, res: Response) => {
@@ -25,6 +28,90 @@ export const crearEmpresaPorDirectorController = async (req: AuthRequest, res: R
   } catch (error: any) {
     console.error(error);
     res.status(400).json({ message: error.message });
+  }
+};
+
+export const cargarEmpresasMasivoController = async (req: AuthRequest, res: Response) => {
+  try {
+    const archivoExcel = req.file;
+
+    if (!archivoExcel) {
+      return res.status(400).json({
+        message: "Debes subir un archivo Excel o CSV con las empresas."
+      });
+    }
+
+    const ext = path.extname(archivoExcel.originalname).toLowerCase();
+    let rows: any[];
+
+    if (ext === ".csv") {
+      rows = await leerCSV(archivoExcel);
+    } else if (ext === ".xlsx" || ext === ".xls") {
+      rows = await leerExcel(archivoExcel);
+    } else {
+      return res.status(400).json({ message: "Formato no soportado (usa CSV o Excel)." });
+    }
+    const created: any[] = [];
+    const failed: { nombre: string; error: string }[] = [];
+
+    for (const r of rows) {
+      const {
+        nombreEmpresa,
+        emailEmpresa,
+        nit,
+        telefono,
+        direccion,
+        sector,
+        descripcion,
+        nombreRepresentante,
+        tipoDocumento,
+        numeroDocumento,
+        telefonoRepresentante,
+        emailRepresentante
+      } = r;
+
+      // Validación mínima
+      if (!nombreEmpresa || !emailEmpresa || !nit || !nombreRepresentante || !numeroDocumento) {
+        failed.push({
+          nombre: nombreEmpresa,
+          error: "Campos obligatorios faltantes"
+        });
+        continue;
+      }
+
+      try {
+        const empresa = await empresaService.crearEmpresaPorDirector({
+          nombre: nombreEmpresa,
+          email: emailEmpresa,
+          nit,
+          telefono,
+          direccion,
+          sector,
+          descripcion,
+          representanteLegal: {
+            nombreCompleto: nombreRepresentante,
+            tipoDocumento,
+            numeroDocumento,
+            telefono: telefonoRepresentante,
+            email: emailRepresentante
+          }
+        }, req.user!.id);
+
+        created.push({ nombre: nombreEmpresa, empresa });
+
+      } catch (err: any) {
+        failed.push({ nombre: nombreEmpresa, error: err.message });
+      }
+    }
+
+    res.json({
+      message: "Cargue masivo de empresas procesado",
+      data: { created, failed }
+    });
+
+  } catch (error) {
+    console.error("❌ Error cargando empresas:", error);
+    return res.status(500).json({ message: "Error procesando el archivo." });
   }
 };
 
@@ -73,7 +160,15 @@ export const obtenerEmpresasPendientes = async (req: Request, res: Response) => 
 
 export const listarEmpresas = async (req: AuthRequest, res: Response) => {
   try {
-    const empresas = await empresaService.listarEmpresasSelector();
+    const { estados } = req.query; // ?estados=APROBADA,PENDIENTE
+    let estadoArray: EstadoEmpresa[] = [];
+
+    if (estados && typeof estados === 'string') {
+      estadoArray = estados.split(',') as EstadoEmpresa[];
+    } else {
+      estadoArray = [EstadoEmpresa.HABILITADA];
+    }
+    const empresas = await empresaService.listarEmpresasSelector(estadoArray);
     return res.status(200).json({ data: empresas });
   } catch (error: any) {
     console.error("Error al listar empresas:", error);
@@ -83,7 +178,7 @@ export const listarEmpresas = async (req: AuthRequest, res: Response) => {
 
 export const obtenerEmpresas = async (req: Request, res: Response) => {
   try {
-    const { page, pageSize, estado,nombre, correo, nit, sector } = req.query;
+    const { page, pageSize, estado, nombre, correo, nit, sector } = req.query;
 
     const empresas = await empresaService.obtenerEmpresas({
       page: Number(page) || 1,
@@ -166,7 +261,7 @@ export const obtenerPerfilEmpresa = async (req: AuthRequest, res: Response) => {
     return res.status(200).json(empresa);
   } catch (error: unknown) {
     console.error("Error al obtener perfil de empresa:", error);
-    return res.status(500).json({ message: "Error al obtener la información de la empresa" });
+    return res.status(500).json({ message: "Error al obtener la información de la empresa" });
   }
 };
 

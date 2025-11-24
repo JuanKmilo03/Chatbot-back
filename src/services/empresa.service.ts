@@ -333,9 +333,9 @@ export const editarEmpresa = async (
   };
 };
 
-export const listarEmpresasSelector = async () => {
+export const listarEmpresasSelector = async (estados: EstadoEmpresa[]) => {
   const empresas = await prisma.empresa.findMany({
-    where: { estado: EstadoEmpresa.APROBADA }, // opcional: solo activas/aprobadas
+    where: { estado: { in: estados } },
     select: {
       id: true,
       usuario: { select: { nombre: true } }
