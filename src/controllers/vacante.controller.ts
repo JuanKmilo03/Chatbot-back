@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import * as empresaService from "../services/empresa.service.js";
 
 import { AuthRequest } from '../middlewares/auth.middleware.js';
-import { EstadoGeneral } from '@prisma/client';
+import { EstadoGeneral, Prisma } from '@prisma/client';
 import { vacanteService } from '../services/vacante.service.js';
 import { prisma } from '../config/db.js';
 
@@ -191,6 +191,53 @@ export const listarVacantesAprobadas = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error(error);
     return res.status(500).json({ message: "Error al listar vacantes aprobadas", error: error.message });
+  }
+};
+
+export const listarVacantesPersonalizadas = async (req: AuthRequest, res: Response) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+
+    // Aquí asumimos que ya tienes middleware de auth y req.user.id es el estudiante logueado
+    const usuarioId = req.user?.id;
+
+    const estudiante = await prisma.estudiante.findUnique({
+      where: { usuarioId },
+      select: {
+        area: true,
+        habilidadesTecnicas: true
+      }
+    });
+
+    if (!estudiante) {
+      return res.status(404).json({ message: "Estudiante no encontrado" });
+    }
+
+    // Construimos el filtro
+    const where: Prisma.VacanteWhereInput = {
+      estado: EstadoGeneral.APROBADA,
+      OR: [
+        { area: estudiante.area || undefined },
+        { habilidadesTecnicas: { hasSome: estudiante.habilidadesTecnicas } }
+      ]
+    };
+
+    const { data, total, totalPages } = await vacanteService.getPaginate({
+      skip: (Number(page) - 1) * Number(limit),
+      take: Number(limit),
+      where,
+    });
+
+    return res.status(200).json({
+      message: "Vacantes personalizadas obtenidas correctamente",
+      data,
+      total,
+      page: Number(page),
+      totalPages
+    });
+  } catch (error: any) {
+    console.error(error);
+    return res.status(500).json({ message: "Error al listar vacantes personalizadas", error: error.message });
   }
 };
 

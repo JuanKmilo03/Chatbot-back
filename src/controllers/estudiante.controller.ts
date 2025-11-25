@@ -506,9 +506,6 @@ export const estudianteController = {
           });
         }
       }
-
-      console.log({ data })
-
       const estudianteActualizado = await EstudianteService.actualizar(Number(id), data);
 
       return res.status(200).json({

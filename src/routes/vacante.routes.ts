@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as vacanteController from '../controllers/vacante.controller.js';
 import { authorizeRoles, verifyToken } from '../middlewares/auth.middleware.js';
+import { Rol } from '@prisma/client';
 
 const router = Router();
 /**
@@ -85,6 +86,8 @@ router.get('/pendientes', vacanteController.listarVacantesPendientes);
  *         description: Error interno del servidor
 */
 router.get('/aprobadas', vacanteController.listarVacantesAprobadas);
+
+router.get('/personalizadas', verifyToken, authorizeRoles(Rol.ESTUDIANTE), vacanteController.listarVacantesPersonalizadas);
 
 /**
  * @swagger
