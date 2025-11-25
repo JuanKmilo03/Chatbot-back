@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authorizeRoles, verifyToken } from '../middlewares/auth.middleware.js';
 import { Rol } from '@prisma/client';
-import { cargarEstudiantesExcel, estudianteController, listarEstudiantesIndependiente, listarEstudiantesPractica } from '../controllers/estudiante.controller.js';
+import { cargarEstudiantesExcel, cargarMasivo, estudianteController, listarEstudiantesIndependiente, listarEstudiantesPractica } from '../controllers/estudiante.controller.js';
 import { upload } from '../middlewares/upload.js';
 import { authFirebase } from '../middlewares/authFirebase.js';
 
@@ -316,10 +316,72 @@ router.put(
     estudianteController.actualizar
 );
 
+/**
+ * @swagger
+ * /api/estudiantes/:id/completar-perfil:
+ *   patch:
+ *     summary: Completar perfil del estudiante (solo propio)
+ *     tags: [Estudiantes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del estudiante que completa su perfil
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               descripcion:
+ *                 type: string
+ *               area:
+ *                 type: string
+ *               habilidadesTecnicas:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               habilidadesBlandas:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               experiencia:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Perfil completado correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   $ref: '#/components/schemas/Estudiante'
+ *       403:
+ *         description: No autorizado
+ *       500:
+ *         description: Error del servidor
+ */
+router.patch(
+  '/:id/completar-perfil',
+  verifyToken,
+  authorizeRoles(Rol.ESTUDIANTE),
+  estudianteController.completarPerfil
+);
+
+router.post('/cargar',verifyToken, authorizeRoles(Rol.DIRECTOR, Rol.ADMIN), upload.single('archivo'), cargarMasivo);
+
 router.patch('/:id/completar-perfil', verifyToken, authorizeRoles(Rol.ESTUDIANTE), estudianteController.completarPerfil);
-router.put("/estudiantes/:id/perfil-completo", upload.single("hojaDeVida"),estudianteController.actualizarPerfilCompleto);
+// router.put("/estudiantes/:id/perfil-completo", upload.single("hojaDeVida"),estudianteController.actualizarPerfilCompleto);
 router.post('/cargar-excel', upload.single('archivo'), cargarEstudiantesExcel);
 router.get('/estudiantes-practica', listarEstudiantesPractica);
-router.post('/:id/subirhoja', upload.single('archivo'), estudianteController.subirHojaDeVida);
+// router.post('/:id/subirhoja', upload.single('archivo'), estudianteController.subirHojaDeVida);
 
 export default router;

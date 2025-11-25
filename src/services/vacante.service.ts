@@ -30,7 +30,7 @@ export const vacanteService = {
     where?: Prisma.VacanteWhereInput;
     orderBy?: Prisma.VacanteOrderByWithRelationInput;
   }) {
-    const { skip = 0, take = 10, where = {}, orderBy = { id: "asc" } } = params;
+    const { skip = 0, take = 10, where = {}, orderBy = { creadaEn:Prisma.SortOrder.desc } } = params;
     const [data, total] = await Promise.all([
       prisma.vacante.findMany({
         where,

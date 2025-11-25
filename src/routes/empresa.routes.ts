@@ -14,9 +14,11 @@ import {
   restablecerContrasenia,
   crearEmpresaPorDirectorController,
   listarEmpresas,
+  cargarEmpresasMasivoController,
 } from "../controllers/empresa.controller.js";
 import { verifyToken, authorizeRoles } from "../middlewares/auth.middleware.js";
 import { Rol } from "@prisma/client";
+import { upload } from "../middlewares/upload.js";
 
 const router = Router();
 
@@ -614,6 +616,7 @@ router.get("/profile", verifyToken, authorizeRoles("EMPRESA"), obtenerPerfilEmpr
  *                   example: "Error al crear la empresa"
  */
 router.post("/create", verifyToken, authorizeRoles(Rol.ADMIN, Rol.DIRECTOR), crearEmpresaPorDirectorController);
+router.post("/cargar", verifyToken, authorizeRoles(Rol.ADMIN, Rol.DIRECTOR), upload.single("archivo"), cargarEmpresasMasivoController);
 
 /**
  * @swagger

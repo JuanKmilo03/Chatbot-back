@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, TipoDocumento } from "@prisma/client";
 import cloudinary from "../config/cloudinary.config.js";
 import fs from "fs";
 
@@ -28,6 +28,7 @@ export const documentoService = {
         descripcion: data.descripcion,
         categoria: data.categoria,
         archivoUrl: result.secure_url,
+        nombreArchivo: archivo.originalname,
         publicId: result.public_id,
         directorId,
         convenioId: data.convenioId ? Number(data.convenioId) : null,
@@ -67,6 +68,7 @@ export const documentoService = {
 
     let archivoUrl = documento.archivoUrl;
     let publicId = documento.publicId;
+    let nombreArchivo = documento.nombreArchivo;
 
     if (archivo) {
       if (publicId) await cloudinary.uploader.destroy(publicId);
@@ -77,6 +79,7 @@ export const documentoService = {
       });
       archivoUrl = result.secure_url;
       publicId = result.public_id;
+      nombreArchivo = archivo.originalname;
       fs.unlinkSync(archivo.path);
     }
 
@@ -87,6 +90,7 @@ export const documentoService = {
         descripcion: data.descripcion ?? documento.descripcion,
         categoria: data.categoria ?? documento.categoria,
         archivoUrl,
+        nombreArchivo,
         publicId,
       },
     });
@@ -102,4 +106,205 @@ export const documentoService = {
 
     await prisma.documento.delete({ where: { id } });
   },
+
+  async obtenerDocumentoId(id: number) {
+    const documento = await prisma.documento.findUnique({
+      where: { id },
+      include: { director: true },
+    });
+
+    if (!documento) {
+      throw new Error("Documento no encontrado");
+    }
+    return documento;
+  },
+
+  async obtenerDocumentosGenerales() {
+    return prisma.documento.findMany({
+      where: {
+        categoria: TipoDocumento.GENERAL
+      },
+      select: {
+        id: true,
+        titulo: true,
+        descripcion: true,
+        categoria: true,
+        archivoUrl: true,
+        nombreArchivo: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: "desc" }
+    });
+  },
+
+  async obtenerDocumentosEmpresa(empresaId?: number) {
+
+    const documentosGenerales = await prisma.documento.findMany({
+      where: {
+        categoria: TipoDocumento.GENERAL
+      },
+      select: {
+        id: true,
+        titulo: true,
+        descripcion: true,
+        categoria: true,
+        archivoUrl: true,
+        nombreArchivo: true,
+        createdAt: true
+      }
+    });
+
+    const documentosEmpresa = await prisma.documento.findMany({
+      where: {
+        categoria: TipoDocumento.EMPRESA
+      },
+      select: {
+        id: true,
+        titulo: true,
+        descripcion: true,
+        categoria: true,
+        archivoUrl: true,
+        nombreArchivo: true,
+        createdAt: true
+      }
+    });
+
+    // pa obtener convenio específico de la empresa
+    let convenioEmpresa: any[] = [];
+    if (empresaId) {
+      convenioEmpresa = await prisma.documento.findMany({
+        where: {
+          categoria: TipoDocumento.CONVENIO_EMPRESA,
+          Convenio: {
+            empresaId: empresaId
+          }
+        },
+        select: {
+          id: true,
+          titulo: true,
+          descripcion: true,
+          categoria: true,
+          archivoUrl: true,
+          nombreArchivo: true,
+          createdAt: true,
+          Convenio: {
+            select: {
+              id: true,
+              estado: true
+            }
+          }
+        }
+      });
+    }
+
+    return {
+      documentosGenerales,
+      documentosEmpresa,
+      convenioEmpresa
+    };
+  },
+
+  async obtenerDocumentosEstudiante() {
+
+    const documentosGenerales = await prisma.documento.findMany({
+      where: {
+        categoria: TipoDocumento.GENERAL
+      },
+      select: {
+        id: true,
+        titulo: true,
+        descripcion: true,
+        categoria: true,
+        archivoUrl: true,
+        nombreArchivo: true,
+        createdAt: true
+      }
+    });
+
+    const documentosEstudiante = await prisma.documento.findMany({
+      where: {
+        categoria: TipoDocumento.ESTUDIANTE
+      },
+      select: {
+        id: true,
+        titulo: true,
+        descripcion: true,
+        categoria: true,
+        archivoUrl: true,
+        nombreArchivo: true,
+        createdAt: true
+      }
+    });
+
+    return {
+      documentosGenerales,
+      documentosEstudiante
+    };
+  },
+
+  async obtenerDocumentoEmpresaPorId(id: number, empresaId?: number) {
+    const documento = await prisma.documento.findFirst({
+      where: {
+        id,
+        OR: [
+          { categoria: TipoDocumento.GENERAL },
+          { categoria: TipoDocumento.EMPRESA },
+          ...(empresaId ? [{
+            categoria: TipoDocumento.CONVENIO_EMPRESA,
+            Convenio: {
+              empresaId: empresaId
+            }
+          }] : [])
+        ]
+      },
+      select: {
+        id: true,
+        titulo: true,
+        descripcion: true,
+        categoria: true,
+        archivoUrl: true,
+        nombreArchivo: true,
+        createdAt: true,
+        Convenio: {
+          select: {
+            id: true,
+            estado: true
+          }
+        }
+      }
+    });
+
+    if (!documento) {
+      throw new Error("Documento no encontrado o no autorizado");
+    }
+
+    return documento;
+  },
+
+  async obtenerDocumentoEstudiantePorId(id: number) {
+    const documento = await prisma.documento.findFirst({
+      where: {
+        id,
+        OR: [
+          { categoria: TipoDocumento.GENERAL },
+          { categoria: TipoDocumento.ESTUDIANTE }
+        ]
+      },
+      select: {
+        id: true,
+        titulo: true,
+        descripcion: true,
+        categoria: true,
+        archivoUrl: true,
+        nombreArchivo: true,
+        createdAt: true
+      }
+    });
+
+    if (!documento) {
+      throw new Error("Documento no encontrado o no autorizado");
+    }
+
+    return documento;
+  }
 };

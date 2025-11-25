@@ -1,12 +1,123 @@
 import { Request, Response } from 'express';
 import { EstudianteExcelService, EstudianteService } from "../services/estudiante.service.js";
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware.js';
-import cloudinary from '../config/cloudinary.config.js';
+import { deleteFromCloudinary, uploadToCloudinary } from '../config/cloudinary.config.js';
+import { leerCSV, leerExcel } from '../utils/fileParse.js';
+import path from 'path';
 import multer from 'multer';
 
 const estudianteExcelService = new EstudianteExcelService();
 const prisma = new PrismaClient();
+
+export const uploadHojaVida = async (req: Request, res: Response) => {
+  try {
+    // Usar el email del token de Firebase
+    const userEmail = (req as any).user.email;
+
+    if (!userEmail) {
+      return res.status(400).json({
+        error: 'Email no disponible en el token'
+      });
+    }
+
+    const usuario = await prisma.usuario.findFirst({
+      where: { email: userEmail },
+      include: { estudiante: true }
+    });
+
+    if (!usuario || !usuario.estudiante) {
+      return res.status(403).json({
+        error: 'No autorizado',
+        details: 'Solo los estudiantes pueden subir hojas de vida'
+      });
+    }
+
+    // Verificar que se haya subido un archivo
+    if (!req.file) {
+      return res.status(400).json({
+        error: 'Archivo requerido',
+        details: 'Debe subir un archivo PDF o Word'
+      });
+    }
+
+    // Validar tipo de archivo
+    const allowedMimeTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+
+    if (!allowedMimeTypes.includes(req.file.mimetype)) {
+      return res.status(400).json({
+        error: 'Formato no válido',
+        details: 'Solo se permiten archivos PDF o Word (DOC, DOCX)'
+      });
+    }
+
+    // Validar tamaño del archivo (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (req.file.size > maxSize) {
+      return res.status(400).json({
+        error: 'Archivo muy grande',
+        details: 'El tamaño máximo permitido es 5MB'
+      });
+    }
+
+    // Subir a Cloudinary
+    const uploadResult = await uploadToCloudinary(req.file.buffer, {
+      folder: 'hojas_vida',
+      resource_type: 'auto',
+      public_id: `hoja_vida_${usuario.estudiante.id}`
+    });
+
+    // Eliminar hoja de vida anterior si existe
+    if (usuario.estudiante.hojaDeVidaUrl) {
+      try {
+        await deleteFromCloudinary(usuario.estudiante.hojaDeVidaUrl);
+      } catch (error) {
+        console.warn('No se pudo eliminar la hoja de vida anterior:', error);
+      }
+    }
+
+    // Actualizar la URL en la base de datos
+    const estudianteActualizado = await prisma.estudiante.update({
+      where: { id: usuario.estudiante.id },
+      data: {
+        hojaDeVidaUrl: uploadResult.secure_url
+      },
+      include: {
+        usuario: {
+          select: {
+            nombre: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    res.status(200).json({
+      message: 'Hoja de vida subida exitosamente',
+      data: {
+        hojaVidaUrl: estudianteActualizado.hojaDeVidaUrl,
+        estudiante: {
+          id: estudianteActualizado.id,
+          nombres: estudianteActualizado.usuario.nombre,
+          programaAcademico: estudianteActualizado.programaAcademico,
+          semestre: estudianteActualizado.semestre
+        },
+        uploadedAt: new Date().toISOString()
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Error al subir hoja de vida:', error);
+    res.status(500).json({
+      error: 'Error interno del servidor',
+      details: error.message
+    });
+  }
+};
 
 const storage = multer.memoryStorage();
 export const upload = multer({ storage });
@@ -71,6 +182,61 @@ export const listarEstudiantesIndependiente = async (req: Request, res: Response
   }
 };
 
+type EstudianteRowRaw = {
+  nombre: string;
+  email: string;
+  codigo: string;
+  documento: string;
+  activo?: string | boolean;
+};
+type EstudianteRow = {
+  nombre: string;
+  email: string;
+  codigo: string;
+  documento: string;
+  activo?: boolean;
+};
+export const cargarMasivo = async (req: Request, res: Response) => {
+  try {
+    const archivo = req.file;
+
+    if (!archivo) {
+      return res.status(400).json({ message: "No se subió archivo" });
+    }
+
+    const ext = path.extname(archivo.originalname).toLowerCase();
+
+    let rowsRaw: EstudianteRowRaw[];
+
+    if (ext === ".csv") {
+      rowsRaw = await leerCSV<EstudianteRowRaw>(archivo);
+    } else if (ext === ".xlsx" || ext === ".xls") {
+      rowsRaw = leerExcel<EstudianteRowRaw>(archivo);
+    } else {
+      return res.status(400).json({ message: "Formato no soportado" });
+    }
+
+    // Convertir strings a boolean y asignar el tipo correcto
+    const rows: EstudianteRow[] = rowsRaw.map((r) => ({
+      ...r,
+      codigo: String(r.codigo).trim(),
+      documento: String(r.documento).trim(),
+      activo: ["true", "1", true].includes(r.activo as any),
+    }));
+
+    const resultado = await EstudianteService.cargarMasivo(rows);
+
+    return res.json({
+      message: "Cargue masivo procesado",
+      resultados: resultado,
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Error procesando el archivo" });
+  }
+};
+
 export const cargarEstudiantesExcel = async (req: Request, res: Response) => {
   try {
     if (!req.file) {
@@ -106,7 +272,8 @@ export const listarEstudiantesPractica = async (req: Request, res: Response) => 
   try {
     const estudiantes = await estudianteExcelService.listarEstudiantesEnPractica();
 
-    const estudiantesFormateados = estudiantes.map((est) => ({
+    // Formatear respuesta
+    const estudiantesFormateados = estudiantes.map(est => ({
       id: est.id,
       nombre: est.usuario.nombre,
       email: est.usuario.email,
@@ -136,15 +303,17 @@ export const estudianteController = {
 
   crear: async (req: Request, res: Response) => {
     try {
-      const { nombre, email, password, perfil, habilidadesTecnicas, habilidadesBlandas } = req.body;
+      const { nombre, email, codigo, documento } = req.body;
+
+      if (!nombre || !email || !documento || !codigo) {
+        return res.status(400).json({ message: "Nombre, correo, documento y código son obligatorios" });
+      }
 
       const estudiante = await EstudianteService.crear({
         nombre,
         email,
-        password,
-        perfil,
-        habilidadesTecnicas,
-        habilidadesBlandas
+        codigo,
+        documento
       });
 
       return res.status(201).json({
@@ -153,95 +322,19 @@ export const estudianteController = {
       });
     } catch (error: any) {
       console.error(error);
-      if (error.message.includes('ya está registrado')) {
-        return res.status(409).json({ message: "Correo institucional ya registrado" });
-      }
-      return res.status(500).json({ message: "Error creando estudiante", error: error.message });
-    }
-  },
 
-  subirHojaDeVida: async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-
-      if (!req.file) {
-        return res.status(400).json({ message: "Archivo no proporcionado" });
+      if (error.message.includes("ya está registrado")) {
+        return res
+          .status(409)
+          .json({ message: "Correo institucional ya registrado" });
       }
 
-      // Subir a Cloudinary
-      const result = cloudinary.uploader.upload_stream(
-        { resource_type: "auto", folder: "hojas_de_vida_est" },
-        async (error, result) => {
-          if (error || !result) {
-            console.error(error);
-            return res.status(500).json({ message: "Error subiendo archivo", error });
-          }
-
-          // Guardar URL en Prisma
-          const estudianteActualizado = await EstudianteService.subirHojaDeVida(
-            Number(id),
-            result.secure_url
-          );
-
-          return res.status(200).json({
-            message: "Hoja de vida subida correctamente",
-            data: estudianteActualizado
-          });
-        }
-      );
-
-      // Pasar el buffer del archivo al stream de Cloudinary
-      if (req.file.buffer) {
-        const stream = result as unknown as any;
-        stream.end(req.file.buffer);
-      }
-
-    } catch (error: any) {
-      console.error(error);
-      return res.status(500).json({ message: "Error procesando archivo", error: error.message });
-    }
-  },
-
-  actualizarPerfilCompleto: async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      const { perfil, habilidadesTecnicas, habilidadesBlandas } = req.body;
-
-      let hojaDeVidaUrl: string | undefined = undefined;
-
-      // Si envían archivo, subir a Cloudinary
-      if (req.file?.buffer) {
-        const uploadResult = await new Promise<{ secure_url: string }>((resolve, reject) => {
-          const stream = cloudinary.uploader.upload_stream(
-            { resource_type: "auto", folder: "hojas_de_vida" },
-            (error, result) => {
-              if (error || !result) return reject(error);
-              resolve({ secure_url: result.secure_url });
-            }
-          );
-          stream.end(req.file?.buffer);
-        });
-
-        hojaDeVidaUrl = uploadResult.secure_url;
-      }
-
-      // Preparar datos para actualizar
-      const dataToUpdate: any = {};
-      if (perfil) dataToUpdate.perfil = perfil;
-      if (habilidadesTecnicas) dataToUpdate.habilidadesTecnicas = habilidadesTecnicas;
-      if (habilidadesBlandas) dataToUpdate.habilidadesBlandas = habilidadesBlandas;
-      if (hojaDeVidaUrl) dataToUpdate.hojaDeVidaUrl = hojaDeVidaUrl;
-
-      const estudianteActualizado = await EstudianteService.actualizar(Number(id), dataToUpdate);
-
-      return res.status(200).json({
-        message: "Perfil actualizado correctamente",
-        data: estudianteActualizado
+      return res.status(500).json({
+        message: "Error creando estudiante",
+        error: error.message,
+        data: null,
       });
 
-    } catch (error: any) {
-      console.error(error);
-      return res.status(500).json({ message: "Error actualizando perfil", error: error.message });
     }
   },
 
@@ -250,32 +343,82 @@ export const estudianteController = {
    * @route GET /api/estudiantes
    * @access Director | Admin
    */
-  obtenerTodos: async (req: Request, res: Response) => {
+  obtenerTodos: async (
+    req: Request<{}, {}, {}, Record<string, string>>,
+    res: Response
+  ) => {
     try {
-      const { skip, take } = req.query;
+      const {
+        skip = "0",
+        take = "10",
+        nombre,
+        codigo,
+        documento,
+        email,
+        createdAt
+      } = req.query;
 
-      // Obtener todos los estudiantes
-      const estudiantes = await EstudianteService.obtenerTodos();
+      const filtros: Prisma.EstudianteWhereInput = {};
+      const usuarioFilter: Prisma.UsuarioWhereInput = {};
 
-      // Implementar paginación manualmente
-      const startIndex = Number(skip) || 0;
-      const pageSize = Number(take) || 10;
-      const paginatedEstudiantes = estudiantes.slice(startIndex, startIndex + pageSize);
+      if (nombre) {
+        usuarioFilter.nombre = {
+          contains: nombre,
+          mode: "insensitive",
+        };
+      }
+
+      if (email) {
+        usuarioFilter.email = {
+          contains: email,
+          mode: "insensitive",
+        };
+      }
+      if (Object.keys(usuarioFilter).length > 0) {
+        filtros.usuario = usuarioFilter;
+      }
+
+      if (codigo) {
+        filtros.codigo = {
+          contains: codigo,
+          mode: "insensitive",
+        };
+      }
+
+      if (documento) {
+        filtros.documento = {
+          contains: documento,
+          mode: "insensitive",
+        };
+      }
+
+      if (createdAt) {
+        filtros.createdAt = {
+          gte: new Date(createdAt),
+        };
+      }
+
+      const { data, total } = await EstudianteService.findManyWithPagination({
+        filtros,
+        skip: Number(skip),
+        take: Number(take),
+      });
 
       return res.status(200).json({
         message: "Estudiantes obtenidos correctamente",
-        data: paginatedEstudiantes,
-        total: estudiantes.length,
-        page: Math.floor(startIndex / pageSize) + 1,
-        pageSize: pageSize,
-        totalPages: Math.ceil(estudiantes.length / pageSize)
+        data,
+        total,
+        pageSize: Number(take),
+        page: Math.floor(Number(skip) / Number(take)) + 1,
+        totalPages: Math.ceil(total / Number(take)),
       });
+
     } catch (error: any) {
       console.error(error);
       return res.status(500).json({
         message: "Error obteniendo estudiantes",
         error: error.message,
-        data: null
+        data: null,
       });
     }
   },
@@ -363,6 +506,8 @@ export const estudianteController = {
           });
         }
       }
+
+      console.log({ data })
 
       const estudianteActualizado = await EstudianteService.actualizar(Number(id), data);
 
