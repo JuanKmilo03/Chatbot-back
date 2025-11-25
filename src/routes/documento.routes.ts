@@ -39,13 +39,13 @@ router.get("/publicos/generales",
 
 router.get("/empresa", 
   verifyToken, 
-  authorizeRoles(Rol.EMPRESA, Rol.ADMIN), 
+  authorizeRoles(Rol.EMPRESA), 
   obtenerDocumentosEmpresa);
 // router.get("/empresa/:id", verifyToken, authorizeRoles(Rol.EMPRESA, Rol.ADMIN), obtenerDocumentoEmpresaPorId);
 
 router.get("/estudiante", 
   verifyToken, 
-  authorizeRoles(Rol.ESTUDIANTE, Rol.ADMIN), 
+  authorizeRoles(Rol.ESTUDIANTE), 
   obtenerDocumentosEstudiante);
 // router.get("/estudiante/:id", verifyToken, authorizeRoles(Rol.ESTUDIANTE, Rol.ADMIN), obtenerDocumentoEstudiantePorId);
 
