@@ -3,6 +3,7 @@ import { Server as SocketIOServer, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 import { env } from "./env.config.js";
 import { Rol } from "@prisma/client";
+import { marcarComoLeida } from "../services/notificacion.service.js";
 
 export interface SocketUser {
   id: number;
@@ -79,9 +80,18 @@ export const initializeSocket = (httpServer: HTTPServer) => {
     console.log(`Usuario ${user.id} unido a sala de notificaciones: user:${user.id}`);
 
     // Evento: Marcar notificación como leída
-    socket.on("mark-notification-read", (data: { notificacionId: number }) => {
-      console.log(`Notificación ${data.notificacionId} marcada como leída por usuario ${user.id}`);
-      // La lógica de marcado se maneja en el servicio, este evento es solo informativo
+    socket.on("mark-notification-read", async ({ notificacionId }) => {
+      try {
+        const notificacionActualizada = await marcarComoLeida(notificacionId, user.id);
+
+        io.to(`user:${user.id}`).emit("notification-updated", {
+          id: notificacionId,
+          leida: true,
+        });
+
+      } catch (error) {
+        console.error("Error marcando notificación:", error);
+      }
     });
 
     // Evento de desconexión
