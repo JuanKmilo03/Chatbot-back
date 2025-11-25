@@ -23,8 +23,8 @@ export const convenioService = {
     descripcion?: string;
     tipo: string;
     observaciones?: string;
-    fechaInicio: string;
-    fechaFin: string;
+    fechaInicio: string | Date;
+    fechaFin: string | Date;
     directorId: number;
     archivo?: Express.Multer.File;
     estado?: EstadoConvenio;
@@ -32,19 +32,41 @@ export const convenioService = {
     const empresa = await prisma.empresa.findUnique({ where: { id: empresaId } });
     if (!empresa) throw new Error("Empresa no encontrada");
 
+    // 🔥 Parse unificado
+    const inicio = fechaInicio instanceof Date ? fechaInicio : new Date(fechaInicio);
+    const fin = fechaFin instanceof Date ? fechaFin : new Date(fechaFin);
+
+    if (isNaN(inicio.getTime()) || isNaN(fin.getTime())) {
+      throw new Error("Las fechas enviadas no son válidas.");
+    }
+
+    if (fin < inicio) {
+      throw new Error("La fecha de fin no puede ser anterior a la fecha de inicio.");
+    }
+
     let archivoUrl: string | null = null;
 
     if (archivo) {
-      const result = await cloudinary.uploader.upload(archivo.path, {
-        folder: `Convenios/${empresaId}`,
-        resource_type: "auto",
-        public_id: `Convenio_${Date.now()}`,
-      });
-      archivoUrl = result.secure_url;
+      try {
+        const result = await cloudinary.uploader.upload(archivo.path, {
+          folder: `Convenios/${empresaId}`,
+          resource_type: "auto",
+          public_id: `Convenio_${Date.now()}`,
+        });
 
-      fs.unlinkSync(archivo.path);
+        archivoUrl = result.secure_url;
+
+        // Borrar si subió bien
+        fs.unlinkSync(archivo.path);
+
+      } catch (err) {
+        // Borrar si falló
+        if (archivo.path && fs.existsSync(archivo.path)) {
+          fs.unlinkSync(archivo.path);
+        }
+        throw new Error("Error subiendo archivo a Cloudinary");
+      }
     }
-
     const convenio = await prisma.convenio.create({
       data: {
         empresaId,
@@ -55,8 +77,8 @@ export const convenioService = {
         estado: estado || "EN_REVISION",
         observaciones: observaciones || null,
         archivoUrl,
-        fechaInicio: new Date(fechaInicio),
-        fechaFin: new Date(fechaFin),
+        fechaInicio: inicio,
+        fechaFin: fin,
         version: 1,
       },
     });

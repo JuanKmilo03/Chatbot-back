@@ -314,43 +314,88 @@ export class EstudianteService {
     });
   }
 
+  static async findManyWithPagination({
+    filtros,
+    skip,
+    take,
+  }: {
+    filtros: Prisma.EstudianteWhereInput;
+    skip: number;
+    take: number;
+  }) {
+    const [data, total] = await Promise.all([
+      prisma.estudiante.findMany({
+        where: filtros,
+        include: {
+          usuario: true,
+          postulaciones: true,
+          practicas: true,
+        },
+        skip,
+        take,
+      }),
+      prisma.estudiante.count({ where: filtros }),
+    ]);
+
+    return { data, total };
+  }
+
   static create(arg0: { usuario: { create: { nombre: any; email: any; rol: string; }; }; codigo: any; cedula: any; perfilCompleto: boolean; activo: boolean; }) {
     throw new Error('Method not implemented.');
   }
   static async crear(data: {
     nombre: string;
     email: string;
-    password?: string;
-    habilidadesTecnicas?: string[];
-    habilidadesBlandas?: string[];
-    perfil?: string;
+    codigo: string;
+    documento: string;
   }) {
-    const { nombre, email, password, habilidadesTecnicas, habilidadesBlandas, perfil } = data;
+    const { nombre, email, codigo, documento } = data;
 
-    const existe = await prisma.usuario.findUnique({ where: { email } });
-    if (existe) throw new Error('El correo ya está registrado');
-
-    const hashed = password ? await bcrypt.hash(password, 10) : null;
-
-    const usuario = await prisma.usuario.create({
-      data: {
-        nombre,
-        email,
-        password: hashed,
-        rol: 'ESTUDIANTE',
-      },
+    // Validación: email ya existe
+    const usuarioExiste = await prisma.usuario.findUnique({
+      where: { email },
     });
+    if (usuarioExiste) throw new Error("El correo ya está registrado");
 
-    const estudiante = await prisma.estudiante.create({
-      data: {
-        usuarioId: usuario.id,
-        habilidadesTecnicas: habilidadesTecnicas || [],
-        habilidadesBlandas: habilidadesBlandas || [],
-        perfil,
-      },
-      include: { usuario: true },
+    // Validación: documento ya existe
+    const documentoExiste = await prisma.estudiante.findUnique({
+      where: { documento },
     });
+    if (documentoExiste) throw new Error("El documento ya está registrado");
 
+    // Validación: código ya existe
+    const codigoExiste = await prisma.estudiante.findUnique({
+      where: { codigo },
+    });
+    if (codigoExiste) throw new Error("El código ya está registrado");
+
+
+    const estudiante = await prisma.$transaction(async (tx) => {
+      // Crear usuario
+      const usuario = await tx.usuario.create({
+        data: {
+          nombre,
+          email,
+          rol: "ESTUDIANTE",
+          password: null, // no se necesita en este caso
+        },
+      });
+
+      // Crear estudiante
+      const estudiante = await tx.estudiante.create({
+        data: {
+          usuarioId: usuario.id,
+          codigo: codigo ?? null,
+          documento: documento ?? null,
+          habilidadesTecnicas: [],
+          habilidadesBlandas: [],
+          perfil: null,
+        },
+        include: { usuario: true },
+      });
+
+      return estudiante;
+    });
     return estudiante;
   }
 
@@ -426,39 +471,35 @@ export class EstudianteService {
     return estudiante;
   }
 
-  static async actualizar(id: number, data: any) {
-    const { nombre, email, habilidadesTecnicas, habilidadesBlandas, perfil } = data;
-
+  static async actualizar(id: number, data: Prisma.EstudianteUpdateInput) {
+    // Verificar si existe el estudiante
     const existe = await prisma.estudiante.findUnique({ where: { id } });
-    if (!existe) throw new Error('Estudiante no encontrado');
+    if (!existe) throw new Error("Estudiante no encontrado");
 
-    if (email) {
+    // Validar email si viene dentro de usuario.update
+    const emailEnUpdate = (data.usuario as any)?.update?.email;
+
+    if (emailEnUpdate) {
       const usuarioConEmail = await prisma.usuario.findFirst({
         where: {
-          email,
+          email: emailEnUpdate,
           id: { not: existe.usuarioId }
         }
       });
 
       if (usuarioConEmail) {
-        throw new Error('El email ya está en uso por otro usuario');
+        throw new Error("El email ya está en uso por otro usuario");
       }
     }
-
+    // Ejecutar el update directo con Prisma
     const estudianteActualizado = await prisma.estudiante.update({
       where: { id },
-      data: {
-        ...(habilidadesTecnicas && { habilidadesTecnicas }),
-        ...(habilidadesBlandas && { habilidadesBlandas }),
-        ...(perfil && { perfil }),
-        usuario: {
-          update: {
-            ...(nombre && { nombre }),
-            ...(email && { email })
-          },
-        },
+      data,
+      include: {
+        usuario: true,
+        postulaciones: true,
+        practicas: true,
       },
-      include: { usuario: true },
     });
 
     return estudianteActualizado;
@@ -493,5 +534,137 @@ export class EstudianteService {
     });
 
     return { message: 'Estudiante eliminado correctamente' };
+  }
+
+  static async cargarMasivo(estudiantes: {
+    nombre: string;
+    email: string;
+    codigo: string;
+    documento: string;
+    activo?: boolean;
+  }[]) {
+    const resultados: any[] = [];
+
+    for (const row of estudiantes) {
+      const { nombre, email, codigo, documento, activo = true } = row;
+
+      // validar mínimos
+      if (!nombre || !email || !codigo || !documento) {
+        resultados.push({
+          email,
+          error: "Faltan campos obligatorios (nombre, email, codigo o documento)",
+        });
+        continue;
+      }
+
+      try {
+        const usuarioExistente = await prisma.usuario.findUnique({
+          where: { email },
+          include: { estudiante: true }
+        });
+
+        // CASO 1: crear nuevo estudiante
+        if (!usuarioExistente) {
+          // Validar combinaciones antes de crear
+          const documentoUsado = await prisma.estudiante.findFirst({
+            where: { documento }
+          });
+
+          if (documentoUsado) {
+            resultados.push({
+              email,
+              error: "El documento ya existe para otro estudiante",
+            });
+            continue;
+          }
+
+          const codigoUsado = await prisma.estudiante.findFirst({
+            where: { codigo }
+          });
+
+          if (codigoUsado) {
+            resultados.push({
+              email,
+              error: "El código ya existe para otro estudiante",
+            });
+            continue;
+          }
+
+          const result = await prisma.$transaction(async (tx) => {
+            const usuario = await tx.usuario.create({
+              data: {
+                nombre,
+                email,
+                rol: "ESTUDIANTE",
+                password: null,
+              },
+            });
+
+            const estudiante = await tx.estudiante.create({
+              data: {
+                usuarioId: usuario.id,
+                codigo,
+                documento,
+                activo,
+                perfil: null,
+                habilidadesTecnicas: [],
+                habilidadesBlandas: [],
+              },
+            });
+
+            return estudiante;
+          });
+
+          resultados.push({ email, status: "CREADO", estudiante: result });
+          continue;
+        }
+
+        // CASO 2: actualizar estudiante ya existente
+        const estudianteId = usuarioExistente.estudiante?.id;
+
+        if (!estudianteId) {
+          resultados.push({
+            email,
+            error: "El usuario existe pero no tiene estudiante asociado",
+          });
+          continue;
+        }
+
+        // Validar combinaciones con otros estudiantes
+        const codigoExistente = await prisma.estudiante.findFirst({
+          where: { codigo, id: { not: estudianteId } },
+        });
+        if (codigoExistente) {
+          resultados.push({ email, error: "El código ya existe en otro estudiante" });
+          continue;
+        }
+
+        const documentoExistente = await prisma.estudiante.findFirst({
+          where: { documento, id: { not: estudianteId } },
+        });
+        if (documentoExistente) {
+          resultados.push({ email, error: "El documento ya existe en otro estudiante" });
+          continue;
+        }
+
+        const estudianteActualizado = await prisma.estudiante.update({
+          where: { id: estudianteId },
+          data: {
+            codigo,
+            documento,
+            activo,
+          },
+        });
+
+        resultados.push({ email, status: "ACTUALIZADO", estudiante: estudianteActualizado });
+
+      } catch (err: any) {
+        resultados.push({
+          email,
+          error: err.message || "Error inesperado",
+        });
+      }
+    }
+    return resultados;
   }
 }

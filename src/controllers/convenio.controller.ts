@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import { EstadoConvenio, Prisma, PrismaClient, TipoConvenio } from "@prisma/client";
 import { convenioService } from "../services/convenio.service.js";
 import { AuthRequest } from "../middlewares/auth.middleware.js";
+import path from "path";
+import fs from "fs";
+import { leerCSV, leerExcel, parseFecha } from "../utils/fileParse.js";
 
 const prisma = new PrismaClient();
 
@@ -13,6 +16,17 @@ export const crearConvenioPorDirector = async (req: AuthRequest, res: Response) 
 
     if (!empresaId || !nombre || !tipo || !fechaInicio || !fechaFin) {
       return res.status(400).json({ message: "empresaId, nombre, tipo, fechaInicio y fechaFin son obligatorios" });
+    }
+
+    const inicio = new Date(fechaInicio);
+    const fin = new Date(fechaFin);
+
+    if (isNaN(inicio.getTime()) || isNaN(fin.getTime())) {
+      return res.status(400).json({ message: "Las fechas enviadas no son válidas." });
+    }
+
+    if (fin < inicio) {
+      return res.status(400).json({ message: "La fecha de fin no puede ser anterior a la fecha de inicio." });
     }
 
     const convenio = await convenioService.crearConvenioPorDirector({
@@ -35,6 +49,132 @@ export const crearConvenioPorDirector = async (req: AuthRequest, res: Response) 
   } catch (error) {
     console.error("❌ Error al crear convenio por director:", error);
     res.status(500).json({ message: "Error al crear convenio por director.", error: (error as Error).message });
+  }
+};
+
+export const cargarConveniosMasivo = async (req: AuthRequest, res: Response) => {
+  try {
+    let archivos: Express.Multer.File[] = [];
+
+    if (Array.isArray(req.files)) {
+      archivos = req.files;
+    } else if (req.files && typeof req.files === "object") {
+      for (const key of Object.keys(req.files)) {
+        archivos.push(...(req.files[key] as Express.Multer.File[]));
+      }
+    }
+    const archivoExcel = archivos.find(f => f.fieldname === "archivoData");
+    const archivosPdf = archivos.filter(f => f.fieldname === "archivos");
+
+    if (!archivoExcel) {
+      return res.status(400).json({ message: "Debes subir un archivo Excel/CSV con los convenios." });
+    }
+    const ext = path.extname(archivoExcel.originalname).toLowerCase();
+    if ([".xls", ".xlsx", ".csv"].includes(ext)) {
+      archivoExcel.buffer = fs.readFileSync(archivoExcel.path); 
+    }
+    let rows: any[];
+
+    if (ext === ".csv") {
+      rows = await leerCSV(archivoExcel);
+    } else if (ext === ".xlsx" || ext === ".xls") {
+      rows = leerExcel(archivoExcel);
+    } else {
+      return res.status(400).json({ message: "Formato no soportado. Usa CSV o Excel." });
+    }
+
+    const created: any[] = [];
+    const failed: { nombre: string; error: string }[] = [];
+
+    for (const r of rows) {
+      const {
+        nitEmpresa,
+        nombre,
+        descripcion,
+        tipo,
+        observaciones,
+        fechaInicio,
+        fechaFin,
+        estado,
+        archivo: nombreArchivo
+      } = r;
+
+      // Validaciones básicas
+      if (!nitEmpresa || !nombre || !tipo || !fechaInicio || !fechaFin) {
+        failed.push({ nombre, error: "Faltan campos obligatorios o el NIT." });
+        continue;
+      }
+
+      // Buscar empresa por NIT
+      const empresa = await prisma.empresa.findUnique({
+        where: { nit: nitEmpresa.toString().trim() }
+      });
+
+      if (!empresa) {
+        failed.push({
+          nombre,
+          error: `No existe una empresa registrada con el NIT ${nitEmpresa}`
+        });
+        continue;
+      }
+
+      // Parsear fechas
+      const inicio = parseFecha(fechaInicio);
+      const fin = parseFecha(fechaFin);
+
+      if (!inicio || !fin) {
+        failed.push({ nombre, error: "Fechas inválidas o con formato incorrecto." });
+        continue;
+      }
+
+      // Validar que fin >= inicio
+      if (fin < inicio) {
+        failed.push({
+          nombre,
+          error: "La fecha de fin no puede ser anterior a la fecha de inicio."
+        });
+        continue;
+      }
+
+      // Buscar PDF asociado
+      let archivoSelecionado: Express.Multer.File | undefined;
+
+      if (nombreArchivo) {
+        archivoSelecionado = archivosPdf.find(f =>
+          f.originalname.toLowerCase().trim() === nombreArchivo.toLowerCase().trim()
+        );
+      }
+
+      try {
+        const convenio = await convenioService.crearConvenioPorDirector({
+          empresaId: empresa.id,
+          nombre,
+          descripcion,
+          tipo,
+          observaciones,
+          fechaInicio: inicio,
+          fechaFin: fin,
+          directorId: req.user!.id,
+          archivo: archivoSelecionado,
+          estado
+        });
+
+        created.push({ nombre, convenio });
+      } catch (err: any) {
+        failed.push({ nombre, error: err.message });
+      }
+    }
+
+    return res.json({
+      message: "Cargue masivo de convenios procesado",
+      data: {
+        created,
+        failed
+      }
+    });
+  } catch (error) {
+    console.error("❌ Error en cargue masivo de convenios:", error);
+    return res.status(500).json({ message: "Error procesando el archivo." });
   }
 };
 

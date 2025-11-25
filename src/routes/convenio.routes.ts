@@ -14,6 +14,7 @@ import {
   subirNuevaVersionConvenio,
   listarConvenios,
   listarConveniosPendientes,
+  cargarConveniosMasivo,
 } from "../controllers/convenio.controller.js";
 import {
   crearComentarioController,
@@ -25,7 +26,15 @@ import { authorizeRoles, verifyToken } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-const upload = multer({ dest: "uploads/" });
+const storage = multer.diskStorage({
+  destination: "uploads/",
+  filename: (req, file, cb) => {
+    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, unique + "-" + file.originalname);
+  },
+});
+
+const upload = multer({ storage });
 
 /**
  * @swagger
@@ -77,6 +86,14 @@ const upload = multer({ dest: "uploads/" });
  *         description: Solo pueden hacerlo directores o administradores
  */
 router.post("/crear", verifyToken, authorizeRoles("DIRECTOR", "ADMIN"), upload.single("file"), crearConvenioPorDirector);
+router.post("/cargar",
+  verifyToken,
+  authorizeRoles("DIRECTOR", "ADMIN"),
+  upload.fields([
+    { name: "archivoData", maxCount: 1 },
+    { name: "archivos", maxCount: 50 },
+  ]),
+  cargarConveniosMasivo);
 
 /**
  * @swagger

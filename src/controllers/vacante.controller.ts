@@ -96,20 +96,59 @@ export const getVacanteById = async (req: Request, res: Response) => {
   }
 };
 
-const construirFiltroVacantes = (query: any, estado: EstadoGeneral) => {
-  const where: any = { estado };
-  if (query.titulo) where.titulo = { contains: String(query.titulo) };
-  if (query.empresa) where.empresa = { nombre: { contains: String(query.empresa) } };
-  if (query.modalidad) where.modalidad = String(query.modalidad);
-  if (query.area) where.area = String(query.area);
-  if (query.estado) where.estado = String(query.estado).toUpperCase();
+const construirFiltroVacantes = (query: any) => {
+  const where: any = {};
+
+  if (query.titulo) {
+    where.titulo = {
+      contains: query.titulo,
+      mode: "insensitive"
+    };
+  }
+
+  if (query.empresa) {
+    where.empresa = {
+      nombre: {
+        contains: query.empresa,
+        mode: "insensitive"
+      }
+    };
+  }
+
+  if (query.modalidad) {
+    where.modalidad = query.modalidad;
+  }
+
+  if (query.area) {
+    where.area = {
+      contains: query.area,
+      mode: "insensitive"
+    };
+  }
+
+  if (query.habilidadesTecnicas) {
+    where.habilidadesTecnicas = { has: String(query.habilidadesTecnicas) };
+  }
+
+  if (query.creadaEn) {
+    const fecha = new Date(query.creadaEn);
+    const start = new Date(fecha);
+    start.setUTCHours(0, 0, 0, 0);
+
+    const end = new Date(fecha);
+    end.setUTCHours(23, 59, 59, 999);
+
+    where.creadaEn = { gte: start, lte: end };
+  }
+
   return where;
 };
 
 export const listarVacantesPendientes = async (req: Request, res: Response) => {
   try {
     const { page = 1, limit = 10 } = req.query;
-    const where = construirFiltroVacantes(req.query, EstadoGeneral.PENDIENTE);
+    const where = construirFiltroVacantes(req.query);
+    where.estado = EstadoGeneral.PENDIENTE;
 
     const { data, total, totalPages } = await vacanteService.getPaginate({
       skip: (Number(page) - 1) * Number(limit),
@@ -126,9 +165,22 @@ export const listarVacantesPendientes = async (req: Request, res: Response) => {
 
 export const listarVacantesAprobadas = async (req: Request, res: Response) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
-    const where = construirFiltroVacantes(req.query, EstadoGeneral.APROBADA);
+    const { page = 1, limit = 10, estado } = req.query;
 
+    const where = construirFiltroVacantes(req.query);
+    if (estado) {
+      const estadoUpper = String(estado).toUpperCase();
+      if (["APROBADA", "RECHAZADA", "INACTIVA"].includes(estadoUpper)) {
+        where.estado = estadoUpper;
+      } else {
+        return res.status(400).json({
+          message: "Estado no permitido en este endpoint."
+        });
+      }
+
+    } else {
+      where.estado = { not: EstadoGeneral.PENDIENTE };
+    }
     const { data, total, totalPages } = await vacanteService.getPaginate({
       skip: (Number(page) - 1) * Number(limit),
       take: Number(limit),
@@ -140,7 +192,6 @@ export const listarVacantesAprobadas = async (req: Request, res: Response) => {
     console.error(error);
     return res.status(500).json({ message: "Error al listar vacantes aprobadas", error: error.message });
   }
-
 };
 
 export const aprobarVacante = async (req: AuthRequest, res: Response) => {
@@ -157,7 +208,7 @@ export const aprobarVacante = async (req: AuthRequest, res: Response) => {
 };
 
 export const rechazarVacante = async (req: AuthRequest, res: Response) => {
- try {
+  try {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "ID inválido" });
 

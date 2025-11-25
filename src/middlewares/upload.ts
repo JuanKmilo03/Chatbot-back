@@ -9,16 +9,17 @@ const fileFilter = (req: any, file: any, cb: any) => {
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/csv',
   ];
   
-  const allowedExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx'];
+  const allowedExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.csv'];
   const fileExtension = path.extname(file.originalname).toLowerCase();
 
   if (allowedTypes.includes(file.mimetype) && allowedExtensions.includes(fileExtension)) {
     cb(null, true);
   } else {
-    cb(new Error('Tipo de archivo no permitido. Solo se permiten: PDF, Word y Excel.'), false);
+    cb(new Error('Tipo de archivo no permitido. Solo se permiten: PDF, Word y Excel y CSV.'), false);
   }
 };
 
