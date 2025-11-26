@@ -2,9 +2,11 @@ import { Request, Response } from 'express';
 import * as empresaService from "../services/empresa.service.js";
 
 import { AuthRequest } from '../middlewares/auth.middleware.js';
-import { EstadoGeneral } from '@prisma/client';
+import { EstadoGeneral, Prisma } from '@prisma/client';
 import { vacanteService } from '../services/vacante.service.js';
 import { prisma } from '../config/db.js';
+import { crearNotificacion } from '../services/notificacion.service.js';
+import { PrioridadNotificacion, TipoNotificacion } from '../types/notificacion.types.js';
 
 export const crearVacante = async (req: AuthRequest, res: Response) => {
   try {
@@ -72,6 +74,16 @@ export const registrarVacante = async (req: AuthRequest, res: Response) => {
       empresa: { connect: { id: empresaId } },
       directorValida: { connect: { id: directorId } },
       ...(convenioConnect && { convenio: convenioConnect }),
+    });
+
+    await crearNotificacion({
+      tipo: TipoNotificacion.VACANTE_APROBADA,
+      titulo: "Vacante creada y aprobada",
+      mensaje: `Tu vacante "${vacante.titulo}" ha sido creada y aprobada por el director.`,
+      prioridad: PrioridadNotificacion.ALTA,
+      destinatarioId: empresa.usuarioId,
+      destinatarioRol: "EMPRESA",
+      data: { vacanteId: vacante.id }
     });
 
     return res.status(201).json({ message: "Vacante creada y aprobada correctamente", data: vacante });
@@ -194,12 +206,77 @@ export const listarVacantesAprobadas = async (req: Request, res: Response) => {
   }
 };
 
+export const listarVacantesPersonalizadas = async (req: AuthRequest, res: Response) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+
+    // Aquí asumimos que ya tienes middleware de auth y req.user.id es el estudiante logueado
+    const usuarioId = req.user?.id;
+
+    const estudiante = await prisma.estudiante.findUnique({
+      where: { usuarioId },
+      select: {
+        area: true,
+        habilidadesTecnicas: true
+      }
+    });
+
+    if (!estudiante) {
+      return res.status(404).json({ message: "Estudiante no encontrado" });
+    }
+
+    // Construimos el filtro
+    const where: Prisma.VacanteWhereInput = {
+      estado: EstadoGeneral.APROBADA,
+      OR: [
+        { area: estudiante.area || undefined },
+        { habilidadesTecnicas: { hasSome: estudiante.habilidadesTecnicas } }
+      ]
+    };
+
+    const { data, total, totalPages } = await vacanteService.getPaginate({
+      skip: (Number(page) - 1) * Number(limit),
+      take: Number(limit),
+      where,
+    });
+
+    return res.status(200).json({
+      message: "Vacantes personalizadas obtenidas correctamente",
+      data,
+      total,
+      page: Number(page),
+      totalPages
+    });
+  } catch (error: any) {
+    console.error(error);
+    return res.status(500).json({ message: "Error al listar vacantes personalizadas", error: error.message });
+  }
+};
+
 export const aprobarVacante = async (req: AuthRequest, res: Response) => {
   try {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "ID inválido" });
 
     const vacante = await vacanteService.update(id, { estado: EstadoGeneral.APROBADA });
+    
+    const empresa = await prisma.empresa.findUnique({
+      where: { id: vacante.empresaId },
+      include: { usuario: true }
+    });
+    if (!empresa) throw new Error("Empresa no encontrada");
+
+    await crearNotificacion({
+      tipo: TipoNotificacion.VACANTE_APROBADA,
+      titulo: "Vacante aprobada",
+      mensaje: `Tu vacante "${vacante.titulo}" ha sido aprobada.`,
+      prioridad: PrioridadNotificacion.ALTA,
+      destinatarioId: empresa.usuarioId,
+      destinatarioRol: "EMPRESA",
+      data: {
+        vacanteId: vacante.id
+      }
+    });
     return res.status(200).json({ message: "Vacante aprobada correctamente", data: vacante });
   } catch (error: any) {
     console.error(error);
@@ -213,6 +290,22 @@ export const rechazarVacante = async (req: AuthRequest, res: Response) => {
     if (isNaN(id)) return res.status(400).json({ message: "ID inválido" });
 
     const vacante = await vacanteService.update(id, { estado: EstadoGeneral.RECHAZADA });
+    const empresa = await prisma.empresa.findUnique({
+      where: { id: vacante.empresaId }
+    });
+    if (!empresa) throw new Error("Empresa no encontrada");
+
+    await crearNotificacion({
+      tipo: TipoNotificacion.VACANTE_RECHAZADA,
+      titulo: "Vacante rechazada",
+      mensaje: `Tu vacante "${vacante.titulo}" ha sido rechazada.`,
+      prioridad: PrioridadNotificacion.ALTA,
+      destinatarioId: empresa.usuarioId,
+      destinatarioRol: "EMPRESA",
+      data: {
+        vacanteId: vacante.id
+      }
+    });
     return res.status(200).json({ message: "Vacante rechazada correctamente", data: vacante });
   } catch (error: any) {
     console.error(error);
