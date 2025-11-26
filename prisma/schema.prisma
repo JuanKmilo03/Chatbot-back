@@ -65,10 +65,11 @@ model Estudiante {
   semestre            Int?
   area                String? // área de interés
   perfilCompleto      Boolean         @default(false) // si completó CV
-  hojaDeVidaUrl  String?
+  hojaDeVidaUrl       String?
 
   practicas     Practica[]
   postulaciones Postulacion[]
+  documentos    Documento[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -91,6 +92,7 @@ model Empresa {
   convenios          Convenio[]
   vacantes           Vacante[]
   evaluaciones       Evaluacion[]
+  documentos         Documento[]
   representanteLegal RepresentanteLegal?
   conversaciones     Conversacion[]
   estudiantes        Estudiante[]
@@ -275,27 +277,36 @@ model Reporte {
 }
 
 model Documento {
-  id             Int           @id @default(autoincrement())
-  titulo         String
-  descripcion    String?
-  categoria      TipoDocumento @default(GENERAL)
-  archivoUrl     String
-  nombreArchivo  String?
-  publicId       String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  directorId     Int
-  director       Director      @relation(fields: [directorId], references: [id], onDelete: Cascade)
-  convenioId     Int?
-  Convenio       Convenio?     @relation(fields: [convenioId], references: [id])
+  id            Int           @id @default(autoincrement())
+  titulo        String
+  descripcion   String?
+  categoria     TipoDocumento @default(GENERAL)
+  archivoUrl    String
+  nombreArchivo String?
+  publicId      String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  directorId    Int?
+  director      Director?     @relation(fields: [directorId], references: [id], onDelete: Cascade)
+  convenioId    Int?
+  Convenio      Convenio?     @relation(fields: [convenioId], references: [id])
+  estudianteId  Int?
+  estudiante    Estudiante?   @relation(fields: [estudianteId], references: [id])
+  empresaId     Int?
+  empresa       Empresa?      @relation(fields: [empresaId], references: [id])
 }
 
 enum TipoDocumento {
   GENERAL
+  HOJA_DE_VIDA
+  CARTA_PRESENTACION
+  ACTA_INICIO
+  ACTA_FIN
+  CRONOGRAMA
   CONVENIO_PLANTILLA
   CONVENIO_EMPRESA
-  ESTUDIANTE
-  EMPRESA
+  DOCUMENTO_EMPRESA
+  DOCUMENTO_ESTUDIANTE
 }
 
 model RepresentanteLegal {

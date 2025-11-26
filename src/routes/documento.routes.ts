@@ -8,11 +8,8 @@ import {
   eliminarDocumento,
   obtenerPlantillaConvenio,
   obtenerDocumentosGenerales,
-  obtenerDocumentoId,
   obtenerDocumentosEmpresa,
   obtenerDocumentosEstudiante,
-  obtenerDocumentoEmpresaPorId,
-  obtenerDocumentoEstudiantePorId,
 } from "../controllers/documento.controller.js";
 import { Rol } from "@prisma/client";
 import { authorizeRoles, verifyToken } from "../middlewares/auth.middleware.js";
@@ -35,19 +32,16 @@ router.get("/",
 
 router.get("/publicos/generales", 
   obtenerDocumentosGenerales);
-// router.get("/publicos/:id", obtenerDocumentoId);
 
 router.get("/empresa", 
   verifyToken, 
   authorizeRoles(Rol.EMPRESA), 
   obtenerDocumentosEmpresa);
-// router.get("/empresa/:id", verifyToken, authorizeRoles(Rol.EMPRESA, Rol.ADMIN), obtenerDocumentoEmpresaPorId);
 
 router.get("/estudiante", 
   verifyToken, 
   authorizeRoles(Rol.ESTUDIANTE), 
   obtenerDocumentosEstudiante);
-// router.get("/estudiante/:id", verifyToken, authorizeRoles(Rol.ESTUDIANTE, Rol.ADMIN), obtenerDocumentoEstudiantePorId);
 
 router.get("/convenio",
   verifyToken,
