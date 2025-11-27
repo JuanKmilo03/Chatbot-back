@@ -1,11 +1,9 @@
 // src/controllers/documento.controller.ts
 import { Request, Response } from "express";
-import { AuthenticatedRequest } from "../middlewares/authFirebase.js";
 import { documentoService } from "../services/documento.service.js";
 import { TipoDocumento } from "@prisma/client";
 import { AuthRequest } from '../middlewares/auth.middleware.js';
 import { AppError } from '../utils/errors.js';
-import cloudinary from "../config/cloudinary.config.js";
 
 export const subirDocumento = async (req: AuthRequest, res: Response) => {
   try {
@@ -41,7 +39,8 @@ export const listarDocumentos = async (req: Request, res: Response) => {
   try {
     const filtros: any = {};
 
-    if (req.query.categoria) filtros.categoria = req.query.categoria;
+    const CATEGORIAS_VALIDAS = [ "GENERAL", "CRONOGRAMA", "CONVENIO_PLANTILLA", "DOCUMENTO_EMPRESA", "DOCUMENTO_ESTUDIANTE", ];
+    filtros.categoria = { in: CATEGORIAS_VALIDAS };
     if (req.query.titulo) filtros.titulo = { contains: req.query.titulo as string, mode: "insensitive" };
     if (req.query.directorId) filtros.directorId = Number(req.query.directorId);
     if (req.query.convenioId) filtros.convenioId = Number(req.query.convenioId);

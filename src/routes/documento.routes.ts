@@ -15,7 +15,7 @@ import { Rol } from "@prisma/client";
 import { authorizeRoles, verifyToken } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
-const upload = multer({ dest: "uploads/" });
+const upload = multer({ storage: multer.memoryStorage() });
 
 router.post(
   "/subir",
