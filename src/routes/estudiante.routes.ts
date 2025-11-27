@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authorizeRoles, verifyToken } from '../middlewares/auth.middleware.js';
 import { Rol } from '@prisma/client';
-import { cargarEstudiantesExcel, cargarMasivo, estudianteController, listarEstudiantesIndependiente, listarEstudiantesPractica, subirHojaVida } from '../controllers/estudiante.controller.js';
+import { cargarEstudiantesExcel, cargarMasivo, estudianteController, listarEstudiantesIndependiente, listarEstudiantesPractica, subirHojaVida, uploadHojaVida } from '../controllers/estudiante.controller.js';
 import { upload } from '../middlewares/upload.js';
 import { authFirebase } from '../middlewares/authFirebase.js';
 
@@ -379,7 +379,147 @@ router.patch(
 router.post('/cargar',verifyToken, authorizeRoles(Rol.DIRECTOR, Rol.ADMIN), upload.single('archivo'), cargarMasivo);
 
 router.patch('/:id/completar-perfil', verifyToken, authorizeRoles(Rol.ESTUDIANTE), estudianteController.completarPerfil);
-// router.put("/estudiantes/:id/perfil-completo", upload.single("hojaDeVida"),estudianteController.actualizarPerfilCompleto);
+
+/**
+ * @swagger
+ * /api/estudiantes/me/upload-hoja-vida:
+ *   post:
+ *     summary: Subir hoja de vida del estudiante autenticado (obtiene ID del JWT)
+ *     tags: [Estudiantes]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - archivo
+ *             properties:
+ *               archivo:
+ *                 type: string
+ *                 format: binary
+ *                 description: Archivo PDF o Word (máx. 5MB)
+ *     responses:
+ *       200:
+ *         description: Hoja de vida subida exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Hoja de vida subida exitosamente
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     hojaDeVidaUrl:
+ *                       type: string
+ *                     estudiante:
+ *                       type: object
+ *                     uploadedAt:
+ *                       type: string
+ *       400:
+ *         description: Archivo no válido o faltante
+ *       401:
+ *         description: No autenticado
+ *       500:
+ *         description: Error del servidor
+ */
+router.post('/me/upload-hoja-vida', verifyToken, authorizeRoles(Rol.ESTUDIANTE), upload.single('archivo'), estudianteController.subirMiHojaDeVida);
+
+/**
+ * @swagger
+ * /api/estudiantes/{id}/upload-hoja-vida:
+ *   post:
+ *     summary: Subir hoja de vida del estudiante (JWT)
+ *     tags: [Estudiantes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del estudiante
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - archivo
+ *             properties:
+ *               archivo:
+ *                 type: string
+ *                 format: binary
+ *                 description: Archivo PDF o Word (máx. 5MB)
+ *     responses:
+ *       200:
+ *         description: Hoja de vida subida exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Hoja de vida subida exitosamente
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     hojaDeVidaUrl:
+ *                       type: string
+ *                     estudiante:
+ *                       type: object
+ *                     uploadedAt:
+ *                       type: string
+ *       400:
+ *         description: Archivo no válido o faltante
+ *       403:
+ *         description: No autorizado (solo estudiantes)
+ *       500:
+ *         description: Error del servidor
+ */
+router.post('/:id/upload-hoja-vida', verifyToken, authorizeRoles(Rol.ESTUDIANTE), upload.single('archivo'), estudianteController.subirHojaDeVida);
+
+/**
+ * @swagger
+ * /api/estudiantes/upload-hoja-vida:
+ *   post:
+ *     summary: Subir hoja de vida del estudiante autenticado (Firebase)
+ *     tags: [Estudiantes]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - archivo
+ *             properties:
+ *               archivo:
+ *                 type: string
+ *                 format: binary
+ *                 description: Archivo PDF o Word (máx. 5MB)
+ *     responses:
+ *       200:
+ *         description: Hoja de vida subida exitosamente
+ *       400:
+ *         description: Archivo no válido o faltante
+ *       403:
+ *         description: No autorizado (solo estudiantes)
+ *       500:
+ *         description: Error del servidor
+ */
+router.post('/upload-hoja-vida', authFirebase, upload.single('archivo'), uploadHojaVida);
+
 router.post('/cargar-excel', upload.single('archivo'), cargarEstudiantesExcel);
 router.get('/estudiantes-practica', listarEstudiantesPractica);
 router.post('/:id/subirhoja', verifyToken, authorizeRoles(Rol.ESTUDIANTE), upload.single('archivo'), subirHojaVida);

@@ -6,6 +6,7 @@ import { leerCSV, leerExcel } from '../utils/fileParse.js';
 import path from 'path';
 import multer from 'multer';
 import { documentoService } from '../services/documento.service.js';
+import { deleteFromCloudinary, uploadToCloudinary } from '../config/cloudinary.config.js';
 
 const estudianteExcelService = new EstudianteExcelService();
 const prisma = new PrismaClient();
@@ -54,6 +55,115 @@ export const subirHojaVida = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ error: error.message });
   }
 }
+
+export const uploadHojaVida = async (req: Request, res: Response) => {
+  try {
+    // Usar el email del token de Firebase
+    const userEmail = (req as any).user.email;
+
+    if (!userEmail) {
+      return res.status(400).json({
+        error: 'Email no disponible en el token'
+      });
+    }
+
+    const usuario = await prisma.usuario.findFirst({
+      where: { email: userEmail },
+      include: { estudiante: true }
+    });
+
+    if (!usuario || !usuario.estudiante) {
+      return res.status(403).json({
+        error: 'No autorizado',
+        details: 'Solo los estudiantes pueden subir hojas de vida'
+      });
+    }
+
+    // Verificar que se haya subido un archivo
+    if (!req.file) {
+      return res.status(400).json({
+        error: 'Archivo requerido',
+        details: 'Debe subir un archivo PDF o Word'
+      });
+    }
+
+    // Validar tipo de archivo
+    const allowedMimeTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+
+    if (!allowedMimeTypes.includes(req.file.mimetype)) {
+      return res.status(400).json({
+        error: 'Formato no válido',
+        details: 'Solo se permiten archivos PDF o Word (DOC, DOCX)'
+      });
+    }
+
+    // Validar tamaño del archivo (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (req.file.size > maxSize) {
+      return res.status(400).json({
+        error: 'Archivo muy grande',
+        details: 'El tamaño máximo permitido es 5MB'
+      });
+    }
+
+    // Subir a Cloudinary
+    const uploadResult = await uploadToCloudinary(req.file.buffer, {
+      folder: 'hojas_vida',
+      resource_type: 'auto',
+      public_id: `hoja_vida_${usuario.estudiante.id}`
+    });
+
+    // Eliminar hoja de vida anterior si existe
+    if (usuario.estudiante.hojaDeVidaUrl) {
+      try {
+        await deleteFromCloudinary(usuario.estudiante.hojaDeVidaUrl);
+      } catch (error) {
+        console.warn('No se pudo eliminar la hoja de vida anterior:', error);
+      }
+    }
+
+    // Actualizar la URL en la base de datos
+    const estudianteActualizado = await prisma.estudiante.update({
+      where: { id: usuario.estudiante.id },
+      data: {
+        hojaDeVidaUrl: uploadResult.secure_url
+      },
+      include: {
+        usuario: {
+          select: {
+            nombre: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    res.status(200).json({
+      message: 'Hoja de vida subida exitosamente',
+      data: {
+        hojaVidaUrl: estudianteActualizado.hojaDeVidaUrl,
+        estudiante: {
+          id: estudianteActualizado.id,
+          nombres: estudianteActualizado.usuario.nombre,
+          programaAcademico: estudianteActualizado.programaAcademico,
+          semestre: estudianteActualizado.semestre
+        },
+        uploadedAt: new Date().toISOString()
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Error al subir hoja de vida:', error);
+    res.status(500).json({
+      error: 'Error interno del servidor',
+      details: error.message
+    });
+  }
+};
 
 const storage = multer.memoryStorage();
 export const upload = multer({ storage });
@@ -568,6 +678,201 @@ export const estudianteController = {
       return res.status(500).json({
         message: "Error reactivando estudiante",
         data: null
+      });
+    }
+  },
+
+  /**
+   * Subir hoja de vida automáticamente (obtiene ID desde JWT)
+   * @route POST /api/estudiantes/me/upload-hoja-vida
+   * @access Estudiante
+   */
+  subirMiHojaDeVida: async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({
+          message: "Usuario no autenticado",
+          data: null
+        });
+      }
+
+      // Obtener el estudiante desde el userId del JWT
+      const estudiante = await EstudianteService.obtenerPorUsuarioId(userId);
+
+      // Verificar que se haya subido un archivo
+      if (!req.file) {
+        return res.status(400).json({
+          message: "Archivo requerido",
+          details: "Debe subir un archivo PDF o Word"
+        });
+      }
+
+      // Validar tipo de archivo
+      const allowedMimeTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ];
+
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        return res.status(400).json({
+          message: "Formato no válido",
+          details: "Solo se permiten archivos PDF o Word (DOC, DOCX)"
+        });
+      }
+
+      // Validar tamaño del archivo (max 5MB)
+      const maxSize = 5 * 1024 * 1024;
+      if (req.file.size > maxSize) {
+        return res.status(400).json({
+          message: "Archivo muy grande",
+          details: "El tamaño máximo permitido es 5MB"
+        });
+      }
+
+      // Subir a Cloudinary
+      const uploadResult = await uploadToCloudinary(req.file.buffer, {
+        folder: 'hojas_vida',
+        resource_type: 'auto',
+        public_id: `hoja_vida_${estudiante.id}`
+      });
+
+      // Eliminar hoja de vida anterior si existe
+      if (estudiante.hojaDeVidaUrl) {
+        try {
+          await deleteFromCloudinary(estudiante.hojaDeVidaUrl);
+        } catch (error) {
+          console.warn('No se pudo eliminar la hoja de vida anterior:', error);
+        }
+      }
+
+      // Actualizar estudiante con la nueva URL
+      const estudianteActualizado = await EstudianteService.actualizar(estudiante.id, {
+        hojaDeVidaUrl: uploadResult.secure_url
+      });
+
+      return res.status(200).json({
+        message: "Hoja de vida subida exitosamente",
+        data: {
+          hojaDeVidaUrl: estudianteActualizado.hojaDeVidaUrl,
+          estudiante: {
+            id: estudianteActualizado.id,
+            nombre: estudianteActualizado.usuario?.nombre,
+            programaAcademico: estudianteActualizado.programaAcademico,
+            semestre: estudianteActualizado.semestre
+          },
+          uploadedAt: new Date().toISOString()
+        }
+      });
+
+    } catch (error: any) {
+      console.error('Error al subir hoja de vida:', error);
+      return res.status(500).json({
+        message: "Error interno del servidor",
+        details: error.message
+      });
+    }
+  },
+
+  /**
+   * Subir hoja de vida con autenticación JWT
+   * @route POST /api/estudiantes/:id/upload-hoja-vida
+   * @access Estudiante (propio)
+   */
+  subirHojaDeVida: async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({
+          message: "Usuario no autenticado",
+          data: null
+        });
+      }
+
+      // Verificar que el estudiante solo puede subir su propia hoja de vida
+      const estudiante = await EstudianteService.obtenerPorUsuarioId(userId);
+      if (estudiante.id !== Number(id)) {
+        return res.status(403).json({
+          message: "No puedes subir hoja de vida para otro estudiante",
+          data: null
+        });
+      }
+
+      // Verificar que se haya subido un archivo
+      if (!req.file) {
+        return res.status(400).json({
+          message: "Archivo requerido",
+          details: "Debe subir un archivo PDF o Word"
+        });
+      }
+
+      // Validar tipo de archivo
+      const allowedMimeTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ];
+
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        return res.status(400).json({
+          message: "Formato no válido",
+          details: "Solo se permiten archivos PDF o Word (DOC, DOCX)"
+        });
+      }
+
+      // Validar tamaño del archivo (max 5MB)
+      const maxSize = 5 * 1024 * 1024;
+      if (req.file.size > maxSize) {
+        return res.status(400).json({
+          message: "Archivo muy grande",
+          details: "El tamaño máximo permitido es 5MB"
+        });
+      }
+
+      // Subir a Cloudinary
+      const uploadResult = await uploadToCloudinary(req.file.buffer, {
+        folder: 'hojas_vida',
+        resource_type: 'auto',
+        public_id: `hoja_vida_${estudiante.id}`
+      });
+
+      // Eliminar hoja de vida anterior si existe
+      if (estudiante.hojaDeVidaUrl) {
+        try {
+          await deleteFromCloudinary(estudiante.hojaDeVidaUrl);
+        } catch (error) {
+          console.warn('No se pudo eliminar la hoja de vida anterior:', error);
+        }
+      }
+
+      // Actualizar estudiante con la nueva URL
+      const estudianteActualizado = await EstudianteService.actualizar(Number(id), {
+        hojaDeVidaUrl: uploadResult.secure_url
+      });
+
+      return res.status(200).json({
+        message: "Hoja de vida subida exitosamente",
+        data: {
+          hojaDeVidaUrl: estudianteActualizado.hojaDeVidaUrl,
+          estudiante: {
+            id: estudianteActualizado.id,
+            nombre: estudianteActualizado.usuario?.nombre,
+            programaAcademico: estudianteActualizado.programaAcademico,
+            semestre: estudianteActualizado.semestre
+          },
+          uploadedAt: new Date().toISOString()
+        }
+      });
+
+    } catch (error: any) {
+      console.error('Error al subir hoja de vida:', error);
+      return res.status(500).json({
+        message: "Error interno del servidor",
+        details: error.message
       });
     }
   },

@@ -508,6 +508,22 @@ export class EstudianteService {
     return estudianteActualizado;
   }
 
+  static async subirHojaDeVida(id: number, hojaDeVidaUrl: string) {
+    const existe = await prisma.estudiante.findUnique({ where: { id } });
+    if (!existe) throw new Error('Estudiante no encontrado');
+
+    const estudianteActualizado = await prisma.estudiante.update({
+      where: { id },
+      data: {
+        hojaDeVidaUrl,
+        perfilCompleto: true
+      },
+      include: { usuario: true },
+    });
+
+    return estudianteActualizado;
+  }
+
   static async buscar(filtros: Prisma.EstudianteWhereInput = {}) {
     return prisma.estudiante.findMany({
       where: filtros,

@@ -31,6 +31,14 @@ export class RepresentanteService {
       throw new Error("El nombre completo es requerido");
     }
 
+    if (!data.tipoDocumento || data.tipoDocumento.trim() === "") {
+      throw new Error("El tipo de documento es requerido");
+    }
+
+    if (!data.numeroDocumento || data.numeroDocumento.trim() === "") {
+      throw new Error("El número de documento es requerido");
+    }
+
     if (!data.email || !this.isValidEmail(data.email)) {
       throw new Error("El email es inválido o está vacío");
     }
