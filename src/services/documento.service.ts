@@ -10,7 +10,26 @@ const TIPOS_UNICOS: ReadonlyArray<TipoDocumento> = [
 ]
 
 class DocumentoService {
-  async subirDocumento(file: Express.Multer.File, data: Prisma.DocumentoCreateInput, folder: string,  tx: Prisma.TransactionClient = prisma) {
+  async subirDocumento(file: Express.Multer.File, data: Prisma.DocumentoCreateInput, folder: string, tx: Prisma.TransactionClient = prisma) {
+
+    if (data.categoria === "HOJA_DE_VIDA" && data.estudiante?.connect?.id) {
+      const existe = await tx.documento.findFirst({
+        where: {
+          categoria: "HOJA_DE_VIDA",
+          estudiante: { id: data.estudiante.connect.id }
+        }
+      });
+
+      if (existe) {
+        return this.actualizarDocumento(
+          existe.id,
+          data,
+          file,
+          folder,
+          tx
+        );
+      }
+    }
 
     if (TIPOS_UNICOS.includes(data.categoria as TipoDocumento)) {
       const existe = await tx.documento.findFirst({
@@ -101,7 +120,7 @@ class DocumentoService {
     const documento = await tx.documento.findUnique({ where: { id } });
     if (!documento) throw new Error("Documento no encontrado");
 
-    let archivoActualizado:  Partial<Prisma.DocumentoUpdateInput> = {};
+    let archivoActualizado: Partial<Prisma.DocumentoUpdateInput> = {};
 
     if (nuevoArchivo) {
 
