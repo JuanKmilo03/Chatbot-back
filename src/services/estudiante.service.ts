@@ -410,7 +410,6 @@ export class EstudianteService {
   }
 
   static async obtenerPorId(id: number) {
-    console.log('🔍 obtenerPorId llamado con id:', id);
 
     if (!id || typeof id !== 'number') {
       console.error('obtenerPorId llamado SIN id o con id inválido');
@@ -471,16 +470,20 @@ export class EstudianteService {
     return estudiante;
   }
 
-  static async actualizar(id: number, data: Prisma.EstudianteUpdateInput) {
+  static async actualizar(
+    id: number,
+    data: Prisma.EstudianteUpdateInput,
+    tx: Prisma.TransactionClient = prisma
+  ) {
     // Verificar si existe el estudiante
-    const existe = await prisma.estudiante.findUnique({ where: { id } });
+    const existe = await tx.estudiante.findUnique({ where: { id } });
     if (!existe) throw new Error("Estudiante no encontrado");
 
     // Validar email si viene dentro de usuario.update
     const emailEnUpdate = (data.usuario as any)?.update?.email;
 
     if (emailEnUpdate) {
-      const usuarioConEmail = await prisma.usuario.findFirst({
+      const usuarioConEmail = await tx.usuario.findFirst({
         where: {
           email: emailEnUpdate,
           id: { not: existe.usuarioId }
@@ -492,7 +495,7 @@ export class EstudianteService {
       }
     }
     // Ejecutar el update directo con Prisma
-    const estudianteActualizado = await prisma.estudiante.update({
+    const estudianteActualizado = await tx.estudiante.update({
       where: { id },
       data,
       include: {

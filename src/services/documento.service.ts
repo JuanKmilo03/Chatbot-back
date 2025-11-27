@@ -10,10 +10,10 @@ const TIPOS_UNICOS: ReadonlyArray<TipoDocumento> = [
 ]
 
 class DocumentoService {
-  async subirDocumento(file: Express.Multer.File, data: Prisma.DocumentoCreateInput, folder: string) {
+  async subirDocumento(file: Express.Multer.File, data: Prisma.DocumentoCreateInput, folder: string,  tx: Prisma.TransactionClient = prisma) {
 
     if (TIPOS_UNICOS.includes(data.categoria as TipoDocumento)) {
-      const existe = await prisma.documento.findFirst({
+      const existe = await tx.documento.findFirst({
         where: { categoria: data.categoria }
       });
 
@@ -22,14 +22,15 @@ class DocumentoService {
           existe.id,
           data,
           file,
-          folder
+          folder,
+          tx
         );
       }
     }
 
     const upload = await CloudinaryService.uploadFile(file, folder);
 
-    const documento = await prisma.documento.create({
+    const documento = await tx.documento.create({
       data: {
         ...data,
         archivoUrl: upload.url,
@@ -94,12 +95,13 @@ class DocumentoService {
     id: number,
     data: Prisma.DocumentoUpdateInput,
     nuevoArchivo?: Express.Multer.File,
-    folder?: string
+    folder?: string,
+    tx: Prisma.TransactionClient = prisma
   ) {
-    const documento = await prisma.documento.findUnique({ where: { id } });
+    const documento = await tx.documento.findUnique({ where: { id } });
     if (!documento) throw new Error("Documento no encontrado");
 
-    let archivoActualizado = {};
+    let archivoActualizado:  Partial<Prisma.DocumentoUpdateInput> = {};
 
     if (nuevoArchivo) {
 
@@ -119,7 +121,7 @@ class DocumentoService {
       };
     }
 
-    return prisma.documento.update({
+    return tx.documento.update({
       where: { id },
       data: {
         ...data,

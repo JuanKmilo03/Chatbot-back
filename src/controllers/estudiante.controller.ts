@@ -1,123 +1,59 @@
 import { Request, Response } from 'express';
 import { EstudianteExcelService, EstudianteService } from "../services/estudiante.service.js";
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient, TipoDocumento } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware.js';
-import { deleteFromCloudinary, uploadToCloudinary } from '../config/cloudinary.config.js';
 import { leerCSV, leerExcel } from '../utils/fileParse.js';
 import path from 'path';
 import multer from 'multer';
+import { documentoService } from '../services/documento.service.js';
 
 const estudianteExcelService = new EstudianteExcelService();
 const prisma = new PrismaClient();
 
-export const uploadHojaVida = async (req: Request, res: Response) => {
+export const subirHojaVida = async (req: AuthRequest, res: Response) => {
   try {
-    // Usar el email del token de Firebase
-    const userEmail = (req as any).user.email;
+    const usuarioId = req.user?.id;
 
-    if (!userEmail) {
-      return res.status(400).json({
-        error: 'Email no disponible en el token'
-      });
-    }
+    const [estudiante] = await EstudianteService.findMany({ usuarioId });
+    if (!estudiante) return res.status(401).json({ error: "Estudiante no existe " });
 
-    const usuario = await prisma.usuario.findFirst({
-      where: { email: userEmail },
-      include: { estudiante: true }
-    });
+    if (!req.file) return res.status(400).json({ error: "Debe subir un archivo" });
 
-    if (!usuario || !usuario.estudiante) {
-      return res.status(403).json({
-        error: 'No autorizado',
-        details: 'Solo los estudiantes pueden subir hojas de vida'
-      });
-    }
-
-    // Verificar que se haya subido un archivo
-    if (!req.file) {
-      return res.status(400).json({
-        error: 'Archivo requerido',
-        details: 'Debe subir un archivo PDF o Word'
-      });
-    }
-
-    // Validar tipo de archivo
-    const allowedMimeTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ];
-
-    if (!allowedMimeTypes.includes(req.file.mimetype)) {
-      return res.status(400).json({
-        error: 'Formato no válido',
-        details: 'Solo se permiten archivos PDF o Word (DOC, DOCX)'
-      });
-    }
-
-    // Validar tamaño del archivo (max 5MB)
-    const maxSize = 5 * 1024 * 1024;
-    if (req.file.size > maxSize) {
-      return res.status(400).json({
-        error: 'Archivo muy grande',
-        details: 'El tamaño máximo permitido es 5MB'
-      });
-    }
-
-    // Subir a Cloudinary
-    const uploadResult = await uploadToCloudinary(req.file.buffer, {
-      folder: 'hojas_vida',
-      resource_type: 'auto',
-      public_id: `hoja_vida_${usuario.estudiante.id}`
-    });
-
-    // Eliminar hoja de vida anterior si existe
-    if (usuario.estudiante.hojaDeVidaUrl) {
-      try {
-        await deleteFromCloudinary(usuario.estudiante.hojaDeVidaUrl);
-      } catch (error) {
-        console.warn('No se pudo eliminar la hoja de vida anterior:', error);
-      }
-    }
-
-    // Actualizar la URL en la base de datos
-    const estudianteActualizado = await prisma.estudiante.update({
-      where: { id: usuario.estudiante.id },
-      data: {
-        hojaDeVidaUrl: uploadResult.secure_url
-      },
-      include: {
-        usuario: {
-          select: {
-            nombre: true,
-            email: true
-          }
-        }
-      }
-    });
-
-    res.status(200).json({
-      message: 'Hoja de vida subida exitosamente',
-      data: {
-        hojaVidaUrl: estudianteActualizado.hojaDeVidaUrl,
-        estudiante: {
-          id: estudianteActualizado.id,
-          nombres: estudianteActualizado.usuario.nombre,
-          programaAcademico: estudianteActualizado.programaAcademico,
-          semestre: estudianteActualizado.semestre
+    const resultado = await prisma.$transaction(async (tx) => {
+      const documento = await documentoService.subirDocumento(
+        req.file!,
+        {
+          titulo: "Hoja de Vida",
+          categoria: TipoDocumento.HOJA_DE_VIDA,
+          estudiante: { connect: { id: estudiante.id } },
+          nombreArchivo: req.file!.originalname,
+          archivoUrl: ""
         },
-        uploadedAt: new Date().toISOString()
-      }
+        `Estudiantes/${estudiante.id}`,
+        tx
+      );
+
+      const estudianteActualizado = await EstudianteService.actualizar(
+        estudiante.id,
+        { hojaDeVidaUrl: documento.archivoUrl },
+        tx
+      );
+
+      return { documento, estudianteActualizado };
     });
 
-  } catch (error: any) {
-    console.error('Error al subir hoja de vida:', error);
-    res.status(500).json({
-      error: 'Error interno del servidor',
-      details: error.message
+    return res.status(200).json({
+      message: "Hoja de vida subida correctamente",
+      data: {
+        hojaVidaUrl: resultado.estudianteActualizado.hojaDeVidaUrl,
+        documentoId: resultado.documento.id
+      }
     });
+  } catch (error: any) {
+    console.error("Error subir hoja de vida:", error);
+    return res.status(500).json({ error: error.message });
   }
-};
+}
 
 const storage = multer.memoryStorage();
 export const upload = multer({ storage });

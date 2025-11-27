@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authorizeRoles, verifyToken } from '../middlewares/auth.middleware.js';
 import { Rol } from '@prisma/client';
-import { cargarEstudiantesExcel, cargarMasivo, estudianteController, listarEstudiantesIndependiente, listarEstudiantesPractica } from '../controllers/estudiante.controller.js';
+import { cargarEstudiantesExcel, cargarMasivo, estudianteController, listarEstudiantesIndependiente, listarEstudiantesPractica, subirHojaVida } from '../controllers/estudiante.controller.js';
 import { upload } from '../middlewares/upload.js';
 import { authFirebase } from '../middlewares/authFirebase.js';
 
@@ -382,6 +382,6 @@ router.patch('/:id/completar-perfil', verifyToken, authorizeRoles(Rol.ESTUDIANTE
 // router.put("/estudiantes/:id/perfil-completo", upload.single("hojaDeVida"),estudianteController.actualizarPerfilCompleto);
 router.post('/cargar-excel', upload.single('archivo'), cargarEstudiantesExcel);
 router.get('/estudiantes-practica', listarEstudiantesPractica);
-// router.post('/:id/subirhoja', upload.single('archivo'), estudianteController.subirHojaDeVida);
+router.post('/:id/subirhoja', verifyToken, authorizeRoles(Rol.ESTUDIANTE), upload.single('archivo'), subirHojaVida);
 
 export default router;
