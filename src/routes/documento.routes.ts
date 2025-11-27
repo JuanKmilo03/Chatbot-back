@@ -45,7 +45,7 @@ router.get("/estudiante",
 
 router.get("/convenio",
   verifyToken,
-  authorizeRoles('ADMIN', 'DIRECTOR'),
+  authorizeRoles('ADMIN', 'DIRECTOR', Rol.EMPRESA),
   obtenerPlantillaConvenio);
 
 router.get("/:id",
