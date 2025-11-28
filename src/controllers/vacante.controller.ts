@@ -51,7 +51,7 @@ export const registrarVacante = async (req: AuthRequest, res: Response) => {
     if (!titulo || !descripcion || !area || !empresaId || !modalidad)
       return res.status(400).json({ message: "Faltan campos obligatorios: titulo, descripcion, area, empresaId o modalidad" });
 
-    const empresa = await empresaService.obtenerEmpresaPorUsuarioId(empresaId);
+    const empresa = await empresaService.obtenerEmpresaPorId(empresaId);
     if (!empresa) return res.status(404).json({ message: "Empresa no encontrada." });
 
     const directorId = req.user!.id;

@@ -4,6 +4,13 @@ const prisma = new PrismaClient();
 
 export const vacanteService = {
   async create(data: Prisma.VacanteCreateInput): Promise<Vacante> {
+    const vacantesCount = await prisma.vacante.count({ where: {
+      empresaId: data.empresa!.connect!.id,
+      estado: "APROBADA"
+    } });
+
+    if ( vacantesCount >= 3) throw new Error("No se puede crear más de 3 vacantes por empresa.");
+
     const vacante = await prisma.vacante.create({
       data: {
         ...data,
@@ -14,6 +21,12 @@ export const vacanteService = {
     return vacante;
   },
   async update(id: number, data: Prisma.VacanteUpdateInput): Promise<Vacante> {
+    const vacanteCount = await prisma.vacante.count({ where: {
+      empresaId: data.empresa!.connect!.id,
+      id: { not: id },
+      estado: "APROBADA"
+    } });
+    if (vacanteCount >= 3) throw new Error("No se puede tener más de 3 vacantes aprobadas por empresa.");
     const vacante = await prisma.vacante.update({
       where: { id },
       data: {
