@@ -121,32 +121,39 @@ class DocumentoService {
     if (!documento) throw new Error("Documento no encontrado");
 
     let archivoActualizado: Partial<Prisma.DocumentoUpdateInput> = {};
+    let oldPublicId = documento.publicId;
 
     if (nuevoArchivo) {
 
-      if (documento.publicId) {
-        await CloudinaryService.deleteFile(documento.publicId);
-      }
-
       const upload = await CloudinaryService.uploadFile(
         nuevoArchivo,
-        folder ?? `documentos`
+        folder ?? 'documentos'
       );
 
       archivoActualizado = {
         archivoUrl: upload.url,
         publicId: upload.publicId,
-        nombreArchivo: nuevoArchivo.originalname
+        nombreArchivo: nuevoArchivo.originalname,
       };
     }
 
-    return tx.documento.update({
+    const updated = await tx.documento.update({
       where: { id },
       data: {
         ...data,
         ...archivoActualizado,
       },
     });
+
+    if (nuevoArchivo && oldPublicId) {
+      try {
+        await CloudinaryService.deleteFile(oldPublicId);
+      } catch (err) {
+        console.error("Error eliminando archivo viejo:", err);
+      }
+    }
+
+    return updated;
   }
 }
 

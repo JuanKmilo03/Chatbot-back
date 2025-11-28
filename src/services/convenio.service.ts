@@ -2,111 +2,79 @@ import fs from "fs";
 import { EstadoConvenio, EstadoEmpresa, Prisma, PrismaClient, TipoConvenio, TipoDocumento } from "@prisma/client";
 import { AuthRequest } from "../middlewares/auth.middleware.js";
 import cloudinary from "../config/cloudinary.config.js";
+import { documentoService } from "./documento.service.js";
+import { validarFechas } from "../utils/date.utils.js";
 
 const prisma = new PrismaClient();
 
+
+type ConvenioCreateDTO = Pick<Prisma.ConvenioUncheckedCreateInput, "empresaId" | "nombre" | "descripcion" | "tipo" | "estado" | "observaciones"> & {
+  fechaInicio: string | Date,
+  fechaFin: string | Date
+};
+
 export const convenioService = {
-  async crearConvenioPorDirector({
-    empresaId,
-    nombre,
-    descripcion,
-    tipo,
-    observaciones,
-    fechaInicio,
-    fechaFin,
-    directorId,
-    archivo,
-    estado
-  }: {
-    empresaId: number;
-    nombre: string;
-    descripcion?: string;
-    tipo: string;
-    observaciones?: string;
-    fechaInicio: string | Date;
-    fechaFin: string | Date;
-    directorId: number;
-    archivo?: Express.Multer.File;
-    estado?: EstadoConvenio;
-  }) {
-    const empresa = await prisma.empresa.findUnique({ where: { id: empresaId } });
-    if (!empresa) throw new Error("Empresa no encontrada");
+  async crearConvenioPorDirector(data: ConvenioCreateDTO, archivo: Express.Multer.File | undefined, directorId: number) {
 
-    // 🔥 Parse unificado
-    const inicio = fechaInicio instanceof Date ? fechaInicio : new Date(fechaInicio);
-    const fin = fechaFin instanceof Date ? fechaFin : new Date(fechaFin);
+    return await prisma.$transaction(async (tx) => {
+      const empresa = await tx.empresa.findUnique({ where: { id: data.empresaId }, });
+      if (!empresa) throw new Error("Empresa no encontrada");
 
-    if (isNaN(inicio.getTime()) || isNaN(fin.getTime())) {
-      throw new Error("Las fechas enviadas no son válidas.");
-    }
+      const { inicio, fin } = validarFechas(data.fechaInicio, data.fechaFin);
 
-    if (fin < inicio) {
-      throw new Error("La fecha de fin no puede ser anterior a la fecha de inicio.");
-    }
+      let documentoCreado = null;
 
-    let archivoUrl: string | null = null;
-
-    if (archivo) {
-      try {
-        const result = await cloudinary.uploader.upload(archivo.path, {
-          folder: `Convenios/${empresaId}`,
-          resource_type: "auto",
-          public_id: `Convenio_${Date.now()}`,
-        });
-
-        archivoUrl = result.secure_url;
-
-        // Borrar si subió bien
-        fs.unlinkSync(archivo.path);
-
-      } catch (err) {
-        // Borrar si falló
-        if (archivo.path && fs.existsSync(archivo.path)) {
-          fs.unlinkSync(archivo.path);
-        }
-        throw new Error("Error subiendo archivo a Cloudinary");
+      if (archivo) {
+        documentoCreado = await documentoService.subirDocumento(
+          archivo,
+          {
+            titulo: data.nombre,
+            descripcion: data.descripcion || "Convenio creado por director",
+            categoria: TipoDocumento.CONVENIO_EMPRESA,
+            director: { connect: { id: directorId } },
+            empresa: { connect: { id: data.empresaId } },
+            archivoUrl: "",
+          },
+          `Convenios/${data.empresaId}`,
+          tx
+        );
       }
-    }
-    const convenio = await prisma.convenio.create({
-      data: {
-        empresaId,
-        directorId,
-        nombre,
-        descripcion: descripcion || null,
-        tipo: tipo.toUpperCase() as any,
-        estado: estado || "EN_REVISION",
-        observaciones: observaciones || null,
-        archivoUrl,
-        fechaInicio: inicio,
-        fechaFin: fin,
-        version: 1,
-      },
-    });
 
-    if (estado && estado === EstadoConvenio.APROBADO) {
-      await prisma.empresa.update({
-        where: { id: convenio.empresaId },
+      const convenio = await tx.convenio.create({
         data: {
-          habilitada: true,
-          estado: EstadoEmpresa.HABILITADA,
-        },
-      });
-    }
-
-    if (archivoUrl) {
-      await prisma.documento.create({
-        data: {
-          titulo: nombre,
-          descripcion: descripcion || "Convenio creado por director",
-          categoria: "CONVENIO_EMPRESA",
-          archivoUrl,
+          empresaId: data.empresaId,
           directorId,
-          convenioId: convenio.id,
-        },
-      });
-    }
+          nombre: data.nombre,
+          descripcion: data.descripcion || null,
+          tipo: data.tipo,
+          estado: data.estado || EstadoConvenio.EN_REVISION,
+          observaciones: data.observaciones || null,
+          fechaInicio: inicio,
+          fechaFin: fin,
+          version: 1,
+          archivoUrl: documentoCreado?.archivoUrl || null,
+        }
+      })
 
-    return convenio;
+      if (documentoCreado) {
+        await tx.documento.update({
+          where: { id: documentoCreado.id },
+          data: { convenioId: convenio.id }
+        });
+      }
+
+      if (data.estado === "APROBADO") {
+        await tx.empresa.update({
+          where: { id: convenio.empresaId },
+          data: {
+            habilitada: true,
+            estado: "HABILITADA",
+          }
+        });
+      }
+
+      return convenio;
+    });
   },
   crearConvenioInicial: async (empresaId: number) => {
     const plantilla = await prisma.documento.findFirst({
