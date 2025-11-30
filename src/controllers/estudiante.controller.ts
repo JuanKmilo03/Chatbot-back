@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { EstudianteExcelService, EstudianteService } from "../services/estudiante.service.js";
-import { Prisma, PrismaClient, TipoDocumento } from '@prisma/client';
+import { Prisma, PrismaClient, Rol, TipoDocumento } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware.js';
 import { leerCSV, leerExcel } from '../utils/fileParse.js';
 import path from 'path';
@@ -391,7 +391,7 @@ export const estudianteController = {
    * @access Director | Admin
    */
   obtenerTodos: async (
-    req: Request<{}, {}, {}, Record<string, string>>,
+    req: AuthRequest,
     res: Response
   ) => {
     try {
@@ -408,16 +408,28 @@ export const estudianteController = {
       const filtros: Prisma.EstudianteWhereInput = {};
       const usuarioFilter: Prisma.UsuarioWhereInput = {};
 
+      if (req.user?.rol === Rol.DIRECTOR) {
+        const director = await prisma.director.findUnique({
+          where: { usuarioId: req.user.id }
+        });
+
+        if (!director) {
+          return res.status(404).json({ message: "Director no encontrado" });
+        }
+
+        filtros.programaId = director.programaId;
+      }
+
       if (nombre) {
         usuarioFilter.nombre = {
-          contains: nombre,
+          contains: nombre as string,
           mode: "insensitive",
         };
       }
 
       if (email) {
         usuarioFilter.email = {
-          contains: email,
+          contains: email as string,
           mode: "insensitive",
         };
       }
@@ -427,21 +439,21 @@ export const estudianteController = {
 
       if (codigo) {
         filtros.codigo = {
-          contains: codigo,
+          contains: codigo as string,
           mode: "insensitive",
         };
       }
 
       if (documento) {
         filtros.documento = {
-          contains: documento,
+          contains: documento as string,
           mode: "insensitive",
         };
       }
 
       if (createdAt) {
         filtros.createdAt = {
-          gte: new Date(createdAt),
+          gte: new Date(createdAt as string),
         };
       }
 

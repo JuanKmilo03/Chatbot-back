@@ -128,6 +128,38 @@ export const crearPostulacion = async (data: CrearPostulacionDTO) => {
   return nuevaPostulacion;
 };
 
+export const postularMultiples = async (vacanteId: number, estudianteIds: number[]) => {
+  const resultados = [];
+  const yaPostulados: number[] = [];
+  const creados: number[] = [];
+
+  for (const estudianteId of estudianteIds) {
+    try {
+      const postulacion = await crearPostulacion({
+        estudianteId,
+        vacanteId,
+      });
+
+      creados.push(estudianteId);
+      resultados.push(postulacion);
+
+    } catch (error: any) {
+      if (error.message.includes("ya existe una postulación")) {
+        yaPostulados.push(estudianteId);
+        continue;
+      }
+      throw new Error(`Error con estudiante ${estudianteId}: ${error.message}`);
+    }
+  }
+
+  return {
+    totalRecibidos: estudianteIds.length,
+    creados,
+    yaPostulados,
+    detalle: resultados,
+  };
+}
+
 /**
  * Obtiene las postulaciones de un estudiante
  */
