@@ -18,6 +18,9 @@ export const crearVacante = async (req: AuthRequest, res: Response) => {
     const empresa = await empresaService.obtenerEmpresaPorUsuarioId(req.user!.id);
     if (!empresa) return res.status(404).json({ message: "Empresa no encontrada" });
 
+    const director = await prisma.director.findUnique({ where: { programaId: empresa.programaId } });
+    if (!director) return res.status(404).json({ message: "Director no encontrado" });
+
     // Validar convenio si viene
     let convenioConnect: any = undefined;
     if (convenioId) {
@@ -35,6 +38,16 @@ export const crearVacante = async (req: AuthRequest, res: Response) => {
       habilidadesTecnicas: Array.isArray(habilidadesTecnicas) ? habilidadesTecnicas : [],
       empresa: { connect: { id: empresa.id } },
       ...(convenioConnect && { convenio: convenioConnect }),
+    });
+
+    await crearNotificacion({
+      tipo: TipoNotificacion.VACANTE_APROBADA,
+      titulo: "Nueva Solicitud de Vancate de la empresa " + empresa.usuario.nombre,
+      mensaje: `La solicitud de vacante "${vacante.titulo}" ha sido creada.`,
+      prioridad: PrioridadNotificacion.ALTA,
+      destinatarioId: director.usuarioId,
+      destinatarioRol: "DIRECTOR",
+      data: { vacanteId: vacante.id }
     });
 
     return res.status(201).json({ message: "Vacante creada correctamente", data: vacante });
