@@ -444,10 +444,10 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
 
 
 //Funciones para recuperar contraseña
-export const solicitarRecuperacionContrasenia = async (identificador: string) => {
+export const solicitarRecuperacionContrasenia = async (nit: string) => {
 
   const empresa = await prisma.empresa.findUnique({
-    where: { nit: identificador },
+    where: { nit: nit },
     include: { usuario: true },
   });
 
@@ -463,8 +463,7 @@ export const solicitarRecuperacionContrasenia = async (identificador: string) =>
     { expiresIn: "15m" }
   );
 
-  const enlace = `${process.env.FRONTEND_URL}/recuperar-contrasenia?token=${token}`;
-
+  const enlace = `${process.env.FRONTEND_URL}/#/reset-password?token=${token}`;
   await sendMailWithTemplate(
     usuario.email,
     process.env.SENDGRID_TEMPLATE_RECUPERACION_PASSWORD || 'd-default-template-id',

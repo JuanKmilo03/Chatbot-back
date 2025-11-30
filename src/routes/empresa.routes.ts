@@ -868,7 +868,6 @@ router.patch("/:id/rechazar", verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), 
  */
 router.patch("/:id/estado", verifyToken, authorizeRoles("ADMIN", "DIRECTOR"), toggleEstadoEmpresa)
 
-
 /**
  * @swagger
  * /api/empresas/{id}/editar:
