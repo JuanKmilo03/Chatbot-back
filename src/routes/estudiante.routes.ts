@@ -99,6 +99,7 @@ router.post('/cargar', verifyToken, authorizeRoles(Rol.DIRECTOR, Rol.ADMIN), upl
  *         description: Error del servidor
  */
 router.get('/', verifyToken, authorizeRoles(Rol.DIRECTOR, Rol.ADMIN), estudianteController.obtenerTodos);
+router.get('/vacancia/:vacancyId', verifyToken, authorizeRoles(Rol.DIRECTOR, Rol.ADMIN), estudianteController.obtenerParaVacante);
 
 /**
  * @swagger

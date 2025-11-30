@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { EstudianteExcelService, EstudianteService } from "../services/estudiante.service.js";
-import { Prisma, PrismaClient, Rol, TipoDocumento } from '@prisma/client';
+import { EstadoPostulacion, Prisma, PrismaClient, Rol, TipoDocumento } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware.js';
 import { leerCSV, leerExcel } from '../utils/fileParse.js';
 import path from 'path';
@@ -456,6 +456,74 @@ export const estudianteController = {
           gte: new Date(createdAt as string),
         };
       }
+
+      const { data, total } = await EstudianteService.findManyWithPagination({
+        filtros,
+        skip: Number(skip),
+        take: Number(take),
+      });
+
+      return res.status(200).json({
+        message: "Estudiantes obtenidos correctamente",
+        data,
+        total,
+        pageSize: Number(take),
+        page: Math.floor(Number(skip) / Number(take)) + 1,
+        totalPages: Math.ceil(total / Number(take)),
+      });
+
+    } catch (error: any) {
+      console.error(error);
+      return res.status(500).json({
+        message: "Error obteniendo estudiantes",
+        error: error.message,
+        data: null,
+      });
+    }
+  },
+
+  obtenerParaVacante: async (
+    req: AuthRequest,
+    res: Response
+  ) => {
+    const { vacancyId } = req.params;
+
+    try {
+      const {
+        skip = "0",
+        take = "10",
+        nombre,
+        codigo,
+        documento,
+        email,
+        createdAt
+      } = req.query;
+
+      const filtros: Prisma.EstudianteWhereInput = {};
+      const usuarioFilter: Prisma.UsuarioWhereInput = {};
+
+      if (req.user?.rol === Rol.DIRECTOR) {
+        const director = await prisma.director.findUnique({
+          where: { usuarioId: req.user.id }
+        });
+
+        if (!director) {
+          return res.status(404).json({ message: "Director no encontrado" });
+        }
+
+        filtros.programaId = director.programaId;
+      }
+
+      if (nombre) { usuarioFilter.nombre = { contains: nombre as string, mode: "insensitive", }; }
+      if (email) { usuarioFilter.email = { contains: email as string, mode: "insensitive", }; }
+      if (Object.keys(usuarioFilter).length > 0) { filtros.usuario = usuarioFilter; }
+      if (codigo) { filtros.codigo = { contains: codigo as string, mode: "insensitive", }; }
+      if (documento) { filtros.documento = { contains: documento as string, mode: "insensitive", }; }
+      if (createdAt) { filtros.createdAt = { gte: new Date(createdAt as string), }; }
+
+      const estadosExcluir: EstadoPostulacion[] = ["EN_REVISION", "ACEPTADA", "RECHAZADA"];
+
+      filtros.postulaciones = { none: { vacanteId: Number(vacancyId), estado: { in: estadosExcluir }, }, };
 
       const { data, total } = await EstudianteService.findManyWithPagination({
         filtros,
