@@ -60,12 +60,8 @@ router.get('/listar-independiente', listarEstudiantesIndependiente);
  *       500:
  *         description: Error del servidor
  */
-router.post(
-    '/',
-    verifyToken,
-    authorizeRoles(Rol.DIRECTOR, Rol.ADMIN),
-    estudianteController.crear
-);
+router.post('/', verifyToken, authorizeRoles(Rol.DIRECTOR, Rol.ADMIN), estudianteController.crear);
+router.post('/cargar', verifyToken, authorizeRoles(Rol.DIRECTOR, Rol.ADMIN), upload.single('archivo'), cargarMasivo);
 
 /**
  * @swagger
@@ -102,12 +98,7 @@ router.post(
  *       500:
  *         description: Error del servidor
  */
-router.get(
-    '/',
-    verifyToken,
-    authorizeRoles(Rol.DIRECTOR, Rol.ADMIN),
-    estudianteController.obtenerTodos
-);
+router.get('/', verifyToken, authorizeRoles(Rol.DIRECTOR, Rol.ADMIN), estudianteController.obtenerTodos);
 
 /**
  * @swagger
@@ -131,12 +122,7 @@ router.get(
  *       500:
  *         description: Error del servidor
  */
-router.get(
-    '/me',
-    verifyToken,
-    authorizeRoles(Rol.ESTUDIANTE),
-    estudianteController.obtenerMiPerfil
-);
+router.get('/me', verifyToken, authorizeRoles(Rol.ESTUDIANTE), estudianteController.obtenerMiPerfil);
 
 /**
  * @swagger
@@ -167,12 +153,7 @@ router.get(
  *       500:
  *         description: Error del servidor
  */
-router.get(
-    '/:id',
-    verifyToken,
-    authorizeRoles(Rol.DIRECTOR, Rol.ADMIN, Rol.ESTUDIANTE),
-    estudianteController.obtenerPorId
-);
+router.get('/:id', verifyToken, authorizeRoles(Rol.DIRECTOR, Rol.ADMIN, Rol.ESTUDIANTE), estudianteController.obtenerPorId);
 
 
 /**
@@ -208,12 +189,7 @@ router.get(
  *       500:
  *         description: Error del servidor
  */
-router.patch(
-    '/:id/desactivar',
-    verifyToken,
-    authorizeRoles(Rol.DIRECTOR, Rol.ADMIN),
-    estudianteController.desactivar
-);
+router.patch('/:id/desactivar', verifyToken, authorizeRoles(Rol.DIRECTOR, Rol.ADMIN), estudianteController.desactivar);
 
 /**
  * @swagger
@@ -248,12 +224,7 @@ router.patch(
  *       500:
  *         description: Error del servidor
  */
-router.patch(
-    '/:id/activar',
-    verifyToken,
-    authorizeRoles(Rol.DIRECTOR, Rol.ADMIN),
-    estudianteController.reactivar
-);
+router.patch('/:id/activar', verifyToken, authorizeRoles(Rol.DIRECTOR, Rol.ADMIN), estudianteController.reactivar);
 
 /**
  * @swagger
@@ -309,12 +280,7 @@ router.patch(
  *       500:
  *         description: Error del servidor
  */
-router.put(
-    '/:id',
-    verifyToken,
-    authorizeRoles(Rol.DIRECTOR, Rol.ADMIN, Rol.ESTUDIANTE),
-    estudianteController.actualizar
-);
+router.put('/:id', verifyToken, authorizeRoles(Rol.DIRECTOR, Rol.ADMIN, Rol.ESTUDIANTE), estudianteController.actualizar);
 
 /**
  * @swagger
@@ -370,15 +336,11 @@ router.put(
  *         description: Error del servidor
  */
 router.patch(
-  '/:id/completar-perfil',
-  verifyToken,
-  authorizeRoles(Rol.ESTUDIANTE),
-  estudianteController.completarPerfil
+    '/:id/completar-perfil',
+    verifyToken,
+    authorizeRoles(Rol.ESTUDIANTE),
+    estudianteController.completarPerfil
 );
-
-router.post('/cargar',verifyToken, authorizeRoles(Rol.DIRECTOR, Rol.ADMIN), upload.single('archivo'), cargarMasivo);
-
-router.patch('/:id/completar-perfil', verifyToken, authorizeRoles(Rol.ESTUDIANTE), estudianteController.completarPerfil);
 
 /**
  * @swagger

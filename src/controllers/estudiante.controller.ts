@@ -149,7 +149,6 @@ export const uploadHojaVida = async (req: Request, res: Response) => {
         estudiante: {
           id: estudianteActualizado.id,
           nombres: estudianteActualizado.usuario.nombre,
-          programaAcademico: estudianteActualizado.programaAcademico,
           semestre: estudianteActualizado.semestre
         },
         uploadedAt: new Date().toISOString()
@@ -208,7 +207,6 @@ export const listarEstudiantesIndependiente = async (req: Request, res: Response
       email: est.usuario.email,
       codigoEstudiante: est.codigo,
       telefono: est.telefono,
-      programaAcademico: est.programaAcademico,
       semestre: est.semestre,
       empresa: est.empresa ? est.empresa.usuario.nombre : est.empresaAsignada,
       estadoProceso: est.estadoProceso,
@@ -242,8 +240,9 @@ type EstudianteRow = {
   documento: string;
   activo?: boolean;
 };
-export const cargarMasivo = async (req: Request, res: Response) => {
+export const cargarMasivo = async (req: AuthRequest, res: Response) => {
   try {
+    const directorId = req.user?.id;
     const archivo = req.file;
 
     if (!archivo) {
@@ -270,7 +269,7 @@ export const cargarMasivo = async (req: Request, res: Response) => {
       activo: ["true", "1", true].includes(r.activo as any),
     }));
 
-    const resultado = await EstudianteService.cargarMasivo(rows);
+    const resultado = await EstudianteService.cargarMasivo(rows, directorId!);
 
     return res.json({
       message: "Cargue masivo procesado",
@@ -283,8 +282,9 @@ export const cargarMasivo = async (req: Request, res: Response) => {
   }
 };
 
-export const cargarEstudiantesExcel = async (req: Request, res: Response) => {
+export const cargarEstudiantesExcel = async (req: AuthRequest, res: Response) => {
   try {
+    const directorId = req.user?.id;
     if (!req.file) {
       return res.status(400).json({ error: 'No se envió ningún archivo' });
     }
@@ -297,7 +297,8 @@ export const cargarEstudiantesExcel = async (req: Request, res: Response) => {
 
     const resultado = await estudianteExcelService.procesarArchivoEstudiantes(
       req.file.buffer,
-      req.file.originalname  // Pasar el nombre completo
+      req.file.originalname,  // Pasar el nombre completo
+      directorId!
     );
 
     res.json({
@@ -325,7 +326,6 @@ export const listarEstudiantesPractica = async (req: Request, res: Response) => 
       email: est.usuario.email,
       codigoEstudiante: est.codigo,
       telefono: est.telefono,
-      programaAcademico: est.programaAcademico,
       semestre: est.semestre,
       empresa: est.empresa ? est.empresa.usuario.nombre : est.empresaAsignada,
       estadoProceso: est.estadoProceso,
@@ -347,8 +347,9 @@ export const listarEstudiantesPractica = async (req: Request, res: Response) => 
 
 export const estudianteController = {
 
-  crear: async (req: Request, res: Response) => {
+  crear: async (req: AuthRequest, res: Response) => {
     try {
+      const directorId = req.user?.id;
       const { nombre, email, codigo, documento } = req.body;
 
       if (!nombre || !email || !documento || !codigo) {
@@ -360,7 +361,7 @@ export const estudianteController = {
         email,
         codigo,
         documento
-      });
+      }, directorId!);
 
       return res.status(201).json({
         message: "Estudiante creado exitosamente",
@@ -760,7 +761,6 @@ export const estudianteController = {
           estudiante: {
             id: estudianteActualizado.id,
             nombre: estudianteActualizado.usuario?.nombre,
-            programaAcademico: estudianteActualizado.programaAcademico,
             semestre: estudianteActualizado.semestre
           },
           uploadedAt: new Date().toISOString()
@@ -861,7 +861,6 @@ export const estudianteController = {
           estudiante: {
             id: estudianteActualizado.id,
             nombre: estudianteActualizado.usuario?.nombre,
-            programaAcademico: estudianteActualizado.programaAcademico,
             semestre: estudianteActualizado.semestre
           },
           uploadedAt: new Date().toISOString()

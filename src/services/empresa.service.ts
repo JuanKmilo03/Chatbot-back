@@ -14,6 +14,7 @@ export const registrarEmpresa = async (data: any) => {
     direccion,
     sector,
     descripcion,
+    programaId,
     representanteLegal,
   } = data;
 
@@ -25,11 +26,11 @@ export const registrarEmpresa = async (data: any) => {
   const existeNit = await prisma.empresa.findUnique({ where: { nit } });
   if (existeNit) throw new Error("Ya existe una empresa registrada con este NIT");
 
-  const existeDoc = await prisma.representanteLegal.findUnique({
-    where: { numeroDocumento },
-  });
-
+  const existeDoc = await prisma.representanteLegal.findUnique({ where: { numeroDocumento }, });
   if (existeDoc) throw new Error("Ya existe un representante legal con este número de documento");
+
+  const programaExiste = await prisma.programa.findUnique({ where: { id: programaId } });
+  if (!programaExiste) throw new Error("El programa seleccionado no existe");
 
   // Crear usuario + empresa en una transacción
   const result = await prisma.$transaction(async (tx) => {
@@ -44,6 +45,7 @@ export const registrarEmpresa = async (data: any) => {
     const empresa = await tx.empresa.create({
       data: {
         usuarioId: usuario.id,
+        programaId,
         nit,
         telefono,
         direccion,
@@ -359,7 +361,7 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
     descripcion,
     representanteLegal
   } = data;
-    const { nombreCompleto, tipoDocumento, numeroDocumento, telefono: telRep, email: emailRep } = representanteLegal || {};
+  const { nombreCompleto, tipoDocumento, numeroDocumento, telefono: telRep, email: emailRep } = representanteLegal || {};
 
   // Validar datos únicos
   const existeEmail = await prisma.usuario.findUnique({ where: { email } });
@@ -378,6 +380,14 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
   const passwordGenerada = Math.random().toString(36).slice(-10);
   const hashedPassword = await bcrypt.hash(passwordGenerada, 10);
 
+  const director = await prisma.director.findUnique({
+    where: { usuarioId: directorId },
+  });
+
+  if (!director) {
+    throw new Error("El director asociado no existe");
+  }
+
   const result = await prisma.$transaction(async (tx) => {
     const usuario = await tx.usuario.create({
       data: {
@@ -391,6 +401,7 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
     const empresa = await tx.empresa.create({
       data: {
         usuarioId: usuario.id,
+        programaId: director.programaId,
         nit,
         telefono,
         direccion,

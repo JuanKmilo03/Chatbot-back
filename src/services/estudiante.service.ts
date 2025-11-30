@@ -20,7 +20,7 @@ interface EstudianteExcel {
 export class EstudianteExcelService {
 
   // Método para procesar archivo Excel/CSV
-  async procesarArchivoEstudiantes(archivoBuffer: Buffer, nombreArchivo: string): Promise<{
+  async procesarArchivoEstudiantes(archivoBuffer: Buffer, nombreArchivo: string, directorId: number): Promise<{
     exitosos: number;
     errores: string[]
   }> {
@@ -30,9 +30,6 @@ export class EstudianteExcelService {
     try {
       // Obtener extensión del nombre del archivo
       const extension = nombreArchivo.toLowerCase();
-
-      console.log('Procesando archivo:', nombreArchivo);
-      console.log('Extensión detectada:', extension);
 
       if (extension.endsWith('.xlsx') || extension.endsWith('.xls')) {
         // Procesar Excel
@@ -86,7 +83,7 @@ export class EstudianteExcelService {
 
 
       // Procesar estudiantes válidos
-      const resultados = await this.guardarEstudiantes(estudiantes);
+      const resultados = await this.guardarEstudiantes(estudiantes, directorId);
       errores.push(...resultados.errores);
 
       return {
@@ -138,12 +135,15 @@ export class EstudianteExcelService {
   }
 
 
-  private async guardarEstudiantes(estudiantes: EstudianteExcel[]): Promise<{
+  private async guardarEstudiantes(estudiantes: EstudianteExcel[], directorId: number): Promise<{
     exitosos: number;
     errores: string[]
   }> {
     const errores: string[] = [];
     let exitosos = 0;
+
+    const director = await prisma.director.findUnique({ where: { id: directorId } });
+    if (!director) throw new Error("Director no encontrado");
 
     for (const datosEst of estudiantes) {
       try {
@@ -188,7 +188,6 @@ export class EstudianteExcelService {
                 estadoProceso: datosEst.estadoProceso,
                 codigo: codigoStr, // Campo correcto: codigo
                 telefono: telefonoStr,
-                programaAcademico: datosEst.programaAcademico,
                 semestre: datosEst.semestre
               }
             });
@@ -210,7 +209,7 @@ export class EstudianteExcelService {
                 estadoProceso: datosEst.estadoProceso,
                 codigo: codigoStr,
                 telefono: telefonoStr,
-                programaAcademico: datosEst.programaAcademico,
+                programaId: director.programaId,
                 semestre: datosEst.semestre
               }
             });
@@ -340,38 +339,27 @@ export class EstudianteService {
     return { data, total };
   }
 
-  static create(arg0: { usuario: { create: { nombre: any; email: any; rol: string; }; }; codigo: any; cedula: any; perfilCompleto: boolean; activo: boolean; }) {
-    throw new Error('Method not implemented.');
-  }
   static async crear(data: {
     nombre: string;
     email: string;
     codigo: string;
     documento: string;
-  }) {
+  }, directorId: number) {
     const { nombre, email, codigo, documento } = data;
 
-    // Validación: email ya existe
-    const usuarioExiste = await prisma.usuario.findUnique({
-      where: { email },
-    });
+    const usuarioExiste = await prisma.usuario.findUnique({ where: { email }, });
     if (usuarioExiste) throw new Error("El correo ya está registrado");
 
-    // Validación: documento ya existe
-    const documentoExiste = await prisma.estudiante.findUnique({
-      where: { documento },
-    });
+    const documentoExiste = await prisma.estudiante.findUnique({ where: { documento }, });
     if (documentoExiste) throw new Error("El documento ya está registrado");
 
-    // Validación: código ya existe
-    const codigoExiste = await prisma.estudiante.findUnique({
-      where: { codigo },
-    });
+    const codigoExiste = await prisma.estudiante.findUnique({ where: { codigo }, });
     if (codigoExiste) throw new Error("El código ya está registrado");
 
+    const director  = await prisma.director.findUnique({ where: { id: directorId } });
+    if (!director) throw new Error("Director no encontrado");
 
     const estudiante = await prisma.$transaction(async (tx) => {
-      // Crear usuario
       const usuario = await tx.usuario.create({
         data: {
           nombre,
@@ -390,6 +378,7 @@ export class EstudianteService {
           habilidadesTecnicas: [],
           habilidadesBlandas: [],
           perfil: null,
+          programaId: director.programaId,
         },
         include: { usuario: true },
       });
@@ -561,8 +550,11 @@ export class EstudianteService {
     codigo: string;
     documento: string;
     activo?: boolean;
-  }[]) {
+  }[], directorId: number) {
     const resultados: any[] = [];
+
+    const director = await prisma.director.findUnique({ where: { id: directorId } });
+    if (!director) throw new Error("Director no encontrado");
 
     for (const row of estudiantes) {
       const { nombre, email, codigo, documento, activo = true } = row;
@@ -626,6 +618,7 @@ export class EstudianteService {
                 documento,
                 activo,
                 perfil: null,
+                programaId: director.programaId,
                 habilidadesTecnicas: [],
                 habilidadesBlandas: [],
               },
