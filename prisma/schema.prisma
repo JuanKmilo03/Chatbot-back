@@ -23,7 +23,7 @@ model Usuario {
 model Director {
   id                Int            @id @default(autoincrement())
   usuarioId         Int            @unique
-  programaId        Int?           @unique
+  programaId        Int            @unique
   Facultad          String?
   usuario           Usuario        @relation(fields: [usuarioId], references: [id])
   programa          Programa?      @relation(fields: [programaId], references: [id])
@@ -38,16 +38,21 @@ model Director {
 }
 
 model Programa {
-  id         Int          @id @default(autoincrement())
-  nombre     String       @unique
-  facultad   String
-  directores Director[]
-  Cronograma Cronograma[]
+  id          Int          @id @default(autoincrement())
+  nombre      String       @unique
+  facultad    String
+  directores  Director?
+  Cronograma  Cronograma[]
+  estudiantes Estudiante[]
+  empresas    Empresa[]
 }
 
 model Estudiante {
-  id                  Int             @id @default(autoincrement())
-  usuarioId           Int             @unique
+  id         Int      @id @default(autoincrement())
+  usuarioId  Int      @unique
+  programaId Int
+  programa   Programa @relation(fields: [programaId], references: [id])
+
   documento           String?         @unique // Documento de identidad (opcional, se completa después del registro)
   codigo              String?         @unique
   perfil              String?
@@ -61,7 +66,6 @@ model Estudiante {
   habilidadesTecnicas String[]        @default([]) // array de habilidades técnicas
   habilidadesBlandas  String[]        @default([]) // array de habilidades blandas
   telefono            String?
-  programaAcademico   String?
   semestre            Int?
   area                String? // área de interés
   perfilCompleto      Boolean         @default(false) // si completó CV
@@ -76,19 +80,23 @@ model Estudiante {
 }
 
 model Empresa {
-  id                 Int                 @id @default(autoincrement())
-  usuarioId          Int                 @unique
-  usuario            Usuario             @relation(fields: [usuarioId], references: [id])
-  nit                String              @unique
-  telefono           String?
-  direccion          String?
-  sector             String?
-  descripcion        String?
-  estado             EstadoEmpresa       @default(PENDIENTE)
-  habilitada         Boolean             @default(false) // solo true si tiene convenio activo
-  directorId         Int?
-  director           Director?           @relation(fields: [directorId], references: [id])
-  createdAt          DateTime            @default(now())
+  id         Int      @id @default(autoincrement())
+  usuarioId  Int      @unique
+  programaId Int
+  programa   Programa @relation(fields: [programaId], references: [id])
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id])
+
+  nit         String        @unique
+  telefono    String?
+  direccion   String?
+  sector      String?
+  descripcion String?
+  estado      EstadoEmpresa @default(PENDIENTE)
+  habilitada  Boolean       @default(false) // solo true si tiene convenio activo
+  directorId  Int?
+  director    Director?     @relation(fields: [directorId], references: [id])
+  createdAt   DateTime      @default(now())
+
   convenios          Convenio[]
   vacantes           Vacante[]
   evaluaciones       Evaluacion[]
@@ -96,6 +104,8 @@ model Empresa {
   representanteLegal RepresentanteLegal?
   conversaciones     Conversacion[]
   estudiantes        Estudiante[]
+
+  @@unique([nit, programaId])
 }
 
 enum EstadoEmpresa {
@@ -122,7 +132,6 @@ model Convenio {
   creadoEn      DateTime       @default(now())
   actualizadoEn DateTime       @updatedAt
 
-  // Relaciones
   empresa     Empresa              @relation(fields: [empresaId], references: [id])
   director    Director?            @relation(fields: [directorId], references: [id])
   revisiones  RevisionConvenio[]
@@ -130,7 +139,6 @@ model Convenio {
   vacantes    Vacante[]
   comentarios ComentarioConvenio[]
 
-  // Auto-relación (marco ↔ específicos)
   macroConvenioId Int?
   macroConvenio   Convenio?  @relation("SubConvenios", fields: [macroConvenioId], references: [id])
   subConvenios    Convenio[] @relation("SubConvenios")
@@ -397,6 +405,9 @@ enum TipoNotificacion {
   NUEVA_SOLICITUD_VACANTE
   VACANTE_APROBADA
   VACANTE_RECHAZADA
+  NUEVA_POSTULACION
+  POSTULACION_ACEPTADA
+  POSTULACION_RECHAZADA
 }
 
 enum PrioridadNotificacion {

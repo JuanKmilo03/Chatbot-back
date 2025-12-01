@@ -2,11 +2,10 @@ import { Request, Response } from 'express';
 import * as empresaService from "../services/empresa.service.js";
 
 import { AuthRequest } from '../middlewares/auth.middleware.js';
-import { EstadoGeneral, Prisma } from '@prisma/client';
+import { EstadoGeneral, PrioridadNotificacion, Prisma, TipoNotificacion } from '@prisma/client';
 import { vacanteService } from '../services/vacante.service.js';
 import { prisma } from '../config/db.js';
 import { crearNotificacion } from '../services/notificacion.service.js';
-import { PrioridadNotificacion, TipoNotificacion } from '../types/notificacion.types.js';
 
 export const crearVacante = async (req: AuthRequest, res: Response) => {
   try {
@@ -17,6 +16,9 @@ export const crearVacante = async (req: AuthRequest, res: Response) => {
 
     const empresa = await empresaService.obtenerEmpresaPorUsuarioId(req.user!.id);
     if (!empresa) return res.status(404).json({ message: "Empresa no encontrada" });
+
+    const director = await prisma.director.findUnique({ where: { programaId: empresa.programaId } });
+    if (!director) return res.status(404).json({ message: "Director no encontrado" });
 
     // Validar convenio si viene
     let convenioConnect: any = undefined;
@@ -37,6 +39,16 @@ export const crearVacante = async (req: AuthRequest, res: Response) => {
       ...(convenioConnect && { convenio: convenioConnect }),
     });
 
+    await crearNotificacion({
+      tipo: TipoNotificacion.VACANTE_APROBADA,
+      titulo: "Nueva Solicitud de Vancate de la empresa " + empresa.usuario.nombre,
+      mensaje: `La solicitud de vacante "${vacante.titulo}" ha sido creada.`,
+      prioridad: PrioridadNotificacion.ALTA,
+      destinatarioId: director.usuarioId,
+      destinatarioRol: "DIRECTOR",
+      data: { vacanteId: vacante.id }
+    });
+
     return res.status(201).json({ message: "Vacante creada correctamente", data: vacante });
   } catch (error: any) {
     console.error(error);
@@ -51,7 +63,7 @@ export const registrarVacante = async (req: AuthRequest, res: Response) => {
     if (!titulo || !descripcion || !area || !empresaId || !modalidad)
       return res.status(400).json({ message: "Faltan campos obligatorios: titulo, descripcion, area, empresaId o modalidad" });
 
-    const empresa = await empresaService.obtenerEmpresaPorUsuarioId(empresaId);
+    const empresa = await empresaService.obtenerEmpresaPorId(empresaId);
     if (!empresa) return res.status(404).json({ message: "Empresa no encontrada." });
 
     const directorId = req.user!.id;

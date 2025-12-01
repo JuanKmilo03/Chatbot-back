@@ -8,10 +8,8 @@ import {
   CrearNotificacionDTO,
   FiltrosNotificacion,
   ResultadoPaginadoNotificaciones,
-  TipoNotificacion,
-  PrioridadNotificacion
 } from '../types/notificacion.types.js';
-import { Rol } from '@prisma/client';
+import { PrioridadNotificacion, Rol, TipoNotificacion } from '@prisma/client';
 import { getSocketIO } from '../config/socket.config.js';
 import { sendMailWithTemplate } from '../utils/mailer.js';
 
@@ -171,25 +169,29 @@ const validarDestinatario = async (
 ): Promise<void> => {
   let existe = false;
 
-  switch (rol) {
-    case 'DIRECTOR':
-      existe = !!(await prisma.director.findUnique({
-        where: { id: destinatarioId }
-      }));
-      break;
-    case 'EMPRESA':
-      existe = !!(await prisma.empresa.findUnique({
-        where: { id: destinatarioId }
-      }));
-      break;
-    case 'ESTUDIANTE':
-      existe = !!(await prisma.estudiante.findUnique({
-        where: { id: destinatarioId }
-      }));
-      break;
-    default:
-      throw new Error(`Rol desconocido: ${rol}`);
-  }
+  existe = !!(await prisma.usuario.findUnique({
+    where: { id: destinatarioId }
+  }));
+
+  // switch (rol) {
+  //   case 'DIRECTOR':
+  //     existe = !!(await prisma.director.findUnique({
+  //       where: { id: destinatarioId }
+  //     }));
+  //     break;
+  //   case 'EMPRESA':
+  //     existe = !!(await prisma.empresa.findUnique({
+  //       where: { id: destinatarioId }
+  //     }));
+  //     break;
+  //   case 'ESTUDIANTE':
+  //     existe = !!(await prisma.estudiante.findUnique({
+  //       where: { id: destinatarioId }
+  //     }));
+  //     break;
+  //   default:
+  //     throw new Error(`Rol desconocido: ${rol}`);
+  // }
 
   if (!existe) {
     throw new Error(`Destinatario no encontrado: ${rol} con ID ${destinatarioId}`);

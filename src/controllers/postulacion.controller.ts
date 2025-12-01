@@ -2,9 +2,11 @@ import { Response } from 'express';
 import * as postulacionService from '../services/postulacion.service.js';
 import * as empresaService from '../services/empresa.service.js';
 import { AuthRequest } from '../middlewares/auth.middleware.js';
-import { EstadoPostulacion } from '@prisma/client';
+import { EstadoPostulacion, PrioridadNotificacion, TipoNotificacion } from '@prisma/client';
 import { FiltrosPostulacion } from '../types/postulacion.types.js';
 import { EstudianteService } from '../services/estudiante.service.js';
+import { prisma } from '../config/db.js';
+import { crearNotificacion } from '../services/notificacion.service.js';
 
 // Constantes para códigos de estado HTTP
 const HTTP_STATUS = {
@@ -44,6 +46,9 @@ const ERROR_MESSAGES = {
  */
 const extraerFiltros = (query: any): FiltrosPostulacion => ({
   estado: query.estado as EstadoPostulacion | undefined,
+  estudiante: query.estudiante as string | undefined,
+  vacante: query.vacante as string | undefined,
+  fechaPostula: query.fechaInicio ? new Date(query.fechaInicio) : undefined,
   page: query.page ? Number(query.page) : undefined,
   limit: query.limit ? Number(query.limit) : undefined,
 });
@@ -149,6 +154,36 @@ export const crearPostulacion = async (req: AuthRequest, res: Response) => {
     return manejarError(res, error, ERROR_MESSAGES.ERROR_CREAR_POSTULACION);
   }
 };
+
+export const postularEstudiantes = async (req: AuthRequest, res: Response) => {
+  const { vacanteId } = req.params;
+  const { estudianteIds } = req.body;
+  try {
+    if (!Array.isArray(estudianteIds) || estudianteIds.length === 0) {
+      return res.status(400).json({ message: "Debe enviar estudianteIds (array)" });
+    }
+    const director = await prisma.director.findUnique({
+      where: { usuarioId: req.user?.id }
+    });
+
+    if (!director) {
+      return res.status(403).json({ message: "No está autorizado" });
+    }
+
+    const resultado = await postulacionService.postularMultiples(Number(vacanteId), estudianteIds);
+
+    return res.status(200).json({
+      message: "Postulaciones creadas correctamente",
+      data: resultado
+    });
+  } catch (error: any) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Error al crear postulaciones",
+      error: error.message
+    });
+  }
+}
 
 /**
  * Obtener todas las postulaciones del estudiante autenticado
@@ -265,6 +300,20 @@ export const actualizarEstadoPostulacion = async (
       postulacionId,
       estado as EstadoPostulacion
     );
+
+    await crearNotificacion({
+      tipo: EstadoPostulacion.ACEPTADA ? TipoNotificacion.POSTULACION_ACEPTADA : TipoNotificacion.POSTULACION_RECHAZADA,
+      titulo: estado === EstadoPostulacion.ACEPTADA
+        ? `Postulación Aceptada`
+        : `Postulación Rechazada`,
+      mensaje: estado === EstadoPostulacion.ACEPTADA
+        ? `Su postulación a la vacante ${postulacion.vacante.titulo} ha sido Aprobada`
+        : `Su postulación a la vacante ${postulacion.vacante.titulo} ha sido Rechazada`,
+      prioridad: PrioridadNotificacion.ALTA,
+      destinatarioId: postulacion.estudiante.usuarioId,
+      destinatarioRol: "ESTUDIANTE",
+      data: { vacanteId: postulacion.id }
+    });
 
     return res.status(HTTP_STATUS.OK).json({
       message: SUCCESS_MESSAGES.ESTADO_ACTUALIZADO,

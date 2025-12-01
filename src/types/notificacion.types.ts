@@ -2,26 +2,12 @@
  * Tipos y enumeraciones para el sistema de notificaciones
  */
 
+import { PrioridadNotificacion, TipoNotificacion } from "@prisma/client";
+
 /**
  * Tipos de notificaciones disponibles en el sistema
  */
-export enum TipoNotificacion {
-  CONVENIO_PROXIMO_VENCER = 'CONVENIO_PROXIMO_VENCER',
-  CONVENIO_VENCIDO = 'CONVENIO_VENCIDO',
-  NUEVA_SOLICITUD_VACANTE = 'NUEVA_SOLICITUD_VACANTE',
-  VACANTE_APROBADA = 'VACANTE_APROBADA',
-  VACANTE_RECHAZADA = 'VACANTE_RECHAZADA',
-}
 
-/**
- * Prioridad de la notificación
- */
-export enum PrioridadNotificacion {
-  BAJA = 'BAJA',
-  MEDIA = 'MEDIA',
-  ALTA = 'ALTA',
-  URGENTE = 'URGENTE',
-}
 
 /**
  * Estructura base de una notificación
@@ -41,7 +27,7 @@ export interface NotificacionBase {
  * Notificación de convenio próximo a vencer
  */
 export interface NotificacionConvenioVencimiento extends NotificacionBase {
-  tipo: TipoNotificacion.CONVENIO_PROXIMO_VENCER | TipoNotificacion.CONVENIO_VENCIDO;
+  tipo: "CONVENIO_PROXIMO_VENCER" | "CONVENIO_VENCIDO";
   data: {
     convenioId: number;
     nombreConvenio: string;
@@ -56,7 +42,7 @@ export interface NotificacionConvenioVencimiento extends NotificacionBase {
  * Notificación de nueva solicitud de vacante
  */
 export interface NotificacionNuevaVacante extends NotificacionBase {
-  tipo: TipoNotificacion.NUEVA_SOLICITUD_VACANTE;
+  tipo: "NUEVA_SOLICITUD_VACANTE";
   data: {
     vacanteId: number;
     tituloVacante: string;
@@ -71,7 +57,7 @@ export interface NotificacionNuevaVacante extends NotificacionBase {
  * Notificación de cambio de estado de vacante
  */
 export interface NotificacionEstadoVacante extends NotificacionBase {
-  tipo: TipoNotificacion.VACANTE_APROBADA | TipoNotificacion.VACANTE_RECHAZADA;
+  tipo: "VACANTE_APROBADA" | "VACANTE_RECHAZADA";
   data: {
     vacanteId: number;
     tituloVacante: string;

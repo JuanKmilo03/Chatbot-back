@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { EstudianteExcelService, EstudianteService } from "../services/estudiante.service.js";
-import { Prisma, PrismaClient, TipoDocumento } from '@prisma/client';
+import { EstadoPostulacion, Prisma, PrismaClient, Rol, TipoDocumento } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware.js';
 import { leerCSV, leerExcel } from '../utils/fileParse.js';
 import path from 'path';
@@ -149,7 +149,6 @@ export const uploadHojaVida = async (req: Request, res: Response) => {
         estudiante: {
           id: estudianteActualizado.id,
           nombres: estudianteActualizado.usuario.nombre,
-          programaAcademico: estudianteActualizado.programaAcademico,
           semestre: estudianteActualizado.semestre
         },
         uploadedAt: new Date().toISOString()
@@ -208,7 +207,6 @@ export const listarEstudiantesIndependiente = async (req: Request, res: Response
       email: est.usuario.email,
       codigoEstudiante: est.codigo,
       telefono: est.telefono,
-      programaAcademico: est.programaAcademico,
       semestre: est.semestre,
       empresa: est.empresa ? est.empresa.usuario.nombre : est.empresaAsignada,
       estadoProceso: est.estadoProceso,
@@ -242,8 +240,9 @@ type EstudianteRow = {
   documento: string;
   activo?: boolean;
 };
-export const cargarMasivo = async (req: Request, res: Response) => {
+export const cargarMasivo = async (req: AuthRequest, res: Response) => {
   try {
+    const directorId = req.user?.id;
     const archivo = req.file;
 
     if (!archivo) {
@@ -270,7 +269,7 @@ export const cargarMasivo = async (req: Request, res: Response) => {
       activo: ["true", "1", true].includes(r.activo as any),
     }));
 
-    const resultado = await EstudianteService.cargarMasivo(rows);
+    const resultado = await EstudianteService.cargarMasivo(rows, directorId!);
 
     return res.json({
       message: "Cargue masivo procesado",
@@ -283,8 +282,9 @@ export const cargarMasivo = async (req: Request, res: Response) => {
   }
 };
 
-export const cargarEstudiantesExcel = async (req: Request, res: Response) => {
+export const cargarEstudiantesExcel = async (req: AuthRequest, res: Response) => {
   try {
+    const directorId = req.user?.id;
     if (!req.file) {
       return res.status(400).json({ error: 'No se envió ningún archivo' });
     }
@@ -297,7 +297,8 @@ export const cargarEstudiantesExcel = async (req: Request, res: Response) => {
 
     const resultado = await estudianteExcelService.procesarArchivoEstudiantes(
       req.file.buffer,
-      req.file.originalname  // Pasar el nombre completo
+      req.file.originalname,  // Pasar el nombre completo
+      directorId!
     );
 
     res.json({
@@ -325,7 +326,6 @@ export const listarEstudiantesPractica = async (req: Request, res: Response) => 
       email: est.usuario.email,
       codigoEstudiante: est.codigo,
       telefono: est.telefono,
-      programaAcademico: est.programaAcademico,
       semestre: est.semestre,
       empresa: est.empresa ? est.empresa.usuario.nombre : est.empresaAsignada,
       estadoProceso: est.estadoProceso,
@@ -347,8 +347,9 @@ export const listarEstudiantesPractica = async (req: Request, res: Response) => 
 
 export const estudianteController = {
 
-  crear: async (req: Request, res: Response) => {
+  crear: async (req: AuthRequest, res: Response) => {
     try {
+      const directorId = req.user?.id;
       const { nombre, email, codigo, documento } = req.body;
 
       if (!nombre || !email || !documento || !codigo) {
@@ -360,7 +361,7 @@ export const estudianteController = {
         email,
         codigo,
         documento
-      });
+      }, directorId!);
 
       return res.status(201).json({
         message: "Estudiante creado exitosamente",
@@ -390,7 +391,7 @@ export const estudianteController = {
    * @access Director | Admin
    */
   obtenerTodos: async (
-    req: Request<{}, {}, {}, Record<string, string>>,
+    req: AuthRequest,
     res: Response
   ) => {
     try {
@@ -407,16 +408,28 @@ export const estudianteController = {
       const filtros: Prisma.EstudianteWhereInput = {};
       const usuarioFilter: Prisma.UsuarioWhereInput = {};
 
+      if (req.user?.rol === Rol.DIRECTOR) {
+        const director = await prisma.director.findUnique({
+          where: { usuarioId: req.user.id }
+        });
+
+        if (!director) {
+          return res.status(404).json({ message: "Director no encontrado" });
+        }
+
+        filtros.programaId = director.programaId;
+      }
+
       if (nombre) {
         usuarioFilter.nombre = {
-          contains: nombre,
+          contains: nombre as string,
           mode: "insensitive",
         };
       }
 
       if (email) {
         usuarioFilter.email = {
-          contains: email,
+          contains: email as string,
           mode: "insensitive",
         };
       }
@@ -426,23 +439,91 @@ export const estudianteController = {
 
       if (codigo) {
         filtros.codigo = {
-          contains: codigo,
+          contains: codigo as string,
           mode: "insensitive",
         };
       }
 
       if (documento) {
         filtros.documento = {
-          contains: documento,
+          contains: documento as string,
           mode: "insensitive",
         };
       }
 
       if (createdAt) {
         filtros.createdAt = {
-          gte: new Date(createdAt),
+          gte: new Date(createdAt as string),
         };
       }
+
+      const { data, total } = await EstudianteService.findManyWithPagination({
+        filtros,
+        skip: Number(skip),
+        take: Number(take),
+      });
+
+      return res.status(200).json({
+        message: "Estudiantes obtenidos correctamente",
+        data,
+        total,
+        pageSize: Number(take),
+        page: Math.floor(Number(skip) / Number(take)) + 1,
+        totalPages: Math.ceil(total / Number(take)),
+      });
+
+    } catch (error: any) {
+      console.error(error);
+      return res.status(500).json({
+        message: "Error obteniendo estudiantes",
+        error: error.message,
+        data: null,
+      });
+    }
+  },
+
+  obtenerParaVacante: async (
+    req: AuthRequest,
+    res: Response
+  ) => {
+    const { vacancyId } = req.params;
+
+    try {
+      const {
+        skip = "0",
+        take = "10",
+        nombre,
+        codigo,
+        documento,
+        email,
+        createdAt
+      } = req.query;
+
+      const filtros: Prisma.EstudianteWhereInput = {};
+      const usuarioFilter: Prisma.UsuarioWhereInput = {};
+
+      if (req.user?.rol === Rol.DIRECTOR) {
+        const director = await prisma.director.findUnique({
+          where: { usuarioId: req.user.id }
+        });
+
+        if (!director) {
+          return res.status(404).json({ message: "Director no encontrado" });
+        }
+
+        filtros.programaId = director.programaId;
+      }
+
+      if (nombre) { usuarioFilter.nombre = { contains: nombre as string, mode: "insensitive", }; }
+      if (email) { usuarioFilter.email = { contains: email as string, mode: "insensitive", }; }
+      if (Object.keys(usuarioFilter).length > 0) { filtros.usuario = usuarioFilter; }
+      if (codigo) { filtros.codigo = { contains: codigo as string, mode: "insensitive", }; }
+      if (documento) { filtros.documento = { contains: documento as string, mode: "insensitive", }; }
+      if (createdAt) { filtros.createdAt = { gte: new Date(createdAt as string), }; }
+
+      const estadosExcluir: EstadoPostulacion[] = ["EN_REVISION", "ACEPTADA", "RECHAZADA"];
+
+      filtros.postulaciones = { none: { vacanteId: Number(vacancyId), estado: { in: estadosExcluir }, }, };
 
       const { data, total } = await EstudianteService.findManyWithPagination({
         filtros,
@@ -760,7 +841,6 @@ export const estudianteController = {
           estudiante: {
             id: estudianteActualizado.id,
             nombre: estudianteActualizado.usuario?.nombre,
-            programaAcademico: estudianteActualizado.programaAcademico,
             semestre: estudianteActualizado.semestre
           },
           uploadedAt: new Date().toISOString()
@@ -861,7 +941,6 @@ export const estudianteController = {
           estudiante: {
             id: estudianteActualizado.id,
             nombre: estudianteActualizado.usuario?.nombre,
-            programaAcademico: estudianteActualizado.programaAcademico,
             semestre: estudianteActualizado.semestre
           },
           uploadedAt: new Date().toISOString()

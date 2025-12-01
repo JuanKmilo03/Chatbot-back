@@ -3,7 +3,6 @@ import { EstadoConvenio, Prisma, PrismaClient, TipoConvenio } from "@prisma/clie
 import { convenioService } from "../services/convenio.service.js";
 import { AuthRequest } from "../middlewares/auth.middleware.js";
 import path from "path";
-import fs from "fs";
 import { leerCSV, leerExcel, parseFecha } from "../utils/fileParse.js";
 
 const prisma = new PrismaClient();
@@ -18,17 +17,6 @@ export const crearConvenioPorDirector = async (req: AuthRequest, res: Response) 
       return res.status(400).json({ message: "empresaId, nombre, tipo, fechaInicio y fechaFin son obligatorios" });
     }
 
-    const inicio = new Date(fechaInicio);
-    const fin = new Date(fechaFin);
-
-    if (isNaN(inicio.getTime()) || isNaN(fin.getTime())) {
-      return res.status(400).json({ message: "Las fechas enviadas no son válidas." });
-    }
-
-    if (fin < inicio) {
-      return res.status(400).json({ message: "La fecha de fin no puede ser anterior a la fecha de inicio." });
-    }
-
     const convenio = await convenioService.crearConvenioPorDirector({
       empresaId: Number(empresaId),
       nombre,
@@ -37,10 +25,11 @@ export const crearConvenioPorDirector = async (req: AuthRequest, res: Response) 
       observaciones,
       fechaInicio,
       fechaFin,
-      directorId: directorId!,
-      archivo,
       estado
-    });
+    },
+      archivo,
+      directorId!
+    );
 
     res.status(201).json({
       message: "Convenio creado correctamente por directora o admin.",
@@ -70,9 +59,7 @@ export const cargarConveniosMasivo = async (req: AuthRequest, res: Response) => 
       return res.status(400).json({ message: "Debes subir un archivo Excel/CSV con los convenios." });
     }
     const ext = path.extname(archivoExcel.originalname).toLowerCase();
-    if ([".xls", ".xlsx", ".csv"].includes(ext)) {
-      archivoExcel.buffer = fs.readFileSync(archivoExcel.path); 
-    }
+
     let rows: any[];
 
     if (ext === ".csv") {
@@ -99,13 +86,11 @@ export const cargarConveniosMasivo = async (req: AuthRequest, res: Response) => 
         archivo: nombreArchivo
       } = r;
 
-      // Validaciones básicas
       if (!nitEmpresa || !nombre || !tipo || !fechaInicio || !fechaFin) {
         failed.push({ nombre, error: "Faltan campos obligatorios o el NIT." });
         continue;
       }
 
-      // Buscar empresa por NIT
       const empresa = await prisma.empresa.findUnique({
         where: { nit: nitEmpresa.toString().trim() }
       });
@@ -114,24 +99,6 @@ export const cargarConveniosMasivo = async (req: AuthRequest, res: Response) => 
         failed.push({
           nombre,
           error: `No existe una empresa registrada con el NIT ${nitEmpresa}`
-        });
-        continue;
-      }
-
-      // Parsear fechas
-      const inicio = parseFecha(fechaInicio);
-      const fin = parseFecha(fechaFin);
-
-      if (!inicio || !fin) {
-        failed.push({ nombre, error: "Fechas inválidas o con formato incorrecto." });
-        continue;
-      }
-
-      // Validar que fin >= inicio
-      if (fin < inicio) {
-        failed.push({
-          nombre,
-          error: "La fecha de fin no puede ser anterior a la fecha de inicio."
         });
         continue;
       }
@@ -152,15 +119,17 @@ export const cargarConveniosMasivo = async (req: AuthRequest, res: Response) => 
           descripcion,
           tipo,
           observaciones,
-          fechaInicio: inicio,
-          fechaFin: fin,
-          directorId: req.user!.id,
-          archivo: archivoSelecionado,
+          fechaInicio,
+          fechaFin,
           estado
-        });
+        },
+        archivoSelecionado,
+        req.user!.id,
+      );
 
         created.push({ nombre, convenio });
       } catch (err: any) {
+        console.log(err)
         failed.push({ nombre, error: err.message });
       }
     }

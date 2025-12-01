@@ -8,6 +8,9 @@ export interface CrearPostulacionDTO {
 
 export interface FiltrosPostulacion {
   estado?: EstadoPostulacion;
+  estudiante?: string;
+  vacante?: string;
+  fechaPostula?: Date;
   page?: number;
   limit?: number;
 }
@@ -16,7 +19,7 @@ export interface ResultadoPaginado<T> {
   data: T[];
   total: number;
   page: number;
-  limit: number;
+  pageSize: number;
   totalPages: number;
 }
 

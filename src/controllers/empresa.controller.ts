@@ -15,6 +15,7 @@ export const crearEmpresaPorDirectorController = async (req: AuthRequest, res: R
     if (!directorId || !rol) {
       return res.status(401).json({ message: "No autorizado" });
     }
+
     const data = req.body;
     if (!data.nombre || !data.email || !data.nit) {
       return res
@@ -160,7 +161,7 @@ export const obtenerEmpresasPendientes = async (req: Request, res: Response) => 
 
 export const listarEmpresas = async (req: AuthRequest, res: Response) => {
   try {
-    const { estados } = req.query; // ?estados=APROBADA,PENDIENTE
+    const { estados } = req.query;
     let estadoArray: EstadoEmpresa[] = [];
 
     if (estados && typeof estados === 'string') {

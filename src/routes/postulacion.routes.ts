@@ -53,6 +53,13 @@ router.post(
   postulacionController.crearPostulacion
 );
 
+router.post(
+  "/:vacanteId/postulaciones",
+  verifyToken,
+  authorizeRoles('DIRECTOR', 'ADMIN'),
+  postulacionController.postularEstudiantes
+);
+
 /**
  * @swagger
  * /api/postulaciones/mis-postulaciones:
@@ -227,7 +234,6 @@ router.get(
 router.get(
   '/:id',
   verifyToken,
-  authorizeRoles('ESTUDIANTE', 'EMPRESA', 'DIRECTOR', 'ADMIN'),
   postulacionController.obtenerPostulacionPorId
 );
 
