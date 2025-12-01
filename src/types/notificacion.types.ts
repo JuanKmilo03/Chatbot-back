@@ -2,11 +2,13 @@
  * Tipos y enumeraciones para el sistema de notificaciones
  */
 
-import { PrioridadNotificacion, TipoNotificacion } from "@prisma/client";
+import { PrioridadNotificacion as PrioridadNotificacionPrisma, TipoNotificacion as TipoNotificacionPrisma } from "@prisma/client";
 
 /**
  * Tipos de notificaciones disponibles en el sistema
  */
+export type TipoNotificacion = TipoNotificacionPrisma;
+export type PrioridadNotificacion = PrioridadNotificacionPrisma;
 
 
 /**

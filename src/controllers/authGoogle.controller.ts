@@ -51,9 +51,16 @@ export const loginWithGoogle = async (req: Request, res: Response) => {
       });
 
       if (rol === Rol.ESTUDIANTE) {
+        const programaPorDefecto = await prisma.programa.findFirst();
+
+        if (!programaPorDefecto) {
+          throw new Error("No hay programas disponibles en el sistema");
+        }
+
         await prisma.estudiante.create({
           data: {
             usuarioId: usuario.id,
+            programaId: programaPorDefecto.id,
           },
         });
       }

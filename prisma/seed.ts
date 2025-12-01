@@ -46,9 +46,9 @@ async function main() {
 
   const directorUsuarios = await Promise.all([
     prisma.usuario.upsert({
-      where: { email: "directora.sistemas@ufps.edu.co" },
+      where: { email: "adrianamilenaal@ufps.edu.co" },
       update: {},
-      create: { nombre: "Directora Sistemas", email: "directora.sistemas@ufps.edu.co", password: directorPassword, rol: Rol.DIRECTOR },
+      create: { nombre: "Adriana Milena", email: "adrianamilenaal@ufps.edu.co", password: directorPassword, rol: Rol.DIRECTOR },
     }),
     prisma.usuario.upsert({
       where: { email: "director.industrial@ufps.edu.co" },
@@ -244,9 +244,9 @@ async function main() {
   // ---------- ESTUDIANTE (demo) ----------
   const estudiantePassword = await bcrypt.hash("estudiante1234", 10);
   const usuarioEst = await prisma.usuario.upsert({
-    where: { email: "estudiante1@ufps.edu.co" },
+    where: { email: "juancamilobame@ufps.edu.co" },
     update: {},
-    create: { nombre: "Estudiante Demostración", email: "estudiante1@ufps.edu.co", password: estudiantePassword, rol: Rol.ESTUDIANTE },
+    create: { nombre: "Juan Camilo Bamé", email: "juancamilobame@ufps.edu.co", password: estudiantePassword, rol: Rol.ESTUDIANTE },
   });
 
   const estudiante = await prisma.estudiante.upsert({
