@@ -1,4 +1,4 @@
-import { PrismaClient, EstadoPostulacion, EstadoGeneral, Prisma } from '@prisma/client';
+import { PrismaClient, EstadoPostulacion, EstadoGeneral, Prisma, PrioridadNotificacion, TipoNotificacion } from '@prisma/client';
 import {
   CrearPostulacionDTO,
   FiltrosPostulacion,
@@ -7,6 +7,7 @@ import {
   POSTULACION_ESTUDIANTE_INCLUDE,
   POSTULACION_EMPRESA_INCLUDE,
 } from '../types/postulacion.types.js';
+import { crearNotificacion } from './notificacion.service.js';
 
 const prisma = new PrismaClient();
 
@@ -99,7 +100,7 @@ const construirRespuestaPaginada = <T>(
   data,
   total,
   page,
-  limit,
+  pageSize: limit,
   totalPages: Math.ceil(total / limit),
 });
 
@@ -124,6 +125,16 @@ export const crearPostulacion = async (data: CrearPostulacionDTO) => {
     },
     include: POSTULACION_INCLUDE,
   });
+
+  await crearNotificacion({
+      tipo: TipoNotificacion.NUEVA_POSTULACION,
+      titulo: "Nueva Postulación",
+      mensaje: `Se ha creado una nueva postulación a la vacante ${nuevaPostulacion.vacante.titulo}.`,
+      prioridad: PrioridadNotificacion.MEDIA,
+      destinatarioId: nuevaPostulacion.vacante.empresa.usuarioId,
+      destinatarioRol: "ESTUDIANTE",
+      data: { vacanteId: nuevaPostulacion.id }
+    });
 
   return nuevaPostulacion;
 };
@@ -247,21 +258,49 @@ export const actualizarEstadoPostulacion = async (
   postulacionId: number,
   nuevoEstado: EstadoPostulacion
 ) => {
-  const postulacion = await prisma.postulacion.findUnique({
-    where: { id: postulacionId },
+  return await prisma.$transaction(async (tx) => {
+    const postulacion = await tx.postulacion.findUnique({
+      where: { id: postulacionId },
+    });
+
+    if (!postulacion) {
+      throw new Error(ERROR_MESSAGES.POSTULACION_NO_ENCONTRADA);
+    }
+
+    const postulacionActualizada = await tx.postulacion.update({
+      where: { id: postulacionId },
+      data: { estado: nuevoEstado },
+      include: POSTULACION_INCLUDE,
+    });
+
+    if (nuevoEstado === "ACEPTADA") {
+      const estudianteId = postulacion.estudianteId;
+      const vacanteId = postulacion.vacanteId;
+
+      if (!estudianteId || !vacanteId) {
+        throw new Error("La postulación no tiene estudiante o vacante asociados");
+      }
+
+      // Revisar si ya existe
+      const existePractica = await tx.practica.findUnique({
+        where: { estudianteId_vacanteId: { estudianteId, vacanteId } },
+      });
+
+      if (!existePractica) {
+        await tx.practica.create({
+          data: {
+            estudianteId,
+            vacanteId,
+            estado: "EN_PROCESO",
+            inicio: new Date(),
+          },
+        });
+      }
+    }
+
+    return postulacionActualizada;
+
   });
-
-  if (!postulacion) {
-    throw new Error(ERROR_MESSAGES.POSTULACION_NO_ENCONTRADA);
-  }
-
-  const postulacionActualizada = await prisma.postulacion.update({
-    where: { id: postulacionId },
-    data: { estado: nuevoEstado },
-    include: POSTULACION_INCLUDE,
-  });
-
-  return postulacionActualizada;
 };
 
 /**
@@ -308,14 +347,59 @@ export const obtenerPostulacionesPorEmpresa = async (
   const where: Prisma.PostulacionWhereInput = {
     vacante: {
       empresaId,
+      ...(filtros?.vacante && {
+        OR: [
+          { titulo: { contains: filtros.vacante, mode: 'insensitive' } },
+          {
+            id: isNaN(Number(filtros.vacante))
+              ? undefined
+              : Number(filtros.vacante),
+          },
+        ],
+      }),
     },
+
     ...(filtros?.estado && { estado: filtros.estado }),
+
+    ...(filtros?.estudiante && {
+      estudiante: {
+        usuario: {
+          nombre: {
+            contains: filtros.estudiante,
+            mode: "insensitive",
+          },
+        },
+      },
+    }),
   };
+
+  // Filtro por fechaPostula
+  if (filtros?.fechaPostula) {
+    const fecha = new Date(filtros.fechaPostula);
+
+    const inicio = new Date(fecha);
+    inicio.setHours(0, 0, 0, 0);
+
+    const fin = new Date(fecha);
+    fin.setHours(23, 59, 59, 999);
+
+    where.fechaPostula = {
+      gte: inicio,
+      lte: fin,
+    };
+  }
 
   const [postulaciones, total] = await Promise.all([
     prisma.postulacion.findMany({
       where,
-      include: POSTULACION_EMPRESA_INCLUDE,
+      include: {
+        estudiante: {
+          include: {
+            usuario: true,
+          },
+        },
+        vacante: true,
+      },
       orderBy: { fechaPostula: 'desc' },
       skip,
       take: limit,

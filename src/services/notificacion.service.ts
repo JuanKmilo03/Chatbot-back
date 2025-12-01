@@ -8,10 +8,8 @@ import {
   CrearNotificacionDTO,
   FiltrosNotificacion,
   ResultadoPaginadoNotificaciones,
-  TipoNotificacion,
-  PrioridadNotificacion
 } from '../types/notificacion.types.js';
-import { Rol } from '@prisma/client';
+import { PrioridadNotificacion, Rol, TipoNotificacion } from '@prisma/client';
 import { getSocketIO } from '../config/socket.config.js';
 import { sendMailWithTemplate } from '../utils/mailer.js';
 

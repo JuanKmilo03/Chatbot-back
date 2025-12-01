@@ -154,7 +154,7 @@ router.get('/me', verifyToken, authorizeRoles(Rol.ESTUDIANTE), estudianteControl
  *       500:
  *         description: Error del servidor
  */
-router.get('/:id', verifyToken, authorizeRoles(Rol.DIRECTOR, Rol.ADMIN, Rol.ESTUDIANTE), estudianteController.obtenerPorId);
+router.get('/:id', verifyToken, estudianteController.obtenerPorId);
 
 
 /**

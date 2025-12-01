@@ -234,7 +234,6 @@ router.get(
 router.get(
   '/:id',
   verifyToken,
-  authorizeRoles('ESTUDIANTE', 'EMPRESA', 'DIRECTOR', 'ADMIN'),
   postulacionController.obtenerPostulacionPorId
 );
 

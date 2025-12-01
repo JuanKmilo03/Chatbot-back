@@ -9,10 +9,9 @@ import {
   crearNotificacion,
 } from './notificacion.service.js';
 import {
-  TipoNotificacion,
-  PrioridadNotificacion,
   ConfiguracionVencimiento,
 } from '../types/notificacion.types.js';
+import { PrioridadNotificacion, TipoNotificacion } from '@prisma/client';
 
 /**
  * Configuración por defecto de días de advertencia

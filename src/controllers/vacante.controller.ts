@@ -2,11 +2,10 @@ import { Request, Response } from 'express';
 import * as empresaService from "../services/empresa.service.js";
 
 import { AuthRequest } from '../middlewares/auth.middleware.js';
-import { EstadoGeneral, Prisma } from '@prisma/client';
+import { EstadoGeneral, PrioridadNotificacion, Prisma, TipoNotificacion } from '@prisma/client';
 import { vacanteService } from '../services/vacante.service.js';
 import { prisma } from '../config/db.js';
 import { crearNotificacion } from '../services/notificacion.service.js';
-import { PrioridadNotificacion, TipoNotificacion } from '../types/notificacion.types.js';
 
 export const crearVacante = async (req: AuthRequest, res: Response) => {
   try {
