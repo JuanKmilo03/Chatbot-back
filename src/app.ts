@@ -73,6 +73,7 @@ import representanteRoutes from "./routes/representante.routes.js";
 import postulacionRoutes from "./routes/postulacion.routes.js";
 import notificacionRoutes from "./routes/notificacion.routes.js";
 import programaRoutes from "./routes/programa.routes.js";
+import reporteRoutes from "./routes/reportes.routes.js";
 
 // Middlewares
 import { verifyToken, authorizeRoles } from "./middlewares/auth.middleware.js";
@@ -100,6 +101,7 @@ app.use("/api/empresas", empresaRoutes);
 app.use('/api/estudiantes', estudianteRoutes);
 app.use('/api/cronogramas', cronogramaRoutes);
 app.use('/api/programas', programaRoutes);
+app.use('/api/reportes', reporteRoutes);
 
 
 // Rutas protegidas
