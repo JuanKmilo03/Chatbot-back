@@ -63,9 +63,18 @@ export const loginWithGoogle = async (req: Request, res: Response) => {
         });
       }
     } else if (usuario.rol !== rol) {
+      let codigoUsuario = usuario.codigoUsuario;
+
+      if (rol === Rol.DIRECTOR) {
+        codigoUsuario = await generarCodigoUsuario(rol, prisma);
+      }
+
       usuario = await prisma.usuario.update({
         where: { id: usuario.id },
-        data: { rol },
+        data: {
+          rol,
+          codigoUsuario
+        }
       });
     }
 
