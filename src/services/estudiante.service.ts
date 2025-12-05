@@ -4,7 +4,7 @@ import XLSX from 'xlsx';
 import csv from 'csv-parser';
 import { Readable } from 'stream';
 import { prisma } from '../config/db.js';
-import { generarCodigoSeguridad, generarCodigoUsuario } from '../utils/codigos.utils';
+import { generarCodigoSeguridad, generarCodigoUsuario } from '../utils/codigos.utils.js';
 
 
 interface EstudianteExcel {
@@ -369,7 +369,7 @@ export class EstudianteService {
           nombre,
           email,
           rol: "ESTUDIANTE",
-          password: null, // no se necesita en este caso
+          password: null,
           codigoUsuario,
           codigoSeguridad
         },
@@ -607,6 +607,9 @@ export class EstudianteService {
             continue;
           }
 
+          const codigoUsuario = await generarCodigoUsuario("ESTUDIANTE", prisma);
+          const codigoSeguridad = await generarCodigoSeguridad(prisma);
+
           const result = await prisma.$transaction(async (tx) => {
             const usuario = await tx.usuario.create({
               data: {
@@ -614,6 +617,8 @@ export class EstudianteService {
                 email,
                 rol: "ESTUDIANTE",
                 password: null,
+                codigoUsuario,
+                codigoSeguridad
               },
             });
 

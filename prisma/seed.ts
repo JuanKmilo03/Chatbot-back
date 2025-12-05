@@ -1,19 +1,7 @@
-import {
-  PrismaClient,
-  Rol,
-  Modalidad,
-  EstadoGeneral,
-  EstadoEmpresa,
-  EstadoConvenio,
-  EstadoPractica,
-  TipoConvenio,
-  TipoActividad,
-  PrioridadNotificacion,
-  TipoNotificacion,
-  TipoDocumento,
-  EstadoPostulacion
-} from "@prisma/client";
-import * as bcrypt from "bcryptjs";
+// prisma/seed.ts
+import { PrismaClient, Rol } from "@prisma/client";
+import bcrypt from "bcrypt";
+import { generarCodigoUsuario, generarCodigoSeguridad } from "../src/utils/codigos.js";
 
 const prisma = new PrismaClient();
 
@@ -210,61 +198,35 @@ async function main() {
     where: { nit: "9001234567" },
     update: {},
     create: {
-      usuarioId: usuarioEmpresa.id,
-      programaId: progSis.id,
-      nit: "9001234567",
-      telefono: "3001112233",
-      direccion: "Calle 45 #12-34",
-      sector: "Tecnología",
-      descripcion: "Empresa de ejemplo registrada automáticamente.",
-      estado: EstadoEmpresa.APROBADA,
-      habilitada: true,
-      directorId: dirSis.id,
+      nombre: "Ingeniería de Sistemas",
+      facultad: "Facultad de Ingenierías",
     },
   });
 
-  // representante legal empresa A
-  await prisma.representanteLegal.upsert({
-    where: { empresaId: empresa.id },
+  const industrial = await prisma.programa.upsert({
+    where: { nombre: "Ingeniería Industrial" },
     update: {},
     create: {
-      empresaId: empresa.id,
-      nombreCompleto: "Juan Pérez",
-      tipoDocumento: "CC",
-      numeroDocumento: "1010101010",
-      email: "legal@demo.com",
-      telefono: "3102223344",
+      nombre: "Ingeniería Industrial",
+      facultad: "Facultad de Ingenierías",
     },
   });
 
-  // convenio macro para empresa A (con el link solicitado)
-  let convenioA = await prisma.convenio.findFirst({
-    where: { nombre: "Convenio Marco 2025", empresaId: empresa.id }
-  });
+  console.log("✔ Programas creados");
 
-  if (!convenioA) {
-    convenioA = await prisma.convenio.create({
-      data: {
-        empresaId: empresa.id,
-        directorId: dirSis.id,
-        nombre: "Convenio Marco 2025",
-        descripcion: "Convenio general para prácticas profesionales 2025.",
-        tipo: TipoConvenio.MACRO,
-        fechaInicio: new Date("2025-01-01"),
-        fechaFin: new Date("2025-12-31"),
-        estado: EstadoConvenio.APROBADO,
-        archivoUrl: convenioLink,
-      },
-    });
-  }
-
-  await prisma.documento.create({
-    data: {
-      titulo: "Convenio Plantilla - 2025",
-      descripcion: "Plantilla de convenio (automática)",
-      categoria: TipoDocumento.CONVENIO_PLANTILLA,
-      archivoUrl: convenioLink,
-      nombreArchivo: "convenio-marco-2025.pdf",
+  // -------------------------------------------------------------
+  // 2. USUARIO ADMIN
+  // -------------------------------------------------------------
+  const adminUser = await prisma.usuario.upsert({
+    where: { email: "admin@ufps.edu.co" },
+    update: {},
+    create: {
+      nombre: "Administrador General",
+      email: "admin@ufps.edu.co",
+      password: await bcrypt.hash("admin123", 10),
+      rol: Rol.ADMIN,
+      codigoUsuario: await generarCodigoUsuario(Rol.ADMIN, prisma),
+      codigoSeguridad: await generarCodigoSeguridad(prisma),
     },
   });
 
@@ -369,35 +331,22 @@ async function main() {
     where: { usuarioId: usuarioEst.id },
     update: {},
     create: {
-      usuarioId: usuarioEst.id,
-      programaId: progSis.id,
-      codigo: "2025001",
-      telefono: "3003334455",
-      documento: "123456789",
-      semestre: 8,
-      perfil: "Estudiante interesado en desarrollo backend.",
-      habilidadesTecnicas: ["Node.js", "TypeScript"],
-      habilidadesBlandas: ["Comunicación", "Trabajo en equipo"],
-      experiencia: "Proyectos académicos y freelance.",
-      area: "Desarrollo Web",
-      perfilCompleto: true,
-      estadoProceso: EstadoPractica.EN_PROCESO,
-      hojaDeVidaUrl: "",
+      nombre: "Director Sistemas",
+      email: "juancamilobame@ufps.edu.co",
+      password: await bcrypt.hash("director123", 10),
+      rol: Rol.DIRECTOR,
+      codigoUsuario: await generarCodigoUsuario(Rol.DIRECTOR, prisma),
+      codigoSeguridad: await generarCodigoSeguridad(prisma),
     },
   });
 
-  // ---------- CRONOGRAMA y ACTIVIDAD ----------
-  const cronograma = await prisma.cronograma.upsert({
-    where: { programaId_semestre: { programaId: progSis.id, semestre: "2025-1" } as any },
+  const director = await prisma.director.upsert({
+    where: { usuarioId: directorUser.id },
     update: {},
     create: {
-      programaId: progSis.id,
-      directorId: dirSis.id,
-      titulo: "Cronograma Prácticas 2025-1",
-      descripcion: "Actividades programadas para el semestre",
-      semestre: "2025-1",
-      activo: true,
-      archivoUrl: "https://example.com/cronograma-2025-1.pdf",
+      usuarioId: directorUser.id,
+      programaId: sistemas.id,
+      Facultad: "Facultad de Ingenierías",
     },
   });
 
@@ -458,16 +407,12 @@ async function main() {
     where: { nit: "9007654321" },
     update: {},
     create: {
-      usuarioId: usuarioEmpresaPend.id,
-      programaId: progSis.id,
-      nit: "9007654321",
-      telefono: "3004445566",
-      direccion: "Carrera 10 #5-67",
-      sector: "Comercio",
-      descripcion: "Empresa en estado pendiente, sin convenios.",
-      estado: EstadoEmpresa.PENDIENTE,
-      habilitada: false,
-      directorId: dirSis.id,
+      nombre: "Empresa Ejemplo",
+      email: "contacto@empresa.com",
+      password: await bcrypt.hash("empresa123", 10),
+      rol: Rol.EMPRESA,
+      codigoUsuario: await generarCodigoUsuario(Rol.EMPRESA, prisma),
+      codigoSeguridad: await generarCodigoSeguridad(prisma),
     },
   });
 
@@ -495,14 +440,13 @@ async function main() {
     where: { nit: "9009998887" },
     update: {},
     create: {
-      usuarioId: usuarioEmpresaC.id,
-      programaId: progSis.id,
-      nit: "9009998887",
-      telefono: "3007778899",
-      direccion: "Av 20 #30-10",
-      sector: "Servicios",
-      descripcion: "Empresa aprobada pero con convenio en revisión.",
-      estado: EstadoEmpresa.APROBADA,
+      usuarioId: empresaUser.id,
+      nit: "900123456",
+      programaId: sistemas.id,
+      telefono: "3120000000",
+      direccion: "Cúcuta - Norte de Santander",
+      sector: "Tecnología",
+      descripcion: "Empresa dedicada a desarrollo de software.",
       habilitada: false,
       directorId: dirSis.id,
     },
@@ -644,7 +588,7 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error("❌ Error en el seed:", e);
+    console.error("❌ Error ejecutando seed:", e);
     process.exit(1);
   })
   .finally(async () => {
