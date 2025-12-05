@@ -3,7 +3,6 @@ import { PrismaClient, Rol } from "@prisma/client";
 import admin from "../config/firebase.config.js";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.config.js";
-import { generarCodigoUsuario, generarCodigoSeguridad } from "../utils/codigos.js";
 
 const prisma = new PrismaClient();
 
@@ -50,8 +49,6 @@ export const loginWithGoogle = async (req: Request, res: Response) => {
           email,
           password: "",
           rol,
-          codigoUsuario: await generarCodigoUsuario(rol, prisma),
-          codigoSeguridad: await generarCodigoSeguridad(prisma),
         }
       });
 
@@ -69,18 +66,15 @@ export const loginWithGoogle = async (req: Request, res: Response) => {
           },
         });
       }
-    } else if (usuario.rol !== rol) {
-      let codigoUsuario = usuario.codigoUsuario;
+    } else
 
       if (rol === Rol.DIRECTOR) {
-        codigoUsuario = await generarCodigoUsuario(rol, prisma);
-      }
+      
 
       usuario = await prisma.usuario.update({
         where: { id: usuario.id },
         data: {
           rol,
-          codigoUsuario
         }
       });
     }
