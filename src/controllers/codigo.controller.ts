@@ -3,70 +3,77 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-export const obtenerUsuarioConCodigo = async (req: Request, res: Response) => {
+export const obtenerUsuarioPorCodigo = async (req: Request, res: Response) => {
   try {
     const { codigo } = req.params;
 
-    if (!codigo) {
-      return res.status(400).json({ message: "Debe enviar un código" });
+    if (!codigo || codigo.trim() === "") {
+      return res.status(400).json({ message: "Debe enviar un código válido" });
     }
 
-    const prefijo = codigo.substring(0, 4).toUpperCase();
+    const codigoNormalizado = codigo.toUpperCase().trim();
 
-    let rolEsperado: string | null = null;
-
-    switch (prefijo) {
-      case "UEST":
-        rolEsperado = "ESTUDIANTE";
-        break;
-      case "UEMP":
-        rolEsperado = "EMPRESA";
-        break;
-      case "UDIR":
-        rolEsperado = "DIRECTOR";
-        break;
-      case "UADM":
-        rolEsperado = "ADMIN";
-        break;
-      default:
-        return res
-          .status(400)
-          .json({ message: "Código inválido: prefijo desconocido" });
-    }
-
-    // Buscar usuario por códigoUsuario o codigoSeguridad
     const usuario = await prisma.usuario.findFirst({
-      where: {
-        OR: [
-          { codigoUsuario: codigo },
-          { codigoSeguridad: codigo }
-        ],
-      },
-      include: {
-        estudiante: true,
-        empresa: true,
-        director: true,
-      },
-    });
+  where: {
+    OR: [
+      { codigoUsuario: codigo },
+      { 
+        codigoSeguridad: {
+          equals: codigo,
+          mode: "insensitive"
+        }
+      }
+    ]
+  },
+  include: {
+    estudiante: true,
+    empresa: true,
+    director: true,
+  }
+});
 
     if (!usuario) {
-      return res.status(404).json({ message: "No existe un usuario con ese código" });
+      return res
+        .status(404)
+        .json({ message: "No existe un usuario con ese código" });
     }
 
-    if (usuario.rol !== rolEsperado) {
-      return res.status(409).json({
-        message: `El código pertenece a rol ${rolEsperado}, ` +
-                 `pero el usuario tiene rol ${usuario.rol}`
-      });
+    const tipoCodigo =
+      usuario.codigoUsuario === codigoNormalizado
+        ? "codigoUsuario"
+        : "codigoSeguridad";
+
+    let nombre = "Sin nombre asignado";
+
+    switch (usuario.rol) {
+      case "ESTUDIANTE":
+        nombre = usuario.nombre ?? nombre;
+        break;
+
+      case "EMPRESA":
+        nombre = usuario.nombre ?? nombre;
+        break;
+
+      case "DIRECTOR":
+        nombre = usuario.nombre ?? nombre;
+        break;
+
+      default:
+        break;
     }
 
     return res.status(200).json({
       message: "Usuario encontrado correctamente",
-      usuario,
+      tipoCodigo,
+      rol: usuario.rol,
+      nombre,
     });
 
   } catch (error) {
     console.error("Error al obtener usuario por código:", error);
-    res.status(500).json({ message: "Error interno en el servidor" });
+    return res.status(500).json({
+      message: "Error interno en el servidor",
+      error: error instanceof Error ? error.message : error,
+    });
   }
 };

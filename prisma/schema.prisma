@@ -19,8 +19,8 @@ model Usuario {
   empresa       Empresa?
   estudiante    Estudiante?
 
-  codigoSeguridad String? @unique
-  codigoUsuario   String? @unique
+  codigoSeguridad String @unique
+  codigoUsuario   String @unique
 }
 
 model Director {
