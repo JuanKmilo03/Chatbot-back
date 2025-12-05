@@ -17,6 +17,56 @@ import * as bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+// Función auxiliar para generar códigos únicos
+async function generarCodigoSeguridad(): Promise<string> {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let codigo = "";
+  let existe = true;
+
+  while (existe) {
+    codigo = "";
+    for (let i = 0; i < 8; i++) {
+      codigo += chars[Math.floor(Math.random() * chars.length)];
+    }
+
+    const usuario = await prisma.usuario.findFirst({
+      where: { codigoSeguridad: codigo }
+    });
+
+    existe = !!usuario;
+  }
+
+  return codigo;
+}
+
+async function generarCodigoUsuario(rol: string): Promise<string> {
+  let prefijo = "";
+
+  switch (rol) {
+    case "ESTUDIANTE": prefijo = "UEST"; break;
+    case "EMPRESA":    prefijo = "UEMP"; break;
+    case "DIRECTOR":   prefijo = "UDIR"; break;
+    case "ADMIN":      prefijo = "UADM"; break;
+    default:           prefijo = "UGEN";
+  }
+
+  let codigo = "";
+  let existe = true;
+
+  while (existe) {
+    const numero = Math.floor(1000 + Math.random() * 9000); // 4 dígitos
+    codigo = `${prefijo}${numero}`;
+
+    const encontrado = await prisma.usuario.findFirst({
+      where: { codigoUsuario: codigo }
+    });
+
+    existe = !!encontrado;
+  }
+
+  return codigo;
+}
+
 async function main() {
   console.log("🌱 Iniciando seed...");
 
@@ -47,18 +97,48 @@ async function main() {
   const directorUsuarios = await Promise.all([
     prisma.usuario.upsert({
       where: { email: "adrianamilenaal@ufps.edu.co" },
-      update: {},
-      create: { nombre: "Adriana Milena", email: "adrianamilenaal@ufps.edu.co", password: directorPassword, rol: Rol.DIRECTOR },
+      update: {
+        codigoUsuario: await generarCodigoUsuario("DIRECTOR"),
+        codigoSeguridad: await generarCodigoSeguridad()
+      },
+      create: { 
+        nombre: "Adriana Milena", 
+        email: "adrianamilenaal@ufps.edu.co", 
+        password: directorPassword, 
+        rol: Rol.DIRECTOR,
+        codigoUsuario: await generarCodigoUsuario("DIRECTOR"),
+        codigoSeguridad: await generarCodigoSeguridad()
+      },
     }),
     prisma.usuario.upsert({
       where: { email: "director.industrial@ufps.edu.co" },
-      update: {},
-      create: { nombre: "Director Industrial", email: "director.industrial@ufps.edu.co", password: directorPassword, rol: Rol.DIRECTOR },
+      update: {
+        codigoUsuario: await generarCodigoUsuario("DIRECTOR"),
+        codigoSeguridad: await generarCodigoSeguridad()
+      },
+      create: { 
+        nombre: "Director Industrial", 
+        email: "director.industrial@ufps.edu.co", 
+        password: directorPassword, 
+        rol: Rol.DIRECTOR,
+        codigoUsuario: await generarCodigoUsuario("DIRECTOR"),
+        codigoSeguridad: await generarCodigoSeguridad()
+      },
     }),
     prisma.usuario.upsert({
       where: { email: "director.civil@ufps.edu.co" },
-      update: {},
-      create: { nombre: "Director Civil", email: "director.civil@ufps.edu.co", password: directorPassword, rol: Rol.DIRECTOR },
+      update: {
+        codigoUsuario: await generarCodigoUsuario("DIRECTOR"),
+        codigoSeguridad: await generarCodigoSeguridad()
+      },
+      create: { 
+        nombre: "Director Civil", 
+        email: "director.civil@ufps.edu.co", 
+        password: directorPassword, 
+        rol: Rol.DIRECTOR,
+        codigoUsuario: await generarCodigoUsuario("DIRECTOR"),
+        codigoSeguridad: await generarCodigoSeguridad()
+      },
     }),
   ]);
 
@@ -89,16 +169,39 @@ async function main() {
   
   await prisma.usuario.upsert({
     where: { email: "admin@ufps.edu.co" },
-    update: {},
-    create: { nombre: "Administrador General", email: "admin@ufps.edu.co", password: adminPassword, rol: Rol.ADMIN },
+    update: {
+      codigoUsuario: await generarCodigoUsuario("ADMIN"),
+      codigoSeguridad: await generarCodigoSeguridad()
+    },
+    create: { 
+      nombre: "Administrador General", 
+      email: "admin@ufps.edu.co", 
+      password: adminPassword, 
+      rol: Rol.ADMIN,
+      codigoUsuario: await generarCodigoUsuario("ADMIN"),
+      codigoSeguridad: await generarCodigoSeguridad()
+    },
   });
 
   // ---------- EMPRESA A (aprobada, con convenio + vacantes) ----------
   const empresaPassword = await bcrypt.hash("empresa1234", 10);
+  const codigoUsuarioEmpresaA = await generarCodigoUsuario("EMPRESA");
+  const codigoSeguridadEmpresaA = await generarCodigoSeguridad();
+  
   const usuarioEmpresa = await prisma.usuario.upsert({
     where: { email: "empresa@demo.com" },
-    update: {},
-    create: { nombre: "Empresa Demo S.A.", email: "empresa@demo.com", password: empresaPassword, rol: Rol.EMPRESA },
+    update: {
+      codigoUsuario: codigoUsuarioEmpresaA,
+      codigoSeguridad: codigoSeguridadEmpresaA
+    },
+    create: { 
+      nombre: "Empresa Demo S.A.", 
+      email: "empresa@demo.com", 
+      password: empresaPassword, 
+      rol: Rol.EMPRESA,
+      codigoUsuario: codigoUsuarioEmpresaA,
+      codigoSeguridad: codigoSeguridadEmpresaA
+    },
   });
 
   const convenioLink = "https://res.cloudinary.com/dqwxyv3zc/image/upload/v1764365976/DocumentosPracticas/kmdh9xfopf2zres4lkxb.pdf";
@@ -243,10 +346,23 @@ async function main() {
 
   // ---------- ESTUDIANTE (demo) ----------
   const estudiantePassword = await bcrypt.hash("estudiante1234", 10);
+  const codigoUsuarioEstudiante = await generarCodigoUsuario("ESTUDIANTE");
+  const codigoSeguridadEstudiante = await generarCodigoSeguridad();
+  
   const usuarioEst = await prisma.usuario.upsert({
     where: { email: "juancamilobame@ufps.edu.co" },
-    update: {},
-    create: { nombre: "Juan Camilo Bamé", email: "juancamilobame@ufps.edu.co", password: estudiantePassword, rol: Rol.ESTUDIANTE },
+    update: {
+      codigoUsuario: codigoUsuarioEstudiante,
+      codigoSeguridad: codigoSeguridadEstudiante
+    },
+    create: { 
+      nombre: "Juan Camilo Bamé", 
+      email: "juancamilobame@ufps.edu.co", 
+      password: estudiantePassword, 
+      rol: Rol.ESTUDIANTE,
+      codigoUsuario: codigoUsuarioEstudiante,
+      codigoSeguridad: codigoSeguridadEstudiante
+    },
   });
 
   const estudiante = await prisma.estudiante.upsert({
@@ -302,28 +418,6 @@ async function main() {
     });
   }
 
-  // // ---------- CONVERSACION y MENSAJE ----------
-  // const conversacion = await prisma.conversacion.upsert({
-  //   where: { empresaId_directorId: { empresaId: empresa.id, directorId: dirSis.id } as any },
-  //   update: {},
-  //   create: { empresaId: empresa.id, directorId: dirSis.id, titulo: "Contacto inicial de prácticas" },
-  // });
-
-  // let mensaje = await prisma.mensaje.findFirst({
-  //   where: { conversacionId: conversacion.id, remitenteId: usuarioEmpresa.id }
-  // });
-
-  // if (!mensaje) {
-  //   mensaje = await prisma.mensaje.create({
-  //     data: {
-  //       conversacionId: conversacion.id,
-  //       remitenteId: usuarioEmpresa.id,
-  //       remitenteRol: Rol.EMPRESA,
-  //       contenido: "Buenas tardes, deseamos iniciar el proceso de prácticas.",
-  //     },
-  //   });
-  // }
-
   // ---------- NOTIFICACION DEMO ----------
   let notificacion = await prisma.notificacion.findFirst({ where: { destinatarioId: dirSis.id, tipo: TipoNotificacion.NUEVA_SOLICITUD_VACANTE } });
   if (!notificacion) {
@@ -341,10 +435,23 @@ async function main() {
   }
 
   // ---------- EMPRESA B (PENDIENTE, sin convenios) ----------
+  const codigoUsuarioEmpresaB = await generarCodigoUsuario("EMPRESA");
+  const codigoSeguridadEmpresaB = await generarCodigoSeguridad();
+  
   const usuarioEmpresaPend = await prisma.usuario.upsert({
     where: { email: "empresa.pendiente@demo.com" },
-    update: {},
-    create: { nombre: "Empresa Pendiente LTDA", email: "empresa.pendiente@demo.com", password: await bcrypt.hash("empresaPend123", 10), rol: Rol.EMPRESA },
+    update: {
+      codigoUsuario: codigoUsuarioEmpresaB,
+      codigoSeguridad: codigoSeguridadEmpresaB
+    },
+    create: { 
+      nombre: "Empresa Pendiente LTDA", 
+      email: "empresa.pendiente@demo.com", 
+      password: await bcrypt.hash("empresaPend123", 10), 
+      rol: Rol.EMPRESA,
+      codigoUsuario: codigoUsuarioEmpresaB,
+      codigoSeguridad: codigoSeguridadEmpresaB
+    },
   });
 
   await prisma.empresa.upsert({
@@ -365,10 +472,23 @@ async function main() {
   });
 
   // ---------- EMPRESA C (APROBADA, con convenio EN_REVISION) ----------
+  const codigoUsuarioEmpresaC = await generarCodigoUsuario("EMPRESA");
+  const codigoSeguridadEmpresaC = await generarCodigoSeguridad();
+  
   const usuarioEmpresaC = await prisma.usuario.upsert({
     where: { email: "empresa.revision@demo.com" },
-    update: {},
-    create: { nombre: "Empresa Revisión S.A.", email: "empresa.revision@demo.com", password: await bcrypt.hash("empresaRev123", 10), rol: Rol.EMPRESA },
+    update: {
+      codigoUsuario: codigoUsuarioEmpresaC,
+      codigoSeguridad: codigoSeguridadEmpresaC
+    },
+    create: { 
+      nombre: "Empresa Revisión S.A.", 
+      email: "empresa.revision@demo.com", 
+      password: await bcrypt.hash("empresaRev123", 10), 
+      rol: Rol.EMPRESA,
+      codigoUsuario: codigoUsuarioEmpresaC,
+      codigoSeguridad: codigoSeguridadEmpresaC
+    },
   });
 
   const empresaRevision = await prisma.empresa.upsert({
@@ -433,15 +553,93 @@ async function main() {
     },
   });
 
+  // ---------- MÁS ESTUDIANTES DE PRUEBA ----------
+  const estudiantesData = [
+    {
+      nombre: "Ana María López",
+      email: "ana.lopez@ufps.edu.co",
+      codigo: "2025002",
+      documento: "987654321",
+      semestre: 9,
+      perfil: "Estudiante interesada en desarrollo frontend y UX/UI.",
+      habilidadesTecnicas: ["React", "JavaScript", "CSS"],
+      habilidadesBlandas: ["Creatividad", "Trabajo en equipo"],
+    },
+    {
+      nombre: "Carlos Andrés Gómez",
+      email: "carlos.gomez@ufps.edu.co",
+      codigo: "2025003",
+      documento: "456789123",
+      semestre: 7,
+      perfil: "Estudiante con interés en bases de datos y análisis de datos.",
+      habilidadesTecnicas: ["SQL", "Python", "Power BI"],
+      habilidadesBlandas: ["Análisis", "Detalle"],
+    },
+    {
+      nombre: "María Fernanda Rodríguez",
+      email: "maria.rodriguez@ufps.edu.co",
+      codigo: "2025004",
+      documento: "321654987",
+      semestre: 10,
+      perfil: "Estudiante próxima a graduarse, experiencia en proyectos ágiles.",
+      habilidadesTecnicas: ["Java", "Spring Boot", "Docker"],
+      habilidadesBlandas: ["Liderazgo", "Comunicación"],
+    },
+  ];
+
+  for (const est of estudiantesData) {
+    const codigoUsuarioEst = await generarCodigoUsuario("ESTUDIANTE");
+    const codigoSeguridadEst = await generarCodigoSeguridad();
+    
+    const usuarioExistente = await prisma.usuario.findUnique({
+      where: { email: est.email }
+    });
+
+    if (!usuarioExistente) {
+      const usuarioEst = await prisma.usuario.create({
+        data: {
+          nombre: est.nombre,
+          email: est.email,
+          password: await bcrypt.hash("estudiante1234", 10),
+          rol: Rol.ESTUDIANTE,
+          codigoUsuario: codigoUsuarioEst,
+          codigoSeguridad: codigoSeguridadEst
+        },
+      });
+
+      await prisma.estudiante.create({
+        data: {
+          usuarioId: usuarioEst.id,
+          programaId: progSis.id,
+          codigo: est.codigo,
+          documento: est.documento,
+          semestre: est.semestre,
+          perfil: est.perfil,
+          habilidadesTecnicas: est.habilidadesTecnicas,
+          habilidadesBlandas: est.habilidadesBlandas,
+          perfilCompleto: true,
+          estadoProceso: EstadoPractica.EN_PROCESO,
+        },
+      });
+    }
+  }
+
   console.log("✅ Seed completado correctamente.");
   console.log(`📊 Resumen (aprox):
   - Programas: ${programas.length}
   - Directores: ${directores.length}
   - Empresas creadas/aseguradas: 3
-  - Estudiante demo: 1
+  - Estudiantes: 4
   - Convenios: empresa A (APROBADO) + empresa C (EN_REVISION)
   - Vacantes creadas (empresa A): ${vacantesData.length}
   `);
+  
+  // Mostrar códigos generados para referencia
+  console.log("\n🔑 Códigos generados:");
+  console.log("- Director Sistemas:", directorUsuarios[0].codigoUsuario, "/", directorUsuarios[0].codigoSeguridad);
+  console.log("- Empresa Demo:", codigoUsuarioEmpresaA, "/", codigoSeguridadEmpresaA);
+  console.log("- Estudiante Demo:", codigoUsuarioEstudiante, "/", codigoSeguridadEstudiante);
+  console.log("- Admin:", await generarCodigoUsuario("ADMIN"));
 }
 
 main()
