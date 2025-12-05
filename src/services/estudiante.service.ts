@@ -193,12 +193,15 @@ export class EstudianteExcelService {
               }
             });
           } else {
-            // Crear nuevo usuario y estudiante
-            const nuevoUsuario = await tx.usuario.create({
+  const codigoUsuario = await generarCodigoUsuario("ESTUDIANTE", tx);
+  const codigoSeguridad = await generarCodigoSeguridad(tx);
+              const nuevoUsuario = await tx.usuario.create({
               data: {
                 nombre: datosEst.nombre,
                 email: datosEst.email,
-                rol: Rol.ESTUDIANTE
+                rol: Rol.ESTUDIANTE,
+                codigoUsuario,
+                codigoSeguridad,
               }
             });
 
