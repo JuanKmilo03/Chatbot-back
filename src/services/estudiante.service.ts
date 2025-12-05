@@ -4,6 +4,7 @@ import XLSX from 'xlsx';
 import csv from 'csv-parser';
 import { Readable } from 'stream';
 import { prisma } from '../config/db.js';
+import { generarCodigoSeguridad, generarCodigoUsuario } from '../utils/codigos.utils';
 
 
 interface EstudianteExcel {
@@ -356,8 +357,11 @@ export class EstudianteService {
     const codigoExiste = await prisma.estudiante.findUnique({ where: { codigo }, });
     if (codigoExiste) throw new Error("El código ya está registrado");
 
-    const director  = await prisma.director.findUnique({ where: { id: directorId } });
+    const director = await prisma.director.findUnique({ where: { id: directorId } });
     if (!director) throw new Error("Director no encontrado");
+
+    const codigoUsuario = await generarCodigoUsuario("ESTUDIANTE", prisma);
+    const codigoSeguridad = await generarCodigoSeguridad(prisma);
 
     const estudiante = await prisma.$transaction(async (tx) => {
       const usuario = await tx.usuario.create({
@@ -366,6 +370,8 @@ export class EstudianteService {
           email,
           rol: "ESTUDIANTE",
           password: null, // no se necesita en este caso
+          codigoUsuario,
+          codigoSeguridad
         },
       });
 

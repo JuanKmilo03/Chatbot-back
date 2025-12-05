@@ -2,7 +2,7 @@ import { EstadoEmpresa, PrismaClient, Rol } from '@prisma/client';
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendMailWithTemplate } from '../utils/mailer.js';
-import { generarCodigoUsuario, generarCodigoSeguridad } from "../utils/codigos.js";
+import { generarCodigoUsuario, generarCodigoSeguridad } from "../utils/codigos.utils.js";
 
 const prisma = new PrismaClient();
 

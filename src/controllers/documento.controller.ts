@@ -1,4 +1,3 @@
-// src/controllers/documento.controller.ts
 import { Request, Response } from "express";
 import { documentoService } from "../services/documento.service.js";
 import { TipoDocumento } from "@prisma/client";
