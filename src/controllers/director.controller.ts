@@ -15,7 +15,7 @@ export const crearDirector = async (req: Request, res: Response) => {
       data: {
         usuarioId: Number(usuarioId),
         programaId: Number(programaId),
-        Facultad: Facultad || null, // ← si no viene, lo pone null
+        Facultad: Facultad || null,
       },
       include: {
         usuario: true,

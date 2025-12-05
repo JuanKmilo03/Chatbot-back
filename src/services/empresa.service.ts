@@ -2,6 +2,7 @@ import { EstadoEmpresa, PrismaClient, Rol } from '@prisma/client';
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendMailWithTemplate } from '../utils/mailer.js';
+import { generarCodigoUsuario, generarCodigoSeguridad } from "../utils/codigos.js";
 
 const prisma = new PrismaClient();
 
@@ -34,11 +35,15 @@ export const registrarEmpresa = async (data: any) => {
 
   // Crear usuario + empresa en una transacción
   const result = await prisma.$transaction(async (tx) => {
+    const codigoUsuario = await generarCodigoUsuario("EMPRESA", tx);
+    const codigoSeguridad = await generarCodigoSeguridad(tx);
     const usuario = await tx.usuario.create({
       data: {
         nombre,
         email,
         rol: Rol.EMPRESA,
+        codigoUsuario,
+        codigoSeguridad,
       },
     });
 
@@ -389,12 +394,17 @@ export const crearEmpresaPorDirector = async (data: any, directorId: number) => 
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    const codigoUsuario = await generarCodigoUsuario("EMPRESA", tx);
+    const codigoSeguridad = await generarCodigoSeguridad(tx);
+
     const usuario = await tx.usuario.create({
       data: {
         nombre,
         email,
         password: hashedPassword,
         rol: "EMPRESA",
+        codigoUsuario,
+        codigoSeguridad,
       },
     });
 
