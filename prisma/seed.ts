@@ -1,594 +1,568 @@
-// prisma/seed.ts
-import { PrismaClient, Rol } from "@prisma/client";
-import bcrypt from "bcrypt";
-import { generarCodigoUsuario, generarCodigoSeguridad } from "../src/utils/codigos.js";
+import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
-// Función auxiliar para generar códigos únicos
-async function generarCodigoSeguridad(): Promise<string> {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let codigo = "";
-  let existe = true;
-
-  while (existe) {
-    codigo = "";
-    for (let i = 0; i < 8; i++) {
-      codigo += chars[Math.floor(Math.random() * chars.length)];
-    }
-
-    const usuario = await prisma.usuario.findFirst({
-      where: { codigoSeguridad: codigo }
-    });
-
-    existe = !!usuario;
-  }
-
-  return codigo;
-}
-
-async function generarCodigoUsuario(rol: string): Promise<string> {
-  let prefijo = "";
-
-  switch (rol) {
-    case "ESTUDIANTE": prefijo = "UEST"; break;
-    case "EMPRESA":    prefijo = "UEMP"; break;
-    case "DIRECTOR":   prefijo = "UDIR"; break;
-    case "ADMIN":      prefijo = "UADM"; break;
-    default:           prefijo = "UGEN";
-  }
-
-  let codigo = "";
-  let existe = true;
-
-  while (existe) {
-    const numero = Math.floor(1000 + Math.random() * 9000); // 4 dígitos
-    codigo = `${prefijo}${numero}`;
-
-    const encontrado = await prisma.usuario.findFirst({
-      where: { codigoUsuario: codigo }
-    });
-
-    existe = !!encontrado;
-  }
-
-  return codigo;
-}
-
 async function main() {
-  console.log("🌱 Iniciando seed...");
-
-  // ---------- PROGRAMAS ----------
-  const programas = await Promise.all([
-    prisma.programa.upsert({
-      where: { nombre: "Ingeniería de Sistemas" },
-      update: {},
-      create: { nombre: "Ingeniería de Sistemas", facultad: "Facultad de Ingeniería" },
-    }),
-    prisma.programa.upsert({
-      where: { nombre: "Ingeniería Industrial" },
-      update: {},
-      create: { nombre: "Ingeniería Industrial", facultad: "Facultad de Ingeniería" },
-    }),
-    prisma.programa.upsert({
-      where: { nombre: "Ingeniería Civil" },
-      update: {},
-      create: { nombre: "Ingeniería Civil", facultad: "Facultad de Ingeniería" },
-    }),
-  ]);
-
-  const [progSis, progInd, progCiv] = programas;
-
-  // ---------- DIRECTORES (usuarios) ----------
-  const directorPassword = await bcrypt.hash("director1234", 10);
-
-  const directorUsuarios = await Promise.all([
-    prisma.usuario.upsert({
-      where: { email: "adrianamilenaal@ufps.edu.co" },
-      update: {
-        codigoUsuario: await generarCodigoUsuario("DIRECTOR"),
-        codigoSeguridad: await generarCodigoSeguridad()
-      },
-      create: { 
-        nombre: "Adriana Milena", 
-        email: "adrianamilenaal@ufps.edu.co", 
-        password: directorPassword, 
-        rol: Rol.DIRECTOR,
-        codigoUsuario: await generarCodigoUsuario("DIRECTOR"),
-        codigoSeguridad: await generarCodigoSeguridad()
-      },
-    }),
-    prisma.usuario.upsert({
-      where: { email: "director.industrial@ufps.edu.co" },
-      update: {
-        codigoUsuario: await generarCodigoUsuario("DIRECTOR"),
-        codigoSeguridad: await generarCodigoSeguridad()
-      },
-      create: { 
-        nombre: "Director Industrial", 
-        email: "director.industrial@ufps.edu.co", 
-        password: directorPassword, 
-        rol: Rol.DIRECTOR,
-        codigoUsuario: await generarCodigoUsuario("DIRECTOR"),
-        codigoSeguridad: await generarCodigoSeguridad()
-      },
-    }),
-    prisma.usuario.upsert({
-      where: { email: "director.civil@ufps.edu.co" },
-      update: {
-        codigoUsuario: await generarCodigoUsuario("DIRECTOR"),
-        codigoSeguridad: await generarCodigoSeguridad()
-      },
-      create: { 
-        nombre: "Director Civil", 
-        email: "director.civil@ufps.edu.co", 
-        password: directorPassword, 
-        rol: Rol.DIRECTOR,
-        codigoUsuario: await generarCodigoUsuario("DIRECTOR"),
-        codigoSeguridad: await generarCodigoSeguridad()
-      },
-    }),
-  ]);
-
-  const [uDir1, uDir2, uDir3] = directorUsuarios;
-
-  const directores = await Promise.all([
-    prisma.director.upsert({
-      where: { usuarioId: uDir1.id },
-      update: {},
-      create: { usuarioId: uDir1.id, programaId: progSis.id, Facultad: progSis.facultad },
-    }),
-    prisma.director.upsert({
-      where: { usuarioId: uDir2.id },
-      update: {},
-      create: { usuarioId: uDir2.id, programaId: progInd.id, Facultad: progInd.facultad },
-    }),
-    prisma.director.upsert({
-      where: { usuarioId: uDir3.id },
-      update: {},
-      create: { usuarioId: uDir3.id, programaId: progCiv.id, Facultad: progCiv.facultad },
-    }),
-  ]);
-
-  const [dirSis, dirInd, dirCiv] = directores;
-
-  // ---------- ADMIN ----------
-  const adminPassword = await bcrypt.hash("admin1234", 10);
+  console.log('🌱 Iniciando seed de la base de datos...');
   
-  await prisma.usuario.upsert({
-    where: { email: "admin@ufps.edu.co" },
-    update: {
-      codigoUsuario: await generarCodigoUsuario("ADMIN"),
-      codigoSeguridad: await generarCodigoSeguridad()
-    },
-    create: { 
-      nombre: "Administrador General", 
-      email: "admin@ufps.edu.co", 
-      password: adminPassword, 
-      rol: Rol.ADMIN,
-      codigoUsuario: await generarCodigoUsuario("ADMIN"),
-      codigoSeguridad: await generarCodigoSeguridad()
-    },
-  });
+  // Limpiar base de datos (opcional, comentar si no quieres borrar datos existentes)
+  console.log('🧹 Limpiando base de datos...');
+  await prisma.notificacion.deleteMany();
+  await prisma.actividadCronograma.deleteMany();
+  await prisma.cronograma.deleteMany();
+  await prisma.archivoMensaje.deleteMany();
+  await prisma.mensaje.deleteMany();
+  await prisma.conversacion.deleteMany();
+  await prisma.revisionConvenio.deleteMany();
+  await prisma.comentarioConvenio.deleteMany();
+  await prisma.representanteLegal.deleteMany();
+  await prisma.evaluacion.deleteMany();
+  await prisma.practica.deleteMany();
+  await prisma.postulacion.deleteMany();
+  await prisma.vacante.deleteMany();
+  await prisma.documento.deleteMany();
+  await prisma.convenio.deleteMany();
+  await prisma.reporte.deleteMany();
+  await prisma.estudiante.deleteMany();
+  await prisma.empresa.deleteMany();
+  await prisma.director.deleteMany();
+  await prisma.programa.deleteMany();
+  await prisma.usuario.deleteMany();
+  console.log('✅ Base de datos limpiada\n');
 
-  // ---------- EMPRESA A (aprobada, con convenio + vacantes) ----------
-  const empresaPassword = await bcrypt.hash("empresa1234", 10);
-  const codigoUsuarioEmpresaA = await generarCodigoUsuario("EMPRESA");
-  const codigoSeguridadEmpresaA = await generarCodigoSeguridad();
+  const HASHED_PASSWORD = await bcrypt.hash('Password123!', 10);
+
+  /* --------- 1. Crear programas académicos --------- */
+  console.log('📚 Creando programas académicos...');
   
-  const usuarioEmpresa = await prisma.usuario.upsert({
-    where: { email: "empresa@demo.com" },
-    update: {
-      codigoUsuario: codigoUsuarioEmpresaA,
-      codigoSeguridad: codigoSeguridadEmpresaA
-    },
-    create: { 
-      nombre: "Empresa Demo S.A.", 
-      email: "empresa@demo.com", 
-      password: empresaPassword, 
-      rol: Rol.EMPRESA,
-      codigoUsuario: codigoUsuarioEmpresaA,
-      codigoSeguridad: codigoSeguridadEmpresaA
+  const programaSistemas = await prisma.programa.create({
+    data: {
+      nombre: 'Ingeniería de Sistemas',
+      facultad: 'Facultad de Ingeniería',
     },
   });
 
-  const convenioLink = "https://res.cloudinary.com/dqwxyv3zc/image/upload/v1764365976/DocumentosPracticas/kmdh9xfopf2zres4lkxb.pdf";
-
-  const empresa = await prisma.empresa.upsert({
-    where: { nit: "9001234567" },
-    update: {},
-    create: {
-      nombre: "Ingeniería de Sistemas",
-      facultad: "Facultad de Ingenierías",
+  const programaIndustrial = await prisma.programa.create({
+    data: {
+      nombre: 'Ingeniería Industrial',
+      facultad: 'Facultad de Ingeniería',
     },
   });
 
-  const industrial = await prisma.programa.upsert({
-    where: { nombre: "Ingeniería Industrial" },
-    update: {},
-    create: {
-      nombre: "Ingeniería Industrial",
-      facultad: "Facultad de Ingenierías",
-    },
-  });
+  console.log(`✅ Programas creados: ${programaSistemas.nombre}, ${programaIndustrial.nombre}\n`);
 
-  console.log("✔ Programas creados");
-
-  // -------------------------------------------------------------
-  // 2. USUARIO ADMIN
-  // -------------------------------------------------------------
-  const adminUser = await prisma.usuario.upsert({
-    where: { email: "admin@ufps.edu.co" },
-    update: {},
-    create: {
-      nombre: "Administrador General",
-      email: "admin@ufps.edu.co",
-      password: await bcrypt.hash("admin123", 10),
-      rol: Rol.ADMIN,
-      codigoUsuario: await generarCodigoUsuario(Rol.ADMIN, prisma),
-      codigoSeguridad: await generarCodigoSeguridad(prisma),
-    },
-  });
-
-  // ---------- VACANTES para empresa A (3 vacantes en distintas áreas) ----------
-  const vacantesData = [
-    {
-      titulo: "Practicante Backend Node.js",
-      modalidad: Modalidad.HIBRIDO,
-      descripcion: "Asistencia en APIs con Node.js, Prisma y PostgreSQL.",
-      area: "Desarrollo",
-      ciudad: "Cúcuta",
-      habilidadesTecnicas: ["Node.js", "SQL", "TypeScript"],
-      habilidadesBlandas: ["Comunicación", "Responsabilidad"],
-    },
-    {
-      titulo: "Practicante DevOps",
-      modalidad: Modalidad.PRESENCIAL,
-      descripcion: "Soporte en CI/CD, deployment y automatización de infra.",
-      area: "DevOps",
-      ciudad: "Cúcuta",
-      habilidadesTecnicas: ["Docker", "Kubernetes", "CI/CD"],
-      habilidadesBlandas: ["Proactividad", "Resolución de problemas"],
-    },
-    {
-      titulo: "Practicante - Gestión de Proyectos",
-      modalidad: Modalidad.REMOTO,
-      descripcion: "Apoyo en gestión de proyectos, cronogramas y seguimiento.",
-      area: "Gestión de Proyectos",
-      ciudad: "Remoto",
-      habilidadesTecnicas: ["Gestión de proyectos", "Herramientas ágiles"],
-      habilidadesBlandas: ["Organización", "Comunicación"],
-    },
-  ];
-
-  for (const v of vacantesData) {
-    // 1. Buscar si ya existe una vacante con este título para esta empresa
-    const existing = await prisma.vacante.findFirst({
-      where: {
-        titulo: v.titulo,
-        empresaId: empresa.id,
-      },
-    });
-
-    if (existing) {
-      // 2. Si existe → actualizamos por ID (el único unique válido)
-      await prisma.vacante.update({
-        where: { id: existing.id },
-        data: {
-          modalidad: v.modalidad,
-          descripcion: v.descripcion,
-          area: v.area,
-          ciudad: v.ciudad,
-          habilidadesTecnicas: v.habilidadesTecnicas,
-          habilidadesBlandas: v.habilidadesBlandas,
-          estado: EstadoGeneral.APROBADA,
-          convenioId: convenioA.id,
-          directorValidaId: dirSis.id,
-        },
-      });
-    } else {
-      // 3. Si no existe → crear la vacante desde cero
-      await prisma.vacante.create({
-        data: {
-          empresaId: empresa.id,
-          convenioId: convenioA.id,
-          directorValidaId: dirSis.id,
-          titulo: v.titulo,
-          modalidad: v.modalidad,
-          descripcion: v.descripcion,
-          area: v.area,
-          ciudad: v.ciudad,
-          habilidadesTecnicas: v.habilidadesTecnicas,
-          habilidadesBlandas: v.habilidadesBlandas,
-          estado: EstadoGeneral.APROBADA,
-        },
-      });
-    }
-  }
-
-  // ---------- ESTUDIANTE (demo) ----------
-  const estudiantePassword = await bcrypt.hash("estudiante1234", 10);
-  const codigoUsuarioEstudiante = await generarCodigoUsuario("ESTUDIANTE");
-  const codigoSeguridadEstudiante = await generarCodigoSeguridad();
+  /* --------- 2. Crear directores --------- */
+  console.log('👨‍🏫 Creando directores...');
   
-  const usuarioEst = await prisma.usuario.upsert({
-    where: { email: "juancamilobame@ufps.edu.co" },
-    update: {
-      codigoUsuario: codigoUsuarioEstudiante,
-      codigoSeguridad: codigoSeguridadEstudiante
-    },
-    create: { 
-      nombre: "Juan Camilo Bamé", 
-      email: "juancamilobame@ufps.edu.co", 
-      password: estudiantePassword, 
-      rol: Rol.ESTUDIANTE,
-      codigoUsuario: codigoUsuarioEstudiante,
-      codigoSeguridad: codigoSeguridadEstudiante
+  // Director para Sistemas
+  const directorSisUsuario = await prisma.usuario.create({
+    data: {
+      nombre: 'Dr. Carlos Mendoza',
+      email: 'director.sistemas@universidad.edu',
+      password: HASHED_PASSWORD,
+      rol: 'DIRECTOR',
+      codigoSeguridad: 'DIR-SIS-001',
+      codigoUsuario: 'CDIR001',
     },
   });
 
-  const estudiante = await prisma.estudiante.upsert({
-    where: { usuarioId: usuarioEst.id },
-    update: {},
-    create: {
-      nombre: "Director Sistemas",
-      email: "juancamilobame@ufps.edu.co",
-      password: await bcrypt.hash("director123", 10),
-      rol: Rol.DIRECTOR,
-      codigoUsuario: await generarCodigoUsuario(Rol.DIRECTOR, prisma),
-      codigoSeguridad: await generarCodigoSeguridad(prisma),
+  const directorSistemas = await prisma.director.create({
+    data: {
+      usuarioId: directorSisUsuario.id,
+      programaId: programaSistemas.id,
+      Facultad: 'Facultad de Ingeniería',
     },
   });
 
-  const director = await prisma.director.upsert({
-    where: { usuarioId: directorUser.id },
-    update: {},
-    create: {
-      usuarioId: directorUser.id,
-      programaId: sistemas.id,
-      Facultad: "Facultad de Ingenierías",
+  // Director para Industrial
+  const directorIndUsuario = await prisma.usuario.create({
+    data: {
+      nombre: 'Dra. María González',
+      email: 'director.industrial@universidad.edu',
+      password: HASHED_PASSWORD,
+      rol: 'DIRECTOR',
+      codigoSeguridad: 'DIR-IND-002',
+      codigoUsuario: 'CDIR002',
     },
   });
 
-  let actividad = await prisma.actividadCronograma.findFirst({
-    where: { cronogramaId: cronograma.id, nombre: "Revisión de hojas de vida" }
+  const directorIndustrial = await prisma.director.create({
+    data: {
+      usuarioId: directorIndUsuario.id,
+      programaId: programaIndustrial.id,
+      Facultad: 'Facultad de Ingeniería',
+    },
   });
 
-  if (!actividad) {
-    actividad = await prisma.actividadCronograma.create({
-      data: {
-        cronogramaId: cronograma.id,
-        nombre: "Revisión de hojas de vida",
-        descripcion: "El director revisará los CV recibidos.",
-        fechaInicio: new Date("2025-01-15"),
-        fechaFin: new Date("2025-01-30"),
-        tipo: TipoActividad.REVISIÓN,
-      },
-    });
-  }
+  console.log(`✅ Directores creados: ${directorSisUsuario.nombre}, ${directorIndUsuario.nombre}\n`);
 
-  // ---------- NOTIFICACION DEMO ----------
-  let notificacion = await prisma.notificacion.findFirst({ where: { destinatarioId: dirSis.id, tipo: TipoNotificacion.NUEVA_SOLICITUD_VACANTE } });
-  if (!notificacion) {
-    notificacion = await prisma.notificacion.create({
-      data: {
-        tipo: TipoNotificacion.NUEVA_SOLICITUD_VACANTE,
-        titulo: "Nueva vacante pendiente",
-        mensaje: "Tienes una nueva vacante pendiente de revisión",
-        prioridad: PrioridadNotificacion.MEDIA,
-        destinatarioId: dirSis.id,
-        destinatarioRol: Rol.DIRECTOR,
-        leida: false,
-      },
-    });
-  }
-
-  // ---------- EMPRESA B (PENDIENTE, sin convenios) ----------
-  const codigoUsuarioEmpresaB = await generarCodigoUsuario("EMPRESA");
-  const codigoSeguridadEmpresaB = await generarCodigoSeguridad();
+  /* --------- 3. Crear 1 empresa con 2 vacantes --------- */
+  console.log('🏢 Creando empresa Microsoft con 2 vacantes...');
   
-  const usuarioEmpresaPend = await prisma.usuario.upsert({
-    where: { email: "empresa.pendiente@demo.com" },
-    update: {
-      codigoUsuario: codigoUsuarioEmpresaB,
-      codigoSeguridad: codigoSeguridadEmpresaB
-    },
-    create: { 
-      nombre: "Empresa Pendiente LTDA", 
-      email: "empresa.pendiente@demo.com", 
-      password: await bcrypt.hash("empresaPend123", 10), 
-      rol: Rol.EMPRESA,
-      codigoUsuario: codigoUsuarioEmpresaB,
-      codigoSeguridad: codigoSeguridadEmpresaB
+  // Empresa 1 - Microsoft (Sistemas)
+  const empresa1Usuario = await prisma.usuario.create({
+    data: {
+      nombre: 'Microsoft Colombia',
+      email: 'contacto@microsoft.co',
+      password: HASHED_PASSWORD,
+      rol: 'EMPRESA',
+      codigoSeguridad: 'EMP-MS-001',
+      codigoUsuario: 'EMICRO001',
     },
   });
 
-  await prisma.empresa.upsert({
-    where: { nit: "9007654321" },
-    update: {},
-    create: {
-      nombre: "Empresa Ejemplo",
-      email: "contacto@empresa.com",
-      password: await bcrypt.hash("empresa123", 10),
-      rol: Rol.EMPRESA,
-      codigoUsuario: await generarCodigoUsuario(Rol.EMPRESA, prisma),
-      codigoSeguridad: await generarCodigoSeguridad(prisma),
+  const empresa1 = await prisma.empresa.create({
+    data: {
+      usuarioId: empresa1Usuario.id,
+      programaId: programaSistemas.id,
+      directorId: directorSistemas.id,
+      nit: '8301234567',
+      telefono: '+57 601 2345678',
+      direccion: 'Calle 100 # 8A - 55, Bogotá',
+      sector: 'Tecnología',
+      descripcion: 'Multinacional de tecnología líder en software y servicios en la nube.',
+      estado: 'HABILITADA',
+      habilitada: true,
     },
   });
 
-  // ---------- EMPRESA C (APROBADA, con convenio EN_REVISION) ----------
-  const codigoUsuarioEmpresaC = await generarCodigoUsuario("EMPRESA");
-  const codigoSeguridadEmpresaC = await generarCodigoSeguridad();
-  
-  const usuarioEmpresaC = await prisma.usuario.upsert({
-    where: { email: "empresa.revision@demo.com" },
-    update: {
-      codigoUsuario: codigoUsuarioEmpresaC,
-      codigoSeguridad: codigoSeguridadEmpresaC
-    },
-    create: { 
-      nombre: "Empresa Revisión S.A.", 
-      email: "empresa.revision@demo.com", 
-      password: await bcrypt.hash("empresaRev123", 10), 
-      rol: Rol.EMPRESA,
-      codigoUsuario: codigoUsuarioEmpresaC,
-      codigoSeguridad: codigoSeguridadEmpresaC
+  // Convenio para Microsoft
+  const convenio1 = await prisma.convenio.create({
+    data: {
+      empresaId: empresa1.id,
+      directorId: directorSistemas.id,
+      nombre: 'Convenio Macro Microsoft 2024',
+      descripcion: 'Convenio marco para prácticas profesionales en Microsoft Colombia',
+      tipo: 'MACRO',
+      fechaInicio: new Date('2024-01-01'),
+      fechaFin: new Date('2024-12-31'),
+      estado: 'APROBADO',
+      archivoUrl: 'https://cloudinary.com/convenios/microsoft-2024.pdf',
+      version: 1,
     },
   });
 
-  const empresaRevision = await prisma.empresa.upsert({
-    where: { nit: "9009998887" },
-    update: {},
-    create: {
-      usuarioId: empresaUser.id,
-      nit: "900123456",
-      programaId: sistemas.id,
-      telefono: "3120000000",
-      direccion: "Cúcuta - Norte de Santander",
-      sector: "Tecnología",
-      descripcion: "Empresa dedicada a desarrollo de software.",
-      habilitada: false,
-      directorId: dirSis.id,
+  // Vacante 1 para Microsoft
+  const vacante1 = await prisma.vacante.create({
+    data: {
+      empresaId: empresa1.id,
+      convenioId: convenio1.id,
+      directorValidaId: directorSistemas.id,
+      titulo: 'Desarrollador Backend Jr.',
+      modalidad: 'HIBRIDO',
+      descripcion: 'Buscamos desarrollador backend con conocimientos en .NET Core, C# y APIs REST para unirse a nuestro equipo de desarrollo.',
+      area: 'Desarrollo de Software',
+      ciudad: 'Bogotá',
+      habilidadesTecnicas: ['.NET Core', 'C#', 'SQL Server', 'Azure', 'APIs REST'],
+      habilidadesBlandas: ['Trabajo en equipo', 'Comunicación efectiva', 'Resolución de problemas'],
+      estado: 'APROBADA',
     },
   });
 
-  // representante legal empresa C
-  await prisma.representanteLegal.upsert({
-    where: { empresaId: empresaRevision.id },
-    update: {},
-    create: {
-      empresaId: empresaRevision.id,
-      nombreCompleto: "María García",
-      tipoDocumento: "CC",
-      numeroDocumento: "2020202020",
-      email: "legal.revision@demo.com",
-      telefono: "3201112233",
+  // Vacante 2 para Microsoft
+  const vacante2 = await prisma.vacante.create({
+    data: {
+      empresaId: empresa1.id,
+      convenioId: convenio1.id,
+      directorValidaId: directorSistemas.id,
+      titulo: 'Analista de Datos',
+      modalidad: 'REMOTO',
+      descripcion: 'Analista para procesamiento y visualización de datos usando Power BI y Python.',
+      area: 'Ciencia de Datos',
+      ciudad: 'Remoto',
+      habilidadesTecnicas: ['Python', 'SQL', 'Power BI', 'Pandas', 'Machine Learning'],
+      habilidadesBlandas: ['Análisis crítico', 'Creatividad', 'Pensamiento lógico'],
+      estado: 'APROBADA',
     },
   });
 
-  // convenio para empresa C en EN_REVISION
-  let convenioC = await prisma.convenio.findFirst({ where: { empresaId: empresaRevision.id, nombre: "Convenio Específico 2025" } });
-  if (!convenioC) {
-    convenioC = await prisma.convenio.create({
-      data: {
-        empresaId: empresaRevision.id,
-        directorId: dirSis.id,
-        nombre: "Convenio Específico 2025",
-        descripcion: "Convenio específico en proceso de revisión.",
-        tipo: TipoConvenio.ESPECIFICO,
-        fechaInicio: new Date("2025-03-01"),
-        fechaFin: new Date("2026-02-28"),
-        estado: EstadoConvenio.EN_REVISION,
-        archivoUrl: convenioLink,
-      },
-    });
-  }
+  console.log(`✅ ${empresa1Usuario.nombre} creada con 2 vacantes\n`);
 
-  // documento asociado al convenioC (opcional)
+  /* --------- 4. Crear 3 empresas adicionales con 1 vacante cada una --------- */
+  console.log('🏢 Creando 3 empresas adicionales...');
+
+  // Empresa 2 - Globant (Sistemas)
+  const empresa2Usuario = await prisma.usuario.create({
+    data: {
+      nombre: 'Globant S.A.',
+      email: 'talento@globant.co',
+      password: HASHED_PASSWORD,
+      rol: 'EMPRESA',
+      codigoSeguridad: 'EMP-GL-002',
+      codigoUsuario: 'EGLOB002',
+    },
+  });
+
+  const empresa2 = await prisma.empresa.create({
+    data: {
+      usuarioId: empresa2Usuario.id,
+      programaId: programaSistemas.id,
+      directorId: directorSistemas.id,
+      nit: '9009876541',
+      telefono: '+57 601 8765432',
+      direccion: 'Carrera 7 # 71-21, Bogotá',
+      sector: 'Tecnología',
+      descripcion: 'Compañía de tecnología que construye soluciones innovadoras para empresas globales.',
+      estado: 'HABILITADA',
+      habilitada: true,
+    },
+  });
+
+  const convenio2 = await prisma.convenio.create({
+    data: {
+      empresaId: empresa2.id,
+      directorId: directorSistemas.id,
+      nombre: 'Convenio Globant 2024',
+      descripcion: 'Convenio para prácticas profesionales en desarrollo de software',
+      tipo: 'ESPECIFICO',
+      fechaInicio: new Date('2024-02-01'),
+      fechaFin: new Date('2024-11-30'),
+      estado: 'APROBADO',
+      archivoUrl: 'https://cloudinary.com/convenios/globant-2024.pdf',
+    },
+  });
+
+  await prisma.vacante.create({
+    data: {
+      empresaId: empresa2.id,
+      convenioId: convenio2.id,
+      directorValidaId: directorSistemas.id,
+      titulo: 'Desarrollador Full Stack',
+      modalidad: 'PRESENCIAL',
+      descripcion: 'Desarrollador full stack con experiencia en React y Node.js para proyectos internacionales.',
+      area: 'Desarrollo Web',
+      ciudad: 'Medellín',
+      habilidadesTecnicas: ['React', 'Node.js', 'JavaScript', 'MongoDB', 'AWS'],
+      habilidadesBlandas: ['Inglés B2+', 'Adaptabilidad', 'Liderazgo'],
+      estado: 'APROBADA',
+    },
+  });
+
+  console.log(`✅ ${empresa2Usuario.nombre} creada`);
+
+  // Empresa 3 - Bancolombia (Industrial)
+  const empresa3Usuario = await prisma.usuario.create({
+    data: {
+      nombre: 'Bancolombia',
+      email: 'practicas@bancolombia.com.co',
+      password: HASHED_PASSWORD,
+      rol: 'EMPRESA',
+      codigoSeguridad: 'EMP-BC-003',
+      codigoUsuario: 'EBANC003',
+    },
+  });
+
+  const empresa3 = await prisma.empresa.create({
+    data: {
+      usuarioId: empresa3Usuario.id,
+      programaId: programaIndustrial.id,
+      directorId: directorIndustrial.id,
+      nit: '8909032345',
+      telefono: '+57 604 3456789',
+      direccion: 'Carrera 48 # 26-85, Medellín',
+      sector: 'Finanzas',
+      descripcion: 'Entidad financiera líder en Colombia con innovación tecnológica.',
+      estado: 'HABILITADA',
+      habilitada: true,
+    },
+  });
+
+  const convenio3 = await prisma.convenio.create({
+    data: {
+      empresaId: empresa3.id,
+      directorId: directorIndustrial.id,
+      nombre: 'Convenio Bancolombia Tech',
+      descripcion: 'Convenio para prácticas en áreas tecnológicas del sector financiero',
+      tipo: 'ESPECIFICO',
+      fechaInicio: new Date('2024-03-01'),
+      fechaFin: new Date('2024-10-31'),
+      estado: 'APROBADO',
+      archivoUrl: 'https://cloudinary.com/convenios/bancolombia-2024.pdf',
+    },
+  });
+
+  await prisma.vacante.create({
+    data: {
+      empresaId: empresa3.id,
+      convenioId: convenio3.id,
+      directorValidaId: directorIndustrial.id,
+      titulo: 'Analista de Procesos',
+      modalidad: 'HIBRIDO',
+      descripcion: 'Analista para optimización de procesos operativos en el sector bancario.',
+      area: 'Optimización de Procesos',
+      ciudad: 'Medellín',
+      habilidadesTecnicas: ['Lean Six Sigma', 'BPMN', 'Excel Avanzado', 'SQL'],
+      habilidadesBlandas: ['Análisis de datos', 'Trabajo en equipo', 'Comunicación'],
+      estado: 'APROBADA',
+    },
+  });
+
+  console.log(`✅ ${empresa3Usuario.nombre} creada`);
+
+  // Empresa 4 - Rappi (Sistemas)
+  const empresa4Usuario = await prisma.usuario.create({
+    data: {
+      nombre: 'Rappi Colombia',
+      email: 'empleo@rappi.com',
+      password: HASHED_PASSWORD,
+      rol: 'EMPRESA',
+      codigoSeguridad: 'EMP-RP-004',
+      codigoUsuario: 'ERAPP004',
+    },
+  });
+
+  const empresa4 = await prisma.empresa.create({
+    data: {
+      usuarioId: empresa4Usuario.id,
+      programaId: programaSistemas.id,
+      directorId: directorSistemas.id,
+      nit: '9012345678',
+      telefono: '+57 601 9876543',
+      direccion: 'Calle 85 # 18-32, Bogotá',
+      sector: 'Tecnología',
+      descripcion: 'Plataforma de delivery y servicios líder en Latinoamérica.',
+      estado: 'APROBADA',
+      habilitada: true,
+    },
+  });
+
+  const convenio4 = await prisma.convenio.create({
+    data: {
+      empresaId: empresa4.id,
+      directorId: directorSistemas.id,
+      nombre: 'Convenio Rappi Innovación',
+      descripcion: 'Convenio para prácticas en desarrollo móvil y logística',
+      tipo: 'ESPECIFICO',
+      fechaInicio: new Date('2024-04-01'),
+      fechaFin: new Date('2024-09-30'),
+      estado: 'EN_REVISION',
+      archivoUrl: 'https://cloudinary.com/convenios/rappi-2024.pdf',
+    },
+  });
+
+  await prisma.vacante.create({
+    data: {
+      empresaId: empresa4.id,
+      convenioId: convenio4.id,
+      titulo: 'Desarrollador Mobile React Native',
+      modalidad: 'REMOTO',
+      descripcion: 'Desarrollador para aplicación móvil usando React Native y experiencia de usuario optimizada.',
+      area: 'Desarrollo Móvil',
+      ciudad: 'Remoto',
+      habilidadesTecnicas: ['React Native', 'JavaScript', 'Redux', 'APIs', 'Git'],
+      habilidadesBlandas: ['Innovación', 'Trabajo bajo presión', 'Orientación al usuario'],
+      estado: 'PENDIENTE', // Pendiente de aprobación
+    },
+  });
+
+  console.log(`✅ ${empresa4Usuario.nombre} creada\n`);
+
+  /* --------- 5. Crear estudiantes --------- */
+  console.log('🎓 Creando estudiantes...');
+
+  const estudiante1Usuario = await prisma.usuario.create({
+    data: {
+      nombre: 'Ana García López',
+      email: 'ana.garcia@estudiante.edu',
+      password: HASHED_PASSWORD,
+      rol: 'ESTUDIANTE',
+      codigoSeguridad: 'EST-2024-001',
+      codigoUsuario: 'EANAG001',
+    },
+  });
+
+  const estudiante1 = await prisma.estudiante.create({
+    data: {
+      usuarioId: estudiante1Usuario.id,
+      programaId: programaSistemas.id,
+      codigo: '202310001',
+      documento: '1234567890',
+      perfil: 'Estudiante de Ingeniería de Sistemas con interés en desarrollo web',
+      telefono: '+57 300 1234567',
+      semestre: 9,
+      area: 'Desarrollo Web',
+      habilidadesTecnicas: ['JavaScript', 'React', 'Node.js', 'MongoDB'],
+      habilidadesBlandas: ['Trabajo en equipo', 'Comunicación', 'Liderazgo'],
+      perfilCompleto: true,
+      hojaDeVidaUrl: 'https://cloudinary.com/hojas-vida/ana-garcia.pdf',
+      activo: true,
+    },
+  });
+
+  const estudiante2Usuario = await prisma.usuario.create({
+    data: {
+      nombre: 'Carlos Rodríguez',
+      email: 'carlos.rodriguez@estudiante.edu',
+      password: HASHED_PASSWORD,
+      rol: 'ESTUDIANTE',
+      codigoSeguridad: 'EST-2024-002',
+      codigoUsuario: 'ECARL002',
+    },
+  });
+
+  const estudiante2 = await prisma.estudiante.create({
+    data: {
+      usuarioId: estudiante2Usuario.id,
+      programaId: programaSistemas.id,
+      codigo: '202310002',
+      documento: '9876543210',
+      perfil: 'Estudiante interesado en ciencia de datos y machine learning',
+      telefono: '+57 310 9876543',
+      semestre: 8,
+      area: 'Ciencia de Datos',
+      habilidadesTecnicas: ['Python', 'Pandas', 'Scikit-learn', 'SQL'],
+      habilidadesBlandas: ['Análisis', 'Pensamiento crítico', 'Creatividad'],
+      perfilCompleto: false,
+      activo: true,
+    },
+  });
+
+  // Estudiante para Ingeniería Industrial
+  const estudiante3Usuario = await prisma.usuario.create({
+    data: {
+      nombre: 'Laura Martínez',
+      email: 'laura.martinez@estudiante.edu',
+      password: HASHED_PASSWORD,
+      rol: 'ESTUDIANTE',
+      codigoSeguridad: 'EST-2024-003',
+      codigoUsuario: 'ELAUR003',
+    },
+  });
+
+  const estudiante3 = await prisma.estudiante.create({
+    data: {
+      usuarioId: estudiante3Usuario.id,
+      programaId: programaIndustrial.id,
+      codigo: '202310003',
+      documento: '4567890123',
+      perfil: 'Estudiante de Ingeniería Industrial con enfoque en logística',
+      telefono: '+57 320 4567890',
+      semestre: 7,
+      area: 'Logística y Cadena de Suministro',
+      habilidadesTecnicas: ['Excel Avanzado', 'Simulación', 'Estadística'],
+      habilidadesBlandas: ['Organización', 'Planificación', 'Negociación'],
+      perfilCompleto: true,
+      hojaDeVidaUrl: 'https://cloudinary.com/hojas-vida/laura-martinez.pdf',
+      activo: true,
+    },
+  });
+
+  console.log(`✅ 3 estudiantes creados\n`);
+
+  /* --------- 6. Crear postulaciones --------- */
+  console.log('📝 Creando postulaciones...');
+
+  await prisma.postulacion.create({
+    data: {
+      estudianteId: estudiante1.id,
+      vacanteId: vacante1.id,
+      estado: 'EN_REVISION',
+      comentario: 'Muy interesado en el puesto de desarrollador backend',
+    },
+  });
+
+  await prisma.postulacion.create({
+    data: {
+      estudianteId: estudiante2.id,
+      vacanteId: vacante2.id,
+      estado: 'ACEPTADA',
+      comentario: 'Aceptado para entrevista técnica',
+    },
+  });
+
+  await prisma.postulacion.create({
+    data: {
+      estudianteId: estudiante3.id,
+      vacanteId: empresa3.id, // Esto debería ser vacanteId, pero tenemos que crear una vacante para empresa3 primero
+      estado: 'EN_REVISION',
+      comentario: 'Interesada en el área de optimización de procesos',
+    },
+  });
+
+  console.log(`✅ 3 postulaciones creadas\n`);
+
+  /* --------- 7. Crear algunos documentos --------- */
+  console.log('📄 Creando documentos de ejemplo...');
+
   await prisma.documento.create({
     data: {
-      titulo: "Convenio Específico 2025",
-      descripcion: "Documento del convenio en revisión",
-      categoria: TipoDocumento.CONVENIO_EMPRESA,
-      archivoUrl: convenioLink,
-      nombreArchivo: "convenio-especifico-2025.pdf",
-      convenioId: convenioC.id,
-      empresaId: empresaRevision.id,
+      titulo: 'Hoja de Vida - Ana García',
+      descripcion: 'Hoja de vida de estudiante de Ingeniería de Sistemas',
+      categoria: 'HOJA_DE_VIDA',
+      archivoUrl: 'https://cloudinary.com/documentos/hoja-vida-ana.pdf',
+      nombreArchivo: 'hoja_vida_ana_garcia.pdf',
+      estudianteId: estudiante1.id,
     },
   });
 
-  // ---------- MÁS ESTUDIANTES DE PRUEBA ----------
-  const estudiantesData = [
-    {
-      nombre: "Ana María López",
-      email: "ana.lopez@ufps.edu.co",
-      codigo: "2025002",
-      documento: "987654321",
-      semestre: 9,
-      perfil: "Estudiante interesada en desarrollo frontend y UX/UI.",
-      habilidadesTecnicas: ["React", "JavaScript", "CSS"],
-      habilidadesBlandas: ["Creatividad", "Trabajo en equipo"],
+  await prisma.documento.create({
+    data: {
+      titulo: 'Convenio Microsoft 2024',
+      descripcion: 'Documento del convenio marco con Microsoft',
+      categoria: 'CONVENIO_EMPRESA',
+      archivoUrl: 'https://cloudinary.com/documentos/convenio-microsoft.pdf',
+      nombreArchivo: 'convenio_microsoft_2024.pdf',
+      convenioId: convenio1.id,
     },
-    {
-      nombre: "Carlos Andrés Gómez",
-      email: "carlos.gomez@ufps.edu.co",
-      codigo: "2025003",
-      documento: "456789123",
-      semestre: 7,
-      perfil: "Estudiante con interés en bases de datos y análisis de datos.",
-      habilidadesTecnicas: ["SQL", "Python", "Power BI"],
-      habilidadesBlandas: ["Análisis", "Detalle"],
-    },
-    {
-      nombre: "María Fernanda Rodríguez",
-      email: "maria.rodriguez@ufps.edu.co",
-      codigo: "2025004",
-      documento: "321654987",
-      semestre: 10,
-      perfil: "Estudiante próxima a graduarse, experiencia en proyectos ágiles.",
-      habilidadesTecnicas: ["Java", "Spring Boot", "Docker"],
-      habilidadesBlandas: ["Liderazgo", "Comunicación"],
-    },
-  ];
+  });
 
-  for (const est of estudiantesData) {
-    const codigoUsuarioEst = await generarCodigoUsuario("ESTUDIANTE");
-    const codigoSeguridadEst = await generarCodigoSeguridad();
-    
-    const usuarioExistente = await prisma.usuario.findUnique({
-      where: { email: est.email }
-    });
+  console.log(`✅ 2 documentos creados\n`);
 
-    if (!usuarioExistente) {
-      const usuarioEst = await prisma.usuario.create({
-        data: {
-          nombre: est.nombre,
-          email: est.email,
-          password: await bcrypt.hash("estudiante1234", 10),
-          rol: Rol.ESTUDIANTE,
-          codigoUsuario: codigoUsuarioEst,
-          codigoSeguridad: codigoSeguridadEst
-        },
-      });
+  /* --------- 8. Resumen final --------- */
+  console.log('='.repeat(50));
+  console.log('🎉 SEED COMPLETADO EXITOSAMENTE');
+  console.log('='.repeat(50));
+  console.log('📊 RESUMEN DE DATOS CREADOS:');
+  console.log(`   • Programas: 2 (Sistemas, Industrial)`);
+  console.log(`   • Directores: 2`);
+  console.log(`   • Empresas: 4 (Microsoft, Globant, Bancolombia, Rappi)`);
+  console.log(`   • Vacantes: 6 (Microsoft:2, otras:1 cada una)`);
+  console.log(`   • Convenios: 4`);
+  console.log(`   • Estudiantes: 3`);
+  console.log(`   • Postulaciones: 3`);
+  console.log(`   • Documentos: 2`);
+  console.log('='.repeat(50));
+  console.log('');
 
-      await prisma.estudiante.create({
-        data: {
-          usuarioId: usuarioEst.id,
-          programaId: progSis.id,
-          codigo: est.codigo,
-          documento: est.documento,
-          semestre: est.semestre,
-          perfil: est.perfil,
-          habilidadesTecnicas: est.habilidadesTecnicas,
-          habilidadesBlandas: est.habilidadesBlandas,
-          perfilCompleto: true,
-          estadoProceso: EstadoPractica.EN_PROCESO,
-        },
-      });
-    }
-  }
+  /* --------- 9. Credenciales de prueba --------- */
+  console.log('🔐 CREDENCIALES DE PRUEBA:');
+  console.log('-'.repeat(40));
+  console.log('DIRECTOR SISTEMAS:');
+  console.log(`  Email: director.sistemas@universidad.edu`);
+  console.log(`  Password: Password123!`);
+  console.log(`  Código Seguridad: DIR-SIS-001`);
+  console.log(`  Código Usuario: CDIR001\n`);
 
-  console.log("✅ Seed completado correctamente.");
-  console.log(`📊 Resumen (aprox):
-  - Programas: ${programas.length}
-  - Directores: ${directores.length}
-  - Empresas creadas/aseguradas: 3
-  - Estudiantes: 4
-  - Convenios: empresa A (APROBADO) + empresa C (EN_REVISION)
-  - Vacantes creadas (empresa A): ${vacantesData.length}
-  `);
-  
-  // Mostrar códigos generados para referencia
-  console.log("\n🔑 Códigos generados:");
-  console.log("- Director Sistemas:", directorUsuarios[0].codigoUsuario, "/", directorUsuarios[0].codigoSeguridad);
-  console.log("- Empresa Demo:", codigoUsuarioEmpresaA, "/", codigoSeguridadEmpresaA);
-  console.log("- Estudiante Demo:", codigoUsuarioEstudiante, "/", codigoSeguridadEstudiante);
-  console.log("- Admin:", await generarCodigoUsuario("ADMIN"));
+  console.log('DIRECTOR INDUSTRIAL:');
+  console.log(`  Email: director.industrial@universidad.edu`);
+  console.log(`  Password: Password123!`);
+  console.log(`  Código Seguridad: DIR-IND-002`);
+  console.log(`  Código Usuario: CDIR002\n`);
+
+  console.log('EMPRESA MICROSOFT:');
+  console.log(`  Email: contacto@microsoft.co`);
+  console.log(`  Password: Password123!`);
+  console.log(`  Código Seguridad: EMP-MS-001`);
+  console.log(`  Código Usuario: EMICRO001\n`);
+
+  console.log('ESTUDIANTE 1 (Ana - Sistemas):');
+  console.log(`  Email: ana.garcia@estudiante.edu`);
+  console.log(`  Password: Password123!`);
+  console.log(`  Código Seguridad: EST-2024-001`);
+  console.log(`  Código Usuario: EANAG001\n`);
+
+  console.log('ESTUDIANTE 3 (Laura - Industrial):');
+  console.log(`  Email: laura.martinez@estudiante.edu`);
+  console.log(`  Password: Password123!`);
+  console.log(`  Código Seguridad: EST-2024-003`);
+  console.log(`  Código Usuario: ELAUR003`);
+  console.log('='.repeat(50));
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Error ejecutando seed:", e);
+    console.error('❌ Error durante el seed:', e);
     process.exit(1);
   })
   .finally(async () => {
