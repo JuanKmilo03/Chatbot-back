@@ -486,5 +486,5 @@ router.post('/upload-hoja-vida', authFirebase, upload.single('archivo'), uploadH
 router.post('/cargar-excel', upload.single('archivo'), cargarEstudiantesExcel);
 router.get('/estudiantes-practica', listarEstudiantesPractica);
 router.post('/:id/subirhoja', verifyToken, authorizeRoles(Rol.ESTUDIANTE), upload.single('archivo'), subirHojaVida);
-router.post("/hoja-vida-codigo/", upload.single("archivo"), authorizeRoles(Rol.ESTUDIANTE), estudianteController.hojaDeVidaConCodigo);
+router.post("/hoja-vida-codigo", upload.single("archivo"), authorizeRoles(Rol.ESTUDIANTE), estudianteController.hojaDeVidaConCodigo);
 export default router;
