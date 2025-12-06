@@ -955,4 +955,85 @@ export const estudianteController = {
       });
     }
   },
+
+
+
+
+  hojaDeVidaConCodigo: async (req: Request, res: Response) => {
+  try {
+    const { codigo } = req.body;
+
+    if (!codigo) {
+      return res.status(400).json({
+        message: "Código requerido",
+        details: "Debe enviar un codigoSeguridad o codigoUsuario"
+      });
+    }
+
+    // Validar archivo
+    if (!req.file) {
+      return res.status(400).json({
+        message: "Archivo requerido",
+        details: "Debe subir un archivo PDF o Word"
+      });
+    }
+
+    const allowedMimeTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ];
+
+    if (!allowedMimeTypes.includes(req.file.mimetype)) {
+      return res.status(400).json({
+        message: "Formato no permitido",
+        details: "Solo se aceptan archivos PDF, DOC o DOCX"
+      });
+    }
+
+    // Tamaño máximo 5MB
+    const maxSize = 5 * 1024 * 1024;
+    if (req.file.size > maxSize) {
+      return res.status(400).json({
+        message: "Archivo muy grande",
+        details: "El tamaño máximo permitido es 5MB"
+      });
+    }
+
+    // Subir archivo a Cloudinary
+    const uploadResult = await uploadToCloudinary(req.file.buffer, {
+      folder: "hojas_vida",
+      resource_type: "auto",
+      public_id: `hoja_vida_codigo_${codigo}`
+    });
+
+    const estudianteActualizado =
+      await EstudianteService.subirHojaDeVidaConCodigo(
+        codigo,
+        uploadResult.secure_url
+      );
+
+    return res.status(200).json({
+      message: "Hoja de vida subida correctamente",
+      data: {
+        hojaDeVidaUrl: estudianteActualizado.hojaDeVidaUrl,
+        estudiante: {
+          id: estudianteActualizado.id,
+          nombre: estudianteActualizado.usuario?.nombre,
+          codigo: codigo
+        },
+        uploadedAt: new Date().toISOString()
+      }
+    });
+
+  } catch (error: any) {
+    console.error("Error al subir hoja de vida con código:", error);
+    return res.status(500).json({
+      message: "Error interno del servidor",
+      details: error.message
+    });
+  }
+},
+
+
 };

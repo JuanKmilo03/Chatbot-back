@@ -693,4 +693,43 @@ export class EstudianteService {
     }
     return resultados;
   }
+
+  static async subirHojaDeVidaConCodigo(codigo: string, hojaDeVidaUrl: string) {
+  const usuario = await prisma.usuario.findFirst({
+    where: {
+      OR: [
+        { codigoSeguridad: codigo },
+        { codigoUsuario: codigo }
+      ]
+    },
+    include: { estudiante: true }
+  });
+
+  if (!usuario) {
+    throw new Error('Código no válido: No existe un usuario asociado');
+  }
+
+  if (usuario.rol !== 'ESTUDIANTE') {
+    throw new Error('Acceso denegado: Solo los estudiantes pueden subir hoja de vida');
+  }
+
+  if (!usuario.estudiante) {
+    throw new Error('Este usuario no tiene un perfil de estudiante asociado');
+  }
+
+  const estudianteId = usuario.estudiante.id;
+
+  // Actualizar hoja de vida
+  const estudianteActualizado = await prisma.estudiante.update({
+    where: { id: estudianteId },
+    data: {
+      hojaDeVidaUrl,
+      perfilCompleto: true
+    },
+    include: { usuario: true }
+  });
+
+  return estudianteActualizado;
+}
+
 }
