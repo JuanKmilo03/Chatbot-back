@@ -1,11 +1,12 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { generarCodigoSeguridad, generarCodigoUsuario } from "../src/utils/codigos.utils.js";
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Iniciando seed de la base de datos...');
-  
+
   // Limpiar base de datos (opcional, comentar si no quieres borrar datos existentes)
   console.log('🧹 Limpiando base de datos...');
   await prisma.notificacion.deleteMany();
@@ -35,7 +36,7 @@ async function main() {
 
   /* --------- 1. Crear programas académicos --------- */
   console.log('📚 Creando programas académicos...');
-  
+
   const programaSistemas = await prisma.programa.create({
     data: {
       nombre: 'Ingeniería de Sistemas',
@@ -54,16 +55,16 @@ async function main() {
 
   /* --------- 2. Crear directores --------- */
   console.log('👨‍🏫 Creando directores...');
-  
+
   // Director para Sistemas
   const directorSisUsuario = await prisma.usuario.create({
     data: {
       nombre: 'Dr. Carlos Mendoza',
-      email: 'director.sistemas@universidad.edu',
+      email: 'juancamilobame@ufps.edu.co',
       password: HASHED_PASSWORD,
       rol: 'DIRECTOR',
-      codigoSeguridad: 'DIR-SIS-001',
-      codigoUsuario: 'CDIR001',
+      codigoSeguridad: await generarCodigoSeguridad(prisma),
+      codigoUsuario: await generarCodigoUsuario('DIRECTOR', prisma),
     },
   });
 
@@ -82,10 +83,11 @@ async function main() {
       email: 'director.industrial@universidad.edu',
       password: HASHED_PASSWORD,
       rol: 'DIRECTOR',
-      codigoSeguridad: 'DIR-IND-002',
-      codigoUsuario: 'CDIR002',
+      codigoSeguridad: await generarCodigoSeguridad(prisma),
+      codigoUsuario: await generarCodigoUsuario('DIRECTOR', prisma),
     },
   });
+
 
   const directorIndustrial = await prisma.director.create({
     data: {
@@ -99,7 +101,7 @@ async function main() {
 
   /* --------- 3. Crear 1 empresa con 2 vacantes --------- */
   console.log('🏢 Creando empresa Microsoft con 2 vacantes...');
-  
+
   // Empresa 1 - Microsoft (Sistemas)
   const empresa1Usuario = await prisma.usuario.create({
     data: {
@@ -107,10 +109,11 @@ async function main() {
       email: 'contacto@microsoft.co',
       password: HASHED_PASSWORD,
       rol: 'EMPRESA',
-      codigoSeguridad: 'EMP-MS-001',
-      codigoUsuario: 'EMICRO001',
+      codigoSeguridad: await generarCodigoSeguridad(prisma),
+      codigoUsuario: await generarCodigoUsuario('EMPRESA', prisma),
     },
   });
+
 
   const empresa1 = await prisma.empresa.create({
     data: {
@@ -189,11 +192,10 @@ async function main() {
       email: 'talento@globant.co',
       password: HASHED_PASSWORD,
       rol: 'EMPRESA',
-      codigoSeguridad: 'EMP-GL-002',
-      codigoUsuario: 'EGLOB002',
+      codigoSeguridad: await generarCodigoSeguridad(prisma),
+      codigoUsuario: await generarCodigoUsuario('EMPRESA', prisma),
     },
   });
-
   const empresa2 = await prisma.empresa.create({
     data: {
       usuarioId: empresa2Usuario.id,
@@ -248,8 +250,8 @@ async function main() {
       email: 'practicas@bancolombia.com.co',
       password: HASHED_PASSWORD,
       rol: 'EMPRESA',
-      codigoSeguridad: 'EMP-BC-003',
-      codigoUsuario: 'EBANC003',
+      codigoSeguridad: await generarCodigoSeguridad(prisma),
+      codigoUsuario: await generarCodigoUsuario('EMPRESA', prisma),
     },
   });
 
@@ -307,8 +309,8 @@ async function main() {
       email: 'empleo@rappi.com',
       password: HASHED_PASSWORD,
       rol: 'EMPRESA',
-      codigoSeguridad: 'EMP-RP-004',
-      codigoUsuario: 'ERAPP004',
+      codigoSeguridad: await generarCodigoSeguridad(prisma),
+      codigoUsuario: await generarCodigoUsuario('EMPRESA', prisma),
     },
   });
 
@@ -364,13 +366,14 @@ async function main() {
   const estudiante1Usuario = await prisma.usuario.create({
     data: {
       nombre: 'Ana García López',
-      email: 'ana.garcia@estudiante.edu',
+      email: 'adrianamilenaal@ufps.edu.co',
       password: HASHED_PASSWORD,
       rol: 'ESTUDIANTE',
-      codigoSeguridad: 'EST-2024-001',
-      codigoUsuario: 'EANAG001',
+      codigoSeguridad: await generarCodigoSeguridad(prisma),
+      codigoUsuario: await generarCodigoUsuario('ESTUDIANTE', prisma),
     },
   });
+
 
   const estudiante1 = await prisma.estudiante.create({
     data: {
@@ -396,10 +399,11 @@ async function main() {
       email: 'carlos.rodriguez@estudiante.edu',
       password: HASHED_PASSWORD,
       rol: 'ESTUDIANTE',
-      codigoSeguridad: 'EST-2024-002',
-      codigoUsuario: 'ECARL002',
+      codigoSeguridad: await generarCodigoSeguridad(prisma),
+      codigoUsuario: await generarCodigoUsuario('ESTUDIANTE', prisma),
     },
   });
+
 
   const estudiante2 = await prisma.estudiante.create({
     data: {
@@ -418,17 +422,17 @@ async function main() {
     },
   });
 
-  // Estudiante para Ingeniería Industrial
   const estudiante3Usuario = await prisma.usuario.create({
     data: {
       nombre: 'Laura Martínez',
       email: 'laura.martinez@estudiante.edu',
       password: HASHED_PASSWORD,
       rol: 'ESTUDIANTE',
-      codigoSeguridad: 'EST-2024-003',
-      codigoUsuario: 'ELAUR003',
+      codigoSeguridad: await generarCodigoSeguridad(prisma),
+      codigoUsuario: await generarCodigoUsuario('ESTUDIANTE', prisma),
     },
   });
+
 
   const estudiante3 = await prisma.estudiante.create({
     data: {
@@ -524,40 +528,6 @@ async function main() {
   console.log(`   • Documentos: 2`);
   console.log('='.repeat(50));
   console.log('');
-
-  /* --------- 9. Credenciales de prueba --------- */
-  console.log('🔐 CREDENCIALES DE PRUEBA:');
-  console.log('-'.repeat(40));
-  console.log('DIRECTOR SISTEMAS:');
-  console.log(`  Email: director.sistemas@universidad.edu`);
-  console.log(`  Password: Password123!`);
-  console.log(`  Código Seguridad: DIR-SIS-001`);
-  console.log(`  Código Usuario: CDIR001\n`);
-
-  console.log('DIRECTOR INDUSTRIAL:');
-  console.log(`  Email: director.industrial@universidad.edu`);
-  console.log(`  Password: Password123!`);
-  console.log(`  Código Seguridad: DIR-IND-002`);
-  console.log(`  Código Usuario: CDIR002\n`);
-
-  console.log('EMPRESA MICROSOFT:');
-  console.log(`  Email: contacto@microsoft.co`);
-  console.log(`  Password: Password123!`);
-  console.log(`  Código Seguridad: EMP-MS-001`);
-  console.log(`  Código Usuario: EMICRO001\n`);
-
-  console.log('ESTUDIANTE 1 (Ana - Sistemas):');
-  console.log(`  Email: ana.garcia@estudiante.edu`);
-  console.log(`  Password: Password123!`);
-  console.log(`  Código Seguridad: EST-2024-001`);
-  console.log(`  Código Usuario: EANAG001\n`);
-
-  console.log('ESTUDIANTE 3 (Laura - Industrial):');
-  console.log(`  Email: laura.martinez@estudiante.edu`);
-  console.log(`  Password: Password123!`);
-  console.log(`  Código Seguridad: EST-2024-003`);
-  console.log(`  Código Usuario: ELAUR003`);
-  console.log('='.repeat(50));
 }
 
 main()
